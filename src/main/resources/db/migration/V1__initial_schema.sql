@@ -2,7 +2,7 @@ CREATE TABLE role(
     id BIGSERIAL PRIMARY KEY ,
     name VARCHAR(50) NOT NULL UNIQUE
 );
-
+-- синтаксические
 CREATE TABLE app_user(
     id BIGSERIAL PRIMARY KEY ,
     username VARCHAR(50) NOT NULL UNIQUE ,
@@ -46,7 +46,7 @@ CREATE TABLE novel(
 CREATE INDEX idx_novel_chapter_count ON novel (chapter_count DESC);
 CREATE INDEX idx_novel_avg_rating ON novel (average_rating DESC);
 CREATE INDEX idx_novel_view_count ON novel (view_count DESC);
-CREATE INDEX idx_novel_status ON novel (status, );
+CREATE INDEX idx_novel_status ON novel (status);
 
 CREATE TABLE novel_genre (
     novel_id BIGINT NOT NULL REFERENCES novel (id) ON DELETE CASCADE,
@@ -97,9 +97,60 @@ CREATE TABLE message(
                     ON DELETE RESTRICT
 
 );
-CREATE INDEX idx_message_participants ON message (sender_id, receiver_id, timestamp);-- для поиска сообщений от отправителя к получателю.
-CREATE INDEX idx_message_participants_sym ON message (receiver_id, sender_id, timestamp);-- для поиска сообщений от получателя к отправителю.
+CREATE INDEX idx_message_participants ON message (sender_id, receiver_id, timestamp); -- для поиска сообщений от отправителя к получателю.
+CREATE INDEX idx_message_participants_sym ON message (receiver_id, sender_id, timestamp); -- для поиска сообщений от получателя к отправителю.
 -- не забуть добавить при объединении проверку по id чтобы не было коллизий ORDER BY timestamp DESC, id DESC
+
+
+-- Таблица для Общей Темы Форума
+CREATE TABLE forum_topic (
+                             id BIGSERIAL PRIMARY KEY,
+                             title VARCHAR(255) NOT NULL,
+                             description TEXT,
+    -- Привязка к создателю
+                             creator_id BIGINT NOT NULL REFERENCES app_user (id) ON DELETE RESTRICT,
+    -- Время создания темы
+                             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+--Индекс для Сортировки по Новизне
+CREATE INDEX idx_forum_topic_created ON forum_topic (created_at DESC);
+
+-- Контейнер Канала
+CREATE TABLE channel (
+                         id BIGSERIAL PRIMARY KEY,
+                         name VARCHAR(255) NOT NULL,
+                         description TEXT,
+                         creator_id BIGINT NOT NULL REFERENCES app_user (id) ON DELETE RESTRICT,
+                         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Членство / Роли в Канале
+CREATE TABLE channel_member (
+                                channel_id BIGINT NOT NULL REFERENCES channel (id) ON DELETE CASCADE,
+                                user_id BIGINT NOT NULL REFERENCES app_user (id) ON DELETE CASCADE,
+                                role VARCHAR(50) NOT NULL DEFAULT 'SUBSCRIBER', -- MODERATOR, SUBSCRIBER
+                                PRIMARY KEY (channel_id, user_id)
+);
+CREATE INDEX idx_channel_member_user ON channel_member (user_id); -- Для быстрого поиска каналов пользователя
+CREATE INDEX idx_channel_member_role ON channel_member (channel_id, role);
+
+
+-- Сообщения Канала (Посты)
+CREATE TABLE channel_post (
+                              id BIGSERIAL PRIMARY KEY,
+                              channel_id BIGINT NOT NULL REFERENCES channel (id) ON DELETE CASCADE,
+                              author_id BIGINT NOT NULL REFERENCES app_user (id) ON DELETE CASCADE,
+                              content TEXT NOT NULL,
+                              can_comment BOOLEAN NOT NULL DEFAULT TRUE,
+                              can_react BOOLEAN NOT NULL DEFAULT TRUE,
+                              timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+-- Индекс для загрузки истории канала (поиск по ID канала и сортировка по времени)
+CREATE INDEX idx_channel_post_history ON channel_post (channel_id, timestamp DESC);
+
+
+
 
 CREATE TABLE comment(
     id BIGSERIAL PRIMARY KEY ,
@@ -121,7 +172,7 @@ CREATE TABLE comment(
     -- Комментарий к общей теме
     forum_topic_id BIGINT REFERENCES forum_topic (id) ON DELETE CASCADE,
     -- Комментарий к посту канала
-    channel_post_id BIGINT REFERENCES channel_post (id) ON DELETE CASCADE,
+    channel_post_id BIGINT REFERENCES channel_post (id) ON DELETE CASCADE
 
     -- Ограничение: Комментарий должен быть привязан либо к новелле, либо к главе, либо быть ответом.
     -- Это усложнит SQL, но обеспечит целостность на уровне бизнес-логики.
@@ -182,49 +233,8 @@ CREATE INDEX idx_group_msg_sender ON group_message (sender_id,timestamp); --дл
 -- не забуть добавить при объединении проверку по id message чтобы не было коллизий
 
 
--- Таблица для Общей Темы Форума
-CREATE TABLE forum_topic (
-    id BIGSERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    -- Привязка к создателю
-    creator_id BIGINT NOT NULL REFERENCES app_user (id) ON DELETE RESTRICT,
-    -- Время создания темы
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
 
---Индекс для Сортировки по Новизне
-CREATE INDEX idx_forum_topic_created ON forum_topic (created_at DESC);
 
--- Контейнер Канала
-CREATE TABLE channel (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    creator_id BIGINT NOT NULL REFERENCES app_user (id) ON DELETE RESTRICT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
 
--- Членство / Роли в Канале
-CREATE TABLE channel_member (
-    channel_id BIGINT NOT NULL REFERENCES channel (id) ON DELETE CASCADE,
-    user_id BIGINT NOT NULL REFERENCES app_user (id) ON DELETE CASCADE,
-    role VARCHAR(50) NOT NULL DEFAULT 'SUBSCRIBER', -- MODERATOR, SUBSCRIBER
-    PRIMARY KEY (channel_id, user_id)
-);
-CREATE INDEX idx_channel_member_user ON channel_member (user_id); -- Для быстрого поиска каналов пользователя
-CREATE INDEX idx_channel_member_role ON channel_member (channel_id, role);
 
--- Сообщения Канала (Посты)
-CREATE TABLE channel_post (
-    id BIGSERIAL PRIMARY KEY,
-    channel_id BIGINT NOT NULL REFERENCES channel (id) ON DELETE CASCADE,
-    author_id BIGINT NOT NULL REFERENCES app_user (id) ON DELETE CASCADE,
-    content TEXT NOT NULL,
-    can_comment BOOLEAN NOT NULL DEFAULT TRUE,
-    can_react BOOLEAN NOT NULL DEFAULT TRUE,
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
--- Индекс для загрузки истории канала (поиск по ID канала и сортировка по времени)
-CREATE INDEX idx_channel_post_history ON channel_post (channel_id, timestamp DESC);
 
