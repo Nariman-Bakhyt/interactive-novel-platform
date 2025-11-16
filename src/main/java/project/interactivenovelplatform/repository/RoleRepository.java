@@ -1,8 +1,8 @@
 package project.interactivenovelplatform.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import project.interactivenovelplatform.Entity.Role;
-import project.interactivenovelplatform.Entity.RoleEntity;
+import project.interactivenovelplatform.entity.Role;
+import project.interactivenovelplatform.entity.RoleEntity;
 
 import java.util.Optional;
 

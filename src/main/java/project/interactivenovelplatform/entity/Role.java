@@ -1,4 +1,4 @@
-package project.interactivenovelplatform.Entity;
+package project.interactivenovelplatform.entity;
 
 public enum Role {
     // 1. Константа enum по соглашению (UPPER_SNAKE_CASE)

@@ -1,4 +1,4 @@
-package project.interactivenovelplatform.Entity;
+package project.interactivenovelplatform.entity;
 
 import jakarta.persistence.*;
 
@@ -17,7 +17,7 @@ public class Message {
             nullable = false,
             foreignKey = @ForeignKey(name = "fk_message_user_sender" , value = ConstraintMode.CONSTRAINT)
     )
-    private AppUser sender;
+    private AppUserEntity sender;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
@@ -25,7 +25,7 @@ public class Message {
             nullable = false,
             foreignKey = @ForeignKey(name = "fk_message_user_receiver" , value = ConstraintMode.CONSTRAINT)
     )
-    private AppUser receiver;
+    private AppUserEntity receiver;
 
     @Column(name = "content",nullable = false,columnDefinition = "TEXT")
     private String content;
@@ -40,19 +40,19 @@ public class Message {
         this.id = id;
     }
 
-    public AppUser getSender() {
+    public AppUserEntity getSender() {
         return sender;
     }
 
-    public void setSender(AppUser sender) {
+    public void setSender(AppUserEntity sender) {
         this.sender = sender;
     }
 
-    public AppUser getReceiver() {
+    public AppUserEntity getReceiver() {
         return receiver;
     }
 
-    public void setReceiver(AppUser receiver) {
+    public void setReceiver(AppUserEntity receiver) {
         this.receiver = receiver;
     }
 
