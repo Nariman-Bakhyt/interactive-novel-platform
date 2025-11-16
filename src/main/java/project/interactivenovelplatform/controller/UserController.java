@@ -15,9 +15,6 @@ import java.util.Map;
 
 @Controller()
 public class UserController {
-    @Autowired
-    private RoleRepository roleRepository;
-
     private final UserService userService;
     @Autowired
     public UserController(UserService userService) {
@@ -47,7 +44,7 @@ public class UserController {
             model.put("uuser", uuser);
             return "registration";
         }
-        var newUser = userService.registerUser(registrationRequestDto);
+        userService.registerUser(registrationRequestDto);
 
         var uuser= userService.findAll();
         model.put("uuser", uuser);

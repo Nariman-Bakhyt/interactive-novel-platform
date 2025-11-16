@@ -1,6 +1,5 @@
 package project.interactivenovelplatform.service;
 
-import org.springframework.stereotype.Service;
 import project.interactivenovelplatform.dto.request.RegistrationRequestDto;
 import project.interactivenovelplatform.dto.response.UserResponseDto;
 

@@ -1,7 +1,7 @@
 package project.interactivenovelplatform.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import project.interactivenovelplatform.entity.Message;
+import project.interactivenovelplatform.entity.MessageEntity;
 
-public interface MessageRepository extends JpaRepository<Message, Long> {
+public interface MessageRepository extends JpaRepository<MessageEntity, Long> {
 }

@@ -60,12 +60,11 @@ public class UserServiceImpl  implements UserService {
         if (user == null) {
             throw new EntityNotFoundException("User not found with username: " + username);
         }
-        UserResponseDto dto = new UserResponseDto(
+        return new UserResponseDto(
                 user.getId(),
                 username,
                 user.getEmail()
         );
-        return dto;
     }
 
     @Override
@@ -82,12 +81,11 @@ public class UserServiceImpl  implements UserService {
                 role.get()
         );
         var savedUser = userRepository.save(user);
-        var userResponseDto = new UserResponseDto(
+        return new UserResponseDto(
                 savedUser.getId(),
                 savedUser.getUsername(),
                 savedUser.getEmail()
         );
-        return userResponseDto;
     }
 
 

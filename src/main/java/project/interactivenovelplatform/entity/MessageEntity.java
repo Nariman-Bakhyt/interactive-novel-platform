@@ -1,12 +1,18 @@
 package project.interactivenovelplatform.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.ZonedDateTime;
 
 @Entity
 @Table(name = "message")
-public class Message {
+@Getter
+@Setter
+@NoArgsConstructor
+public class MessageEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -31,44 +37,4 @@ public class Message {
     private String content;
     @Column(name = "timestamp")
     private ZonedDateTime timestamp = ZonedDateTime.now();
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public AppUserEntity getSender() {
-        return sender;
-    }
-
-    public void setSender(AppUserEntity sender) {
-        this.sender = sender;
-    }
-
-    public AppUserEntity getReceiver() {
-        return receiver;
-    }
-
-    public void setReceiver(AppUserEntity receiver) {
-        this.receiver = receiver;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public ZonedDateTime getTimetamp() {
-        return timestamp;
-    }
-
-    public void setTimetamp(ZonedDateTime timetamp) {
-        this.timestamp = timetamp;
-    }
 }
