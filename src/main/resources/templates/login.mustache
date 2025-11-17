@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="" >
+<head>
+    <title>Spring Security Example </title>
+</head>
+<body>
+    <form action="/login" method="post">
+        <label for="username">Имя пользователя:</label>
+        <input type="text" id="username" name="username" required>
+        <br>
+
+        <label for="password">Пароль:</label>
+        <input type="password" id="password" name="password" required>
+        <br>
+
+        <input type="hidden" name="{{_csrf.parameterName}}" value="{{_csrf.token}}"/>
+
+        <button type="submit" >Войти</button>
+    </form>
+    <p>Click <a href="/reg">here</a> registration</p>
+</body>
+</html>

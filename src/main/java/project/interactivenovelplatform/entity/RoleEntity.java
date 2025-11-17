@@ -15,12 +15,11 @@ public class RoleEntity{
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    public RoleEntity(Role name) {
-        this.name = name;
-    }
-
     @Enumerated(EnumType.STRING)
     @Column(name = "name",nullable = false,unique = true)
     private Role name;
 
+    public RoleEntity(Role name) {
+        this.name = name;
+    }
 }

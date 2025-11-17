@@ -8,8 +8,13 @@
     <title>Document</title>
 </head>
 <body>
+    <form action="/logout" method="post">
+        <input type="hidden" name="{{_csrf.parameterName}}" value="{{_csrf.token}}"/>
+        <input type="submit" value="Sign Out"/>
+    </form>
     <div>
         <form method="POST">
+            <input type="hidden" name="{{_csrf.parameterName}}" value="{{_csrf.token}}"/>
             <label>
                 <input type="text" name="username" placeholder="Введите логин">
             </label>
