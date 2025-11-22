@@ -11,7 +11,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -32,7 +31,7 @@ public class AppUserEntity implements UserDetails {
     @Column(name = "email",nullable = false,unique = true,length = 255)
     private String email;
     @Column(name = "registration_date")
-    private ZonedDateTime registrationDate=ZonedDateTime.now();
+    private ZonedDateTime registrationDate;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(

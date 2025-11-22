@@ -10,17 +10,12 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@NoArgsConstructor
 @AllArgsConstructor
-public class RegistrationRequestDto {
+public class UserUpdateRequestDto {
     @NotBlank
     @Size(min = 4, max = 50, message = "Логин должен содержать от 4 до 50 символов.")
-    private String username;
-    @NotBlank
-    @Size(min = 8,message = "Пароль должен быть не менее 8 символов.")
-    private String password;
+    private String newUsername;
     @NotBlank(message = "Email не может быть пустым.")
     @Email(message = "Некорректный формат email адреса.")
-    private String email;
-
+    private String newEmail;
 }

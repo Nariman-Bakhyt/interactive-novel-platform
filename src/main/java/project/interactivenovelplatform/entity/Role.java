@@ -1,10 +1,10 @@
 package project.interactivenovelplatform.entity;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Getter
+@AllArgsConstructor
 public enum Role {
     // 1. Константа enum по соглашению (UPPER_SNAKE_CASE)
     THE_MAKER("The Maker"),
@@ -13,11 +13,6 @@ public enum Role {
     USER("User");
 
     private final String displayName;
-
-    Role(String displayName) {
-        this.displayName = displayName;
-    }
-
     @Override
     public String toString() {
         return displayName;

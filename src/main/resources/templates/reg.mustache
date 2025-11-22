@@ -20,6 +20,15 @@
             <button type="submit">Создать</button>
         </form>
     </div>
+    {{#errors}}
+        <div style="color: red; border: 1px solid red; padding: 8px; margin-bottom: 10px;">
+            <strong>Ошибка:</strong> {{defaultMessage}}
+
+            {{#field}}
+                (Поле: {{field}})
+            {{/field}}
+        </div>
+    {{/errors}}
     <p>Click <a href="/login">here</a> login</p>
 </body>
 </html>

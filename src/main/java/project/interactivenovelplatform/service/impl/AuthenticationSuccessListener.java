@@ -1,11 +1,9 @@
 package project.interactivenovelplatform.service.impl;
 
 import org.springframework.context.ApplicationListener;
-import org.springframework.security.authentication.event.AuthenticationFailureBadCredentialsEvent;
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
-import project.interactivenovelplatform.entity.AppUserEntity;
 import project.interactivenovelplatform.service.UserService;
 @Component
 public class AuthenticationSuccessListener implements ApplicationListener<AuthenticationSuccessEvent> {
@@ -17,15 +15,17 @@ public class AuthenticationSuccessListener implements ApplicationListener<Authen
     @Override
     public void onApplicationEvent(AuthenticationSuccessEvent event) {
         Object principal = event.getAuthentication().getPrincipal();
-        if (principal instanceof AppUserEntity appUser) {
-            // Теперь у вас есть доступ к объекту AppUserEntity
-            String username = appUser.getUsername();
-            // ... Здесь ваша логика, например, сброс счетчика failed_attempt_count
-            System.out.println("Успешный вход для пользователя: " + username);
-
+        String username;
+        if (principal instanceof UserDetails userDetails) {
+            // Spring Security обычно возвращает объект UserDetails
+            username = userDetails.getUsername();
         } else if (principal instanceof String principalName) {
-            // Если principal все же является String (например, имя пользователя)
-            System.out.println("Успешный вход для имени: " + principalName);
+            // Если Principal - это просто строка
+            username = principalName;
+        } else {
+            // Если объект Principal другой, пропускаем
+            return;
         }
+        userService.handleSuccessfulLogin(username);
     }
 }

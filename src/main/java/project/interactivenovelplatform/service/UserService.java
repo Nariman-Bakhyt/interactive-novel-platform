@@ -1,17 +1,21 @@
 package project.interactivenovelplatform.service;
 
 import org.springframework.security.core.userdetails.UserDetailsService;
+import project.interactivenovelplatform.dto.request.ChangePasswordRequestDto;
 import project.interactivenovelplatform.dto.request.RegistrationRequestDto;
+import project.interactivenovelplatform.dto.request.UserUpdateRequestDto;
 import project.interactivenovelplatform.dto.response.UserResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
 
-import java.util.List;
-
 
 public interface UserService extends UserDetailsService {
-    List<UserResponseDto> findAll();
     UserResponseDto findByUsername(String username);
+    UserResponseDto findById(Long id);
     UserResponseDto registerUser( RegistrationRequestDto dto);
+    UserResponseDto updateProfileDetails(Long userId, UserUpdateRequestDto dto);
+    void changePassword(Long userId, ChangePasswordRequestDto dto);
+    AppUserEntity getAuthorReference(Long authorId);
+
     void handleFailedLogin(String username);
     void resetFailedAttempts(AppUserEntity user);
     void handleSuccessfulLogin(String username);
