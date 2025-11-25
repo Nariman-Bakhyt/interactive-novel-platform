@@ -5,6 +5,7 @@ import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -44,7 +45,7 @@ public class UserServiceImpl  implements UserService {
 
     @Override
     public UserResponseDto findByUsername(String username) {
-        return userRepository.findByUsername(username).map(this::convertToDto)
+        return userRepository.findByUsernameIgnoreCase(username).map(this::convertToDto)
                 .orElseThrow(()->new EntityNotFoundException("Пользователь с именем: " + username + " не найден"));
     }
     @Override
@@ -58,12 +59,22 @@ public class UserServiceImpl  implements UserService {
     }
 
     @Override
+    @Transactional
     public UserResponseDto registerUser( RegistrationRequestDto dto) {
 
         var role = roleService.findByName("USER")
                 .orElseThrow(()->new EntityNotFoundException("Такой роли: " + Role.USER + " нету"));
         Set<RoleEntity> SetRole = new HashSet<>();
         SetRole.add(role);
+        var valueUser = userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(dto.getUsername(), dto.getEmail()) ;
+        if(valueUser.isPresent()){
+            if(valueUser.get().getUsername().equalsIgnoreCase(dto.getUsername())){
+                throw new DuplicateKeyException("Имя пользователя уже занято.");
+            }
+            if(valueUser.get().getEmail().equalsIgnoreCase(dto.getEmail())){
+                throw new DuplicateKeyException("Email уже занят.");
+            }
+        }
         var user = new AppUserEntity(
                 dto.getUsername(),
                 passwordEncoder.encode(dto.getPassword()),
@@ -80,18 +91,36 @@ public class UserServiceImpl  implements UserService {
         AppUserEntity user = userRepository.findById(userId)
                 .orElseThrow(()->new EntityNotFoundException("Пользователь с таким id:" + userId + " не найден не найден"));
 
-        if(dto.getNewUsername() != null &&!dto.getNewUsername().equals(user.getUsername()) ){
-            if(userRepository.findByUsername(dto.getNewUsername()).isPresent()){
-                throw new IllegalArgumentException("Имя пользователя уже занято.");
+        // Проверка, изменились ли поля
+        boolean isUsernameChanged = dto.getNewUsername() != null && !dto.getNewUsername().equals(user.getUsername());
+        boolean isEmailChanged = dto.getNewEmail() != null && !dto.getNewEmail().equals(user.getEmail());
+
+        if (isUsernameChanged || isEmailChanged) {
+
+            // 1. Выполняем ОДИН запрос для проверки обоих полей
+            var existingUser = userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(
+                    dto.getNewUsername(),
+                    dto.getNewEmail()
+            );
+
+            if (existingUser.isPresent()) {
+                AppUserEntity conflictUser = existingUser.get();
+
+                // Конфликт по ИМЕНИ (проверяем, что введенное имя совпадает с именем конфликтующего пользователя)
+                if (isUsernameChanged && conflictUser.getUsername().equalsIgnoreCase(dto.getNewUsername()) && !userId.equals(conflictUser.getId())) {
+                    throw new DuplicateKeyException("Имя пользователя уже занято.");
+                }
+
+                // Конфликт по EMAIL
+                if (isEmailChanged && conflictUser.getEmail().equalsIgnoreCase(dto.getNewEmail())&& !userId.equals(conflictUser.getId())) {
+                    throw new DuplicateKeyException("Email уже занят.");
+                }
+
             }
-            user.setUsername(dto.getNewUsername());
+            if(isUsernameChanged){user.setUsername(dto.getNewUsername());}
+            if(isEmailChanged){user.setEmail(dto.getNewEmail());}
         }
-        if(dto.getNewEmail() != null &&!dto.getNewEmail().equals(user.getEmail()) ){
-            if(userRepository.findByEmail(dto.getNewEmail()).isPresent()){
-                throw new IllegalArgumentException("Email уже занят.");
-            }
-            user.setEmail(dto.getNewEmail());
-        }
+        userRepository.save(user);
         return convertToDto(user) ;
     }
 
@@ -111,14 +140,14 @@ public class UserServiceImpl  implements UserService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return userRepository.findByUsername(username)
+        return userRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(()->
                         new UsernameNotFoundException("User not found with username: " + username));
     }
 
 
     public void handleFailedLogin(String username) {
-        AppUserEntity user = userRepository.findByUsername(username)
+        AppUserEntity user = userRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new UsernameNotFoundException(username));
 
         // Снимаем блокировку, если время истекло, но флаг isLocked не сброшен (на всякий случай)
@@ -154,7 +183,7 @@ public class UserServiceImpl  implements UserService {
 
     @Transactional
     public void handleSuccessfulLogin(String username) {
-        AppUserEntity user = userRepository.findByUsername(username)
+        AppUserEntity user = userRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new UsernameNotFoundException(username));
 
         // Если счетчик равен 0 и isLocked = false, ничего не делаем.

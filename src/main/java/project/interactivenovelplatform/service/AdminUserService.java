@@ -2,15 +2,17 @@ package project.interactivenovelplatform.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import project.interactivenovelplatform.dto.response.UserResponseDto;
+import project.interactivenovelplatform.dto.request.RoleRequestDto;
+import project.interactivenovelplatform.dto.request.UserNameRequestDto;
+import project.interactivenovelplatform.dto.response.AdminUserResponseDto;
 
 import java.util.Set;
 
-public interface AdminUserService extends UserDetailsService {
-    UserResponseDto findById(Long id);
-    Page<UserResponseDto> findAll(Pageable pageable);
-    UserResponseDto setRolesToUser(Long userId, Set<String> newRoleNames);
-    UserResponseDto addRoleToUser(Long userId, String newRoleName);
-    //UserResponseDto toggleLockStatus(Long userId, boolean isLocked);
+public interface AdminUserService  {
+    AdminUserResponseDto findById(Long id);
+    Page<AdminUserResponseDto> findAll(Pageable pageable);
+    AdminUserResponseDto findByUsername(UserNameRequestDto username);
+    AdminUserResponseDto setRolesToUser(Long userId, Set<RoleRequestDto> newRoleNames);
+    AdminUserResponseDto addRoleToUser(Long userId, RoleRequestDto newRoleName);
+    //AdminUserResponseDto toggleLockStatus(Long userId, boolean isLocked);
 }
