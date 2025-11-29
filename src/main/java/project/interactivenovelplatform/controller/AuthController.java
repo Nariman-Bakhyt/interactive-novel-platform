@@ -16,7 +16,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import project.interactivenovelplatform.dto.request.LoginRequestDto;
 import project.interactivenovelplatform.dto.request.RegistrationRequestDto;
+import project.interactivenovelplatform.dto.response.JwtAuthenticationResponseDto;
 import project.interactivenovelplatform.dto.response.UserResponseDto;
+import project.interactivenovelplatform.security.JwtTokenProvider;
 import project.interactivenovelplatform.service.UserService;
 
 @RestController
@@ -25,7 +27,7 @@ import project.interactivenovelplatform.service.UserService;
 public class AuthController {
     private final UserService userService;
     private final AuthenticationManager authenticationManager;
-    // private final JwtTokenProvider tokenProvider; // Будет нужен позже
+    private final JwtTokenProvider tokenProvider;
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@RequestBody @Valid LoginRequestDto loginRequest){
@@ -38,13 +40,15 @@ public class AuthController {
         // 2. Устанавливаем аутентификацию в контекст (необходимо для работы Security)
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // 3. Генерируем JWT и помещаем его в куку (КОД ДЛЯ JWT БУДЕТ ДОБАВЛЕН ПОЗЖЕ)
-        // String jwt = tokenProvider.generateToken(authentication);
+
+        String jwt = tokenProvider.generateToken(authentication);
         // ResponseCookie cookie = ResponseCookie.from("JWT_TOKEN", jwt) ...;
         // return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString()).body(...);
 
-        // Пока мы не внедрили JWT, просто возвращаем успешный ответ:
-        return ResponseEntity.ok("Вход успешен!");
+        return ResponseEntity.ok(new JwtAuthenticationResponseDto(
+                jwt,
+                authentication.getName()
+        ));
     }
 
     @PostMapping("/logout")

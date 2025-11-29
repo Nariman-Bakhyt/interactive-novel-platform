@@ -12,7 +12,6 @@ import project.interactivenovelplatform.GlobalException;
 import project.interactivenovelplatform.dto.request.RoleRequestDto;
 import project.interactivenovelplatform.dto.request.UserNameRequestDto;
 import project.interactivenovelplatform.dto.response.AdminUserResponseDto;
-import project.interactivenovelplatform.dto.response.UserResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
 import project.interactivenovelplatform.repository.UserRepository;
 import project.interactivenovelplatform.service.AdminUserService;

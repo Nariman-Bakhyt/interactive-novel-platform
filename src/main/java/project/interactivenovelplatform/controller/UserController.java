@@ -1,5 +1,8 @@
 package project.interactivenovelplatform.controller;
 
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Encoders;
+import io.jsonwebtoken.security.Keys;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import project.interactivenovelplatform.dto.response.UserResponseDto;
 import project.interactivenovelplatform.service.UserService;
+
+import java.security.Key;
 
 @RestController
 @AllArgsConstructor
@@ -23,7 +28,11 @@ public class UserController {
         return userService.findByUsername(username);
     }
 
-
+//    @GetMapping("/me")
+//    public ResponseEntity<UserResponseDto> getMyProfile(Principal principal) {
+//        // Principal.getName() берет имя из JWT токена
+//        return ResponseEntity.ok(userService.findByUsername(principal.getName()));
+//    }
 
 
 //    @GetMapping("/login")
