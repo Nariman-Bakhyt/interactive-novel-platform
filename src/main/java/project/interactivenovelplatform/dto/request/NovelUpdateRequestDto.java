@@ -1,7 +1,7 @@
 package project.interactivenovelplatform.dto.request;
 
+
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,12 +10,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @AllArgsConstructor
-public class NovelRequestDto {
-    @NotBlank
-    @Size(min = 3, max = 255, message = "название должно содержать от 3 до 255 символов.")
+public class NovelUpdateRequestDto {
     String title;
-    @NotBlank
     String status;
     String description;
-
 }

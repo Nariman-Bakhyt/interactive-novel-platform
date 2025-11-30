@@ -11,7 +11,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import project.interactivenovelplatform.GlobalException;
+import project.interactivenovelplatform.error.GlobalException;
 import project.interactivenovelplatform.dto.request.ChangePasswordRequestDto;
 import project.interactivenovelplatform.dto.request.RegistrationRequestDto;
 import project.interactivenovelplatform.dto.request.UserUpdateRequestDto;

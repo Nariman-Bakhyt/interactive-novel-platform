@@ -10,11 +10,12 @@ import project.interactivenovelplatform.entity.Novel;
 import project.interactivenovelplatform.entity.NovelEntity;
 
 import java.util.Collection;
+import java.util.Optional;
 
 public interface NovelRepository extends JpaRepository<NovelEntity,Long> {
     @Modifying
     @Query("UPDATE NovelEntity n SET n.viewCount = n.viewCount + 1 WHERE n.id = :novelId")
     int incrementViewCount(@Param("novelId") Long novelId);
 
-    Page<NovelEntity> findByStatusNotIn(Collection<Novel> nonPublicStatuses, Pageable pageable);
+    Page<NovelEntity> findByStatusNotIn(Collection<Novel> status, Pageable pageable);
 }

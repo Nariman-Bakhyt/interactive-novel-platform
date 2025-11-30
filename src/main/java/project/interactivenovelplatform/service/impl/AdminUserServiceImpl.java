@@ -6,13 +6,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import project.interactivenovelplatform.GlobalException;
+import project.interactivenovelplatform.error.GlobalException;
 import project.interactivenovelplatform.dto.request.RoleRequestDto;
 import project.interactivenovelplatform.dto.request.UserNameRequestDto;
 import project.interactivenovelplatform.dto.response.AdminUserResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
+import project.interactivenovelplatform.error.ResourceNotFoundException;
+import project.interactivenovelplatform.error.RoleHierarchyViolationException;
 import project.interactivenovelplatform.repository.UserRepository;
 import project.interactivenovelplatform.service.AdminUserService;
 import project.interactivenovelplatform.service.RoleService;
@@ -40,6 +44,23 @@ public class AdminUserServiceImpl implements AdminUserService {
         );
     }
 
+    private Long getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof AppUserEntity userEntity) {
+            return userEntity.getId();
+        }
+        throw new IllegalStateException("Principal is not of type AppUserEntity");
+    }
+    private int getHighestRoleRank(AppUserEntity user) {
+        // Меньшее числовое значение (0, 1, 2...) соответствует более высокому рангу.
+        return user.getRole().stream()
+                .map(roleEntity -> roleEntity.getName().getRank())
+                .min(Integer::compare)
+                .orElse(Integer.MAX_VALUE);
+    }
+
     @Override
     public Page<AdminUserResponseDto> findAll(Pageable pageable) {
         Page<AppUserEntity> entities = userRepository.findAll(pageable);
@@ -47,8 +68,23 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
     @Override
     public AdminUserResponseDto findById(Long id){
-        return userRepository.findById(id).map(this::convertToDto)
+        Long callerUserId = getCurrentUserId();
+        AppUserEntity caller = userRepository.findById(callerUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Пользователь с id: " + id + " не найден"));
+
+        var user = userRepository.findById(id)
                 .orElseThrow(()->new EntityNotFoundException("Пользователь с id: " + id + " не найден"));
+        var userRank = getHighestRoleRank(user);
+        var callerRank = getHighestRoleRank(caller);
+        if(userRank > callerRank) {
+            return convertToDto(user);
+        }
+        if(id.equals(callerUserId)) {
+            return convertToDto(caller);
+        }
+        throw new RoleHierarchyViolationException(
+                "Ты не можешь смотреть аккаунт выше тебя по рангу"
+        );
     }
     @Override
     public AdminUserResponseDto findByUsername(UserNameRequestDto username){

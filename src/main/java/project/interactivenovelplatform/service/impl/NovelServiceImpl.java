@@ -8,11 +8,13 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.interactivenovelplatform.dto.request.NovelRequestDto;
+import project.interactivenovelplatform.dto.request.NovelUpdateRequestDto;
 import project.interactivenovelplatform.dto.response.NovelResponseDto;
 import project.interactivenovelplatform.entity.Novel;
 import project.interactivenovelplatform.entity.NovelEntity;
 import project.interactivenovelplatform.repository.NovelRepository;
 import project.interactivenovelplatform.service.NovelService;
+import project.interactivenovelplatform.service.RoleService;
 import project.interactivenovelplatform.service.UserService;
 
 import java.util.Collection;
@@ -22,6 +24,7 @@ import java.util.List;
 @Service
 public class NovelServiceImpl implements NovelService {
     private final UserService userService;
+    private final RoleService roleService;
     private final NovelRepository novelRepository;
     private static final Collection<Novel> NON_PUBLIC_STATUSES =
             List.of(Novel.DRAFT, Novel.ARCHIVED, Novel.RETRACTED);
@@ -57,6 +60,13 @@ public class NovelServiceImpl implements NovelService {
         }
         return novel;
     }
+    public boolean isAuthor(Long novelId, String username) {
+        return novelRepository.findById(novelId)
+                .map(novel ->
+                        novel.getAuthor().getUsername().equals(username)
+                )
+                .orElse(false);
+    }
 
     @Override
     @Transactional
@@ -89,8 +99,9 @@ public class NovelServiceImpl implements NovelService {
     }
     @Override
     @Transactional
-    public NovelResponseDto update(Long id, NovelRequestDto dto, Long currentAuthorId) {
-        var novel = findNovelAndCheckAuthor(currentAuthorId, id);
+    public NovelResponseDto update(Long id, NovelUpdateRequestDto dto, Long currentAuthorId) {
+        NovelEntity novel = novelRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Роман с id: " + id + " не найден"));
         if(novel.getStatus() == Novel.RETRACTED) {
             throw new IllegalStateException("Нельзя редактировать роман, отозванный автором.");
         }
@@ -106,6 +117,9 @@ public class NovelServiceImpl implements NovelService {
 
         // 3. Обновление Status:
         if (dto.getStatus() != null && !dto.getStatus().isBlank()) {
+            if(novel.getStatus() == Novel.RETRACTED) {
+                throw new IllegalStateException("Статус отозванного романа изменить нельзя.");
+            }
             Novel newStatus = getStatusFromString(dto.getStatus());
             novel.setStatus(newStatus);
         }
@@ -113,12 +127,14 @@ public class NovelServiceImpl implements NovelService {
     }
     @Override
     @Transactional
-    public NovelResponseDto changeStatus(Long id, Long currentAuthorId, Novel newStatus) {
-        var novel = findNovelAndCheckAuthor(currentAuthorId, id);
-        if(novel.getStatus() != Novel.RETRACTED) {
+    public NovelResponseDto changeStatus(Long id, Long currentAuthorId, NovelUpdateRequestDto newStatus) {
+        NovelEntity novel = novelRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Роман с id: " + id + " не найден"));
+        if(novel.getStatus() == Novel.RETRACTED) {
             throw new IllegalStateException("Статус отозванного романа изменить нельзя.");
         }
-        novel.setStatus(newStatus);
+        var status = Novel.valueOf(newStatus.getStatus());
+        novel.setStatus(status);
         return convertToDto(novelRepository.save(novel));
     }
 

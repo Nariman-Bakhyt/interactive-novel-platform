@@ -61,13 +61,6 @@ public class AppUserEntity implements UserDetails {
     }
 
     @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return this.role.stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName().getDisplayName()))
-                .collect(Collectors.toList());
-    }
-
-    @Override
     public String getPassword() {
         return this.passwordHash;
     }
@@ -108,5 +101,16 @@ public class AppUserEntity implements UserDetails {
     @Override
     public boolean isEnabled() {
         return !this.isDeleted; // Используем ваше поле isDeleted
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return this.role.stream()
+                // 1. Получаем имя константы Enum (например, "THE_MAKER" или "ADMIN")
+                .map(roleEntity -> roleEntity.getName().name())
+
+                // 2. Добавляем префикс "ROLE_" для Spring Security
+                .map(roleName -> new SimpleGrantedAuthority("ROLE_" + roleName))
+                .collect(Collectors.toList());
     }
 }

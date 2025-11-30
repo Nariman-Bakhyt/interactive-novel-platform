@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import project.interactivenovelplatform.dto.request.RoleRequestDto;
 import project.interactivenovelplatform.dto.request.UserNameRequestDto;
@@ -20,11 +21,13 @@ public class AdminUserController {
     private final AdminUserService adminUserService;
 
     @GetMapping("/admin/users/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'THE_MAKER')")
     public AdminUserResponseDto findById(@PathVariable Long id){
         return adminUserService.findById(id);
     }
 
     @GetMapping("/admin/users/all")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'THE_MAKER')")
     public Page<AdminUserResponseDto> findAllUsers(
             @PageableDefault(size = 10) Pageable pageable
     ){
@@ -32,6 +35,7 @@ public class AdminUserController {
     }
 
     @PatchMapping("/admin/users/addrole/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'THE_MAKER')")
     public AdminUserResponseDto addRoleToUser(
             @PathVariable Long id,
             @RequestBody @Valid RoleRequestDto role
@@ -40,6 +44,7 @@ public class AdminUserController {
     }
 
     @PostMapping("/admin/users/setrole/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'THE_MAKER')")
     public AdminUserResponseDto setRoleToUser(
             @PathVariable Long id,
             @RequestBody @Valid Set<RoleRequestDto> role
@@ -48,6 +53,7 @@ public class AdminUserController {
     }
 
     @GetMapping("/admin/user")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'THE_MAKER')")
     public AdminUserResponseDto findUserByName(@RequestBody @Valid UserNameRequestDto name){
         return  adminUserService.findByUsername(name);
     }

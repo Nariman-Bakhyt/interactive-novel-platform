@@ -3,16 +3,18 @@ package project.interactivenovelplatform.entity;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+
 @Getter
 @AllArgsConstructor
 public enum Role {
-    // 1. Константа enum по соглашению (UPPER_SNAKE_CASE)
-    THE_MAKER("The Maker"),
-    SUPER_ADMIN("Super Admin"),
-    ADMIN("Administrator"),
-    USER("User");
+    THE_MAKER("The Maker", 0),
+    SUPER_ADMIN("Super Admin", 1),
+    ADMIN("Administrator", 2),
+    USER("User", 3);
 
     private final String displayName;
+    private final int rank; // <-- НОВОЕ ПОЛЕ: ранг (0 - высший)
+
     @Override
     public String toString() {
         return displayName;

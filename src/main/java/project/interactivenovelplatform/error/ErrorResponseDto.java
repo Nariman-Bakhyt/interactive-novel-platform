@@ -1,4 +1,4 @@
-package project.interactivenovelplatform;
+package project.interactivenovelplatform.error;
 
 import java.time.LocalDateTime;
 
