@@ -2,11 +2,15 @@ package project.interactivenovelplatform.service.impl;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
+import org.apache.coyote.BadRequestException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.dto.request.NovelRequestDto;
 import project.interactivenovelplatform.dto.request.NovelUpdateRequestDto;
 import project.interactivenovelplatform.dto.response.NovelResponseDto;
@@ -15,16 +19,20 @@ import project.interactivenovelplatform.entity.NovelEntity;
 import project.interactivenovelplatform.repository.NovelRepository;
 import project.interactivenovelplatform.service.NovelService;
 import project.interactivenovelplatform.service.RoleService;
+import project.interactivenovelplatform.service.StorageService;
 import project.interactivenovelplatform.service.UserService;
 
+import java.security.Principal;
 import java.util.Collection;
 import java.util.List;
+
 
 @AllArgsConstructor
 @Service
 public class NovelServiceImpl implements NovelService {
     private final UserService userService;
     private final RoleService roleService;
+    private final StorageService storageService;
     private final NovelRepository novelRepository;
     private static final Collection<Novel> NON_PUBLIC_STATUSES =
             List.of(Novel.DRAFT, Novel.ARCHIVED, Novel.RETRACTED);
@@ -40,9 +48,9 @@ public class NovelServiceImpl implements NovelService {
                 novel.getAverageRating(),
                 novel.getRatingCount(),
                 novel.getViewCount(),
-                novel.getAuthor().getUsername()
-
-        ); // В реальном коде заменить на фактическое преобразование
+                novel.getAuthor().getUsername(),
+                novel.getCoverUrl()
+        );
     }
     private Novel getStatusFromString(String statusName) {
         try {
@@ -125,17 +133,49 @@ public class NovelServiceImpl implements NovelService {
         }
         return convertToDto(novelRepository.save(novel));
     }
-    @Override
-    @Transactional
-    public NovelResponseDto changeStatus(Long id, Long currentAuthorId, NovelUpdateRequestDto newStatus) {
-        NovelEntity novel = novelRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Роман с id: " + id + " не найден"));
-        if(novel.getStatus() == Novel.RETRACTED) {
-            throw new IllegalStateException("Статус отозванного романа изменить нельзя.");
-        }
-        var status = Novel.valueOf(newStatus.getStatus());
-        novel.setStatus(status);
-        return convertToDto(novelRepository.save(novel));
-    }
 
+
+    @Override
+    public NovelResponseDto updateCoverUrl(Long id, @RequestParam("file") MultipartFile file, Principal principal){
+        try {
+            var novel = novelRepository.findById(id)
+                    .orElseThrow(()->new EntityNotFoundException("новелла с ID: " + id + " не найден"));
+            if(novel.getCoverUrl()!=null) {
+                storageService.deleteFile(novel.getCoverUrl());
+                novel.setCoverUrl(null);
+            }
+            if (file.isEmpty()){
+                novelRepository.save(novel);
+                return convertToDto(novel);
+            }
+
+            String fileExtension = storageService.getFileExtension(file.getOriginalFilename());
+            if (!storageService.getAllowedExtensions().contains(fileExtension)) {
+                throw new BadRequestException("Недопустимый формат файла. Разрешены только JPG, PNG, GIF.");
+            }
+            Long userId = Long.parseLong(principal.getName());
+            String filename = "user_" + userId + id + fileExtension;
+            String newCoverUrl = storageService.uploadFile(file,"Cover", filename);
+            novel.setCoverUrl(newCoverUrl);
+            novelRepository.save(novel);
+            return convertToDto(novel);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    @Override
+    public Page<NovelResponseDto> findNewNovels(int page , int size){
+        Pageable pageable = PageRequest.of(page, size);
+        return novelRepository.findAllByStatusNotInOrderByPublicationDateDesc(NON_PUBLIC_STATUSES,pageable).map(this::convertToDto);
+    }
+    @Override
+    public Page<NovelResponseDto> findMyNovels(int page , int size,Long authorId){
+        Pageable pageable = PageRequest.of(page, size);
+        return novelRepository.findAllByAuthor_Id(authorId, pageable).map(this::convertToDto);
+    }
+    @Override
+    public NovelResponseDto findMyNovel(Long id,Long authorId){
+        var novel = novelRepository.findByAuthor_IdAndId(authorId,id).orElseThrow(()->new EntityNotFoundException("новелла с ID: " + id + " не найден"));
+        return convertToDto(novel);
+    }
 }

@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.ZonedDateTime;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "message")
@@ -33,8 +33,8 @@ public class MessageEntity {
     )
     private AppUserEntity receiver;
 
-    @Column(name = "content",nullable = false,columnDefinition = "TEXT")
+    @Column(name = "content",nullable = false,length = 3000)
     private String content;
     @Column(name = "timestamp")
-    private ZonedDateTime timestamp = ZonedDateTime.now();
+    private OffsetDateTime timestamp = OffsetDateTime.now();
 }

@@ -3,6 +3,7 @@ package project.interactivenovelplatform.service.impl;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
@@ -11,6 +12,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.error.GlobalException;
 import project.interactivenovelplatform.dto.request.ChangePasswordRequestDto;
 import project.interactivenovelplatform.dto.request.RegistrationRequestDto;
@@ -21,9 +24,11 @@ import project.interactivenovelplatform.entity.Role;
 import project.interactivenovelplatform.entity.RoleEntity;
 import project.interactivenovelplatform.repository.UserRepository;
 import project.interactivenovelplatform.service.RoleService;
+import project.interactivenovelplatform.service.StorageService;
 import project.interactivenovelplatform.service.UserService;
 
-import java.time.ZonedDateTime;
+import java.security.Principal;
+import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -32,6 +37,7 @@ import java.util.Set;
 public class UserServiceImpl  implements UserService {
     private final UserRepository userRepository;
     private final RoleService roleService;
+    private final StorageService storageService;
     private final static Logger log = LoggerFactory.getLogger(GlobalException.class);
     private final PasswordEncoder passwordEncoder;
 
@@ -39,7 +45,8 @@ public class UserServiceImpl  implements UserService {
         return new UserResponseDto(
                 user.getId(),
                 user.getUsername(),
-                user.getEmail()
+                user.getEmail(),
+                user.getAvatarUrl()
         );
     }
 
@@ -134,15 +141,49 @@ public class UserServiceImpl  implements UserService {
         }
         String encodedPassword = passwordEncoder.encode(dto.getNewPassword());
         user.setPasswordHash(encodedPassword);
+        userRepository.save(user);
+    }
+    @Override
+    public UserResponseDto uploadUserAvatar( MultipartFile file, Principal principal){
+        try {
+            var username = principal.getName();
+            var user = userRepository.findByUsernameIgnoreCase(username)
+                    .orElseThrow(()->new EntityNotFoundException("Пользователь с именем: " + username + " не найден"));;
+            if(user.getAvatarUrl()!=null) {
+                storageService.deleteFile(user.getAvatarUrl());
+                user.setAvatarUrl(null);
+            }
+            if (file.isEmpty()){
+                userRepository.save(user);
+                return convertToDto(user);
+            }
+
+            String fileExtension = storageService.getFileExtension(file.getOriginalFilename());
+            if (!storageService.getAllowedExtensions().contains(fileExtension)) {
+                throw new BadRequestException("Недопустимый формат файла. Разрешены только JPG, PNG, GIF.");
+            }
+            String filename = "user_" + user.getId() + fileExtension;
+            String newAvatarUrl = storageService.uploadFile(file,"avatars", filename);
+            user.setAvatarUrl(newAvatarUrl);
+            userRepository.save(user);
+            return convertToDto(user);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
 
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return userRepository.findByUsernameIgnoreCase(username)
-                .orElseThrow(()->
-                        new UsernameNotFoundException("User not found with username: " + username));
+    public UserDetails loadUserByUsername(String userId) throws UsernameNotFoundException {
+        if (userId.matches("\\d+")) {
+            return userRepository.findById(Long.parseLong(userId))
+                    .orElseThrow(() -> new UsernameNotFoundException("Пользователь с ID " + userId + " не найден"));
+        }
+
+        return userRepository.findByUsernameIgnoreCase(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("Пользователь с именем " + userId + " не найден"));
     }
 
 
@@ -151,7 +192,7 @@ public class UserServiceImpl  implements UserService {
                 .orElseThrow(() -> new UsernameNotFoundException(username));
 
         // Снимаем блокировку, если время истекло, но флаг isLocked не сброшен (на всякий случай)
-        if (user.getIsLocked() != null && user.getIsLocked() && user.getLockTime().isBefore(ZonedDateTime.now())) {
+        if (user.getIsLocked() != null && user.getIsLocked() && user.getLockTime().isBefore(OffsetDateTime.now())) {
             resetFailedAttempts(user); // Сбрасываем счетчик и флаги
         }
         int newCount = user.getFailedAttemptCount() + 1;
@@ -161,7 +202,7 @@ public class UserServiceImpl  implements UserService {
             long minutesToLock = getLockDuration(newCount);
 
             user.setIsLocked(true);
-            user.setLockTime(ZonedDateTime.now().plusMinutes(minutesToLock));
+            user.setLockTime(OffsetDateTime.now().plusMinutes(minutesToLock));
         }
 
         userRepository.save(user);

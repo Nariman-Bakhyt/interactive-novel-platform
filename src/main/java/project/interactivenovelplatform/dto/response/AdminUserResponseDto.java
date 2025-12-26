@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import project.interactivenovelplatform.entity.RoleEntity;
 
-import java.time.ZonedDateTime;
+import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -28,13 +28,13 @@ public class AdminUserResponseDto {
     @Email(message = "Некорректный формат email адреса.")
     private String email;
     @Column(name = "registration_date")
-    private ZonedDateTime registrationDate;
+    private OffsetDateTime registrationDate;
     private Set<RoleEntity> role = new HashSet<>();
     @Column(name = "is_deleted",nullable = false)
     private Boolean isDeleted = Boolean.FALSE;
     @Column(name = "is_locked")
     private Boolean isLocked = false;       // Флаг полной блокировки
     @Column(name = "lock_time")
-    private ZonedDateTime  lockTime;         // Время, когда блокировка будет снята
-
+    private OffsetDateTime  lockTime;         // Время, когда блокировка будет снята
+    private String avatarUrl;
 }

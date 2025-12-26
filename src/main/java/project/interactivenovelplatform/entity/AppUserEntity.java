@@ -8,7 +8,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.time.ZonedDateTime;
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -31,7 +31,9 @@ public class AppUserEntity implements UserDetails {
     @Column(name = "email",nullable = false,unique = true,length = 255)
     private String email;
     @Column(name = "registration_date")
-    private ZonedDateTime registrationDate;
+    private OffsetDateTime registrationDate = OffsetDateTime.now();
+    @Column(name = "avatar_url", length = 512)
+    private String avatarUrl;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -51,7 +53,7 @@ public class AppUserEntity implements UserDetails {
     private Boolean isLocked = false;       // Флаг полной блокировки
 
     @Column(name = "lock_time")
-    private ZonedDateTime  lockTime;         // Время, когда блокировка будет снята
+    private OffsetDateTime  lockTime;         // Время, когда блокировка будет снята
 
     public AppUserEntity(String username, String passwordHash, String email, Set<RoleEntity> role ) {
         this.role = role;
@@ -83,7 +85,7 @@ public class AppUserEntity implements UserDetails {
         }
 
         // Если аккаунт заблокирован, проверяем время
-        if (this.lockTime != null && this.lockTime.isAfter(ZonedDateTime.now())) {
+        if (this.lockTime != null && this.lockTime.isAfter(OffsetDateTime.now())) {
             // Если время блокировки еще не истекло, аккаунт заблокирован (return false)
             return false;
         }

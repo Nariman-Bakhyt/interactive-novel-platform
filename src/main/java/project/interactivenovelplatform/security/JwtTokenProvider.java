@@ -46,9 +46,9 @@ public class JwtTokenProvider {
         Date expiryDate = new Date(now.getTime() + jwtExpiration);
 
         return Jwts.builder()
-                .subject(username)
+                .subject(userId.toString())
                 // Кастомные утверждения для удобства клиента и авторизации:
-                .claim("userId", userId)
+                .claim("userId",userId)
                 .claim("username", username)
                 .claim("roles", roles)
                 .issuedAt(now)
@@ -57,6 +57,18 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    public Long getSubjectFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(this.key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        // Возвращаем userId
+        return claims.get("userId", Long.class);
+    }
+
+    // 3. Получение username пользователя из токена
     public String getUsernameFromToken(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(this.key)
@@ -66,18 +78,6 @@ public class JwtTokenProvider {
 
         // Возвращаем username
         return claims.get("username", String.class);
-    }
-
-    // 3. Получение ID пользователя из токена
-    public Long getUserIdFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(this.key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-
-        // Возвращаем userId
-        return claims.get("userId", Long.class);
     }
 
     // 4. Проверка валидности

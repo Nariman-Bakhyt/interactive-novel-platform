@@ -62,13 +62,13 @@ public class AuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body("Выход выполнен успешно.");
+                .build();
     }
 
     @PostMapping("/register")
-    public ResponseEntity<UserResponseDto> registerUser(@RequestBody @Valid RegistrationRequestDto registrationRequestDto){
-        var userResponse = userService.registerUser(registrationRequestDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(userResponse);
+    public ResponseEntity<?> registerUser(@RequestBody @Valid RegistrationRequestDto registrationRequestDto){
+        userService.registerUser(registrationRequestDto);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 }
 

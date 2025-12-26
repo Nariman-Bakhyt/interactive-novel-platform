@@ -21,5 +21,6 @@ public class UserResponseDto {
     @NotBlank(message = "Email не может быть пустым.")
     @Email(message = "Некорректный формат email адреса.")
     private String email;
+    private String avatarUrl;
 
 }

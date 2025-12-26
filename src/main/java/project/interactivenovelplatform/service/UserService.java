@@ -1,11 +1,15 @@
 package project.interactivenovelplatform.service;
 
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.dto.request.ChangePasswordRequestDto;
 import project.interactivenovelplatform.dto.request.RegistrationRequestDto;
 import project.interactivenovelplatform.dto.request.UserUpdateRequestDto;
 import project.interactivenovelplatform.dto.response.UserResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
+
+import java.security.Principal;
 
 
 public interface UserService extends UserDetailsService {
@@ -15,6 +19,7 @@ public interface UserService extends UserDetailsService {
     UserResponseDto updateProfileDetails(Long userId, UserUpdateRequestDto dto);
     void changePassword(Long userId, ChangePasswordRequestDto dto);
     AppUserEntity getAuthorReference(Long authorId);
+    UserResponseDto uploadUserAvatar(@RequestParam("file") MultipartFile file, Principal principal);
 
     void handleFailedLogin(String username);
     void resetFailedAttempts(AppUserEntity user);

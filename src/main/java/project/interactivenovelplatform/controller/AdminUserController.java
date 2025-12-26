@@ -16,17 +16,18 @@ import java.util.Set;
 
 
 @RestController
+@RequestMapping("/api/admin")
 @AllArgsConstructor
 public class AdminUserController {
     private final AdminUserService adminUserService;
 
-    @GetMapping("/admin/users/{id}")
+    @GetMapping("/users/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'THE_MAKER')")
     public AdminUserResponseDto findById(@PathVariable Long id){
         return adminUserService.findById(id);
     }
 
-    @GetMapping("/admin/users/all")
+    @GetMapping("/users/all")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'THE_MAKER')")
     public Page<AdminUserResponseDto> findAllUsers(
             @PageableDefault(size = 10) Pageable pageable
@@ -34,7 +35,7 @@ public class AdminUserController {
         return adminUserService.findAll(pageable);
     }
 
-    @PatchMapping("/admin/users/addrole/{id}")
+    @PatchMapping("/users/addrole/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'THE_MAKER')")
     public AdminUserResponseDto addRoleToUser(
             @PathVariable Long id,
@@ -43,7 +44,7 @@ public class AdminUserController {
         return adminUserService.addRoleToUser(id, role);
     }
 
-    @PostMapping("/admin/users/setrole/{id}")
+    @PostMapping("/users/setrole/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'THE_MAKER')")
     public AdminUserResponseDto setRoleToUser(
             @PathVariable Long id,
@@ -52,7 +53,7 @@ public class AdminUserController {
         return adminUserService.setRolesToUser(id, role);
     }
 
-    @GetMapping("/admin/user")
+    @GetMapping("/user")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'THE_MAKER')")
     public AdminUserResponseDto findUserByName(@RequestBody @Valid UserNameRequestDto name){
         return  adminUserService.findByUsername(name);

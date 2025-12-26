@@ -1,34 +1,59 @@
 package project.interactivenovelplatform.controller;
 
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Encoders;
-import io.jsonwebtoken.security.Keys;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import project.interactivenovelplatform.dto.request.ChangePasswordRequestDto;
+import project.interactivenovelplatform.dto.request.UserUpdateRequestDto;
 import project.interactivenovelplatform.dto.response.UserResponseDto;
+import project.interactivenovelplatform.entity.AppUserEntity;
+import project.interactivenovelplatform.repository.UserRepository;
+import project.interactivenovelplatform.service.StorageService;
 import project.interactivenovelplatform.service.UserService;
 
-import java.security.Key;
+import java.security.Principal;
 
 @RestController
+@RequestMapping("/api/users")
 @AllArgsConstructor
 public class UserController {
     private final UserService userService;
+    private final StorageService storageService;
 
-    @GetMapping()
-    public ResponseEntity<String> login(){
-        return ResponseEntity.status(HttpStatus.OK).body("Привет");
-    }
-    @GetMapping("/users/me")
+    @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
-    public  UserResponseDto findByUsername(Authentication authentication){
-        return userService.findByUsername(authentication.getName());
+    public ResponseEntity<UserResponseDto> findByUsername(Authentication authentication) {
+        var user = userService.findByUsername(authentication.getName());
+        return ResponseEntity.ok().body(user);
+    }
+
+    @PostMapping("/me/avatar")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UserResponseDto> uploadUserAvatar(@RequestParam("file") MultipartFile file, Principal principal) {
+        var user = userService.uploadUserAvatar(file, principal);
+        return ResponseEntity.ok().body(user);
+    }
+    @PostMapping("/me/update")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UserResponseDto> updateProfile(Authentication authentication ,@Valid @RequestBody UserUpdateRequestDto dto){
+        var Principall= (AppUserEntity) authentication.getPrincipal();
+        Long id = Principall.getId();
+        var user = userService.updateProfileDetails(id, dto);
+        return ResponseEntity.ok().body(user);
+    }
+    @PostMapping("/me/password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> changePassword ( Authentication authentication, @Valid @RequestBody ChangePasswordRequestDto changePasswordRequestDto ){
+        var Principall= (AppUserEntity) authentication.getPrincipal();
+        Long id = Principall.getId();
+        userService.changePassword(id, changePasswordRequestDto);
+        return ResponseEntity.ok().build();
     }
 
 //    @GetMapping("/me")

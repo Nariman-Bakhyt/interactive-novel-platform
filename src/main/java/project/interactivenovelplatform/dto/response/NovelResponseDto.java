@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.ZonedDateTime;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -15,10 +15,12 @@ public class NovelResponseDto {
     String title;
     String status;
     String description;
-    ZonedDateTime publicationDate;
+    OffsetDateTime publicationDate;
     int chapterCount;
     BigDecimal averageRating;
     int ratingCount;
     Long viewCount;
     String authorName;
+    String coverUrl;
+
 }

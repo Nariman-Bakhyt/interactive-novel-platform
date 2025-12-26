@@ -10,12 +10,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.dto.request.NovelRequestDto;
 import project.interactivenovelplatform.dto.request.NovelUpdateRequestDto;
 import project.interactivenovelplatform.dto.response.NovelResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
 import project.interactivenovelplatform.service.NovelService;
 import project.interactivenovelplatform.service.UserService;
+
+import java.security.Principal;
 
 @RestController
 @RequestMapping("/api/novels")
@@ -31,12 +34,17 @@ public class NovelController {
         Page<NovelResponseDto> novels = novelService.findAll(pageable);
         return ResponseEntity.ok(novels);
     }
-    @GetMapping("/{id}")
-    public ResponseEntity<NovelResponseDto> findNovelById(@PathVariable Long id) {
-        NovelResponseDto novel = novelService.findById(id);
+    @GetMapping("/{novelId}")
+    public ResponseEntity<NovelResponseDto> findNovelById(@PathVariable Long novelId) {
+        NovelResponseDto novel = novelService.findById(novelId);
         return ResponseEntity.ok(novel);
     }
-
+    @GetMapping("/my/{novelId}")
+    public ResponseEntity<NovelResponseDto> findMyNovelById(@PathVariable Long novelId,Authentication authentication) {
+        var currentAuthorId = userService.findByUsername(authentication.getName()).getId();
+        NovelResponseDto novel = novelService.findMyNovel(novelId, currentAuthorId);
+        return ResponseEntity.ok(novel);
+    }
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
@@ -49,29 +57,42 @@ public class NovelController {
         return ResponseEntity.status(HttpStatus.CREATED).body(createdNovel);
     }
 
-    @PutMapping("/{id}")
-    @PreAuthorize("@novelServiceImpl.isAuthor(#id, authentication.name) or hasRole('ADMIN')")
+    @PutMapping("/{novelId}")
+    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId, authentication.name) or hasRole('ADMIN')")
     public ResponseEntity<NovelResponseDto> updateNovel(
-            @PathVariable Long id,
+            @PathVariable Long novelId,
             @RequestBody NovelUpdateRequestDto novelRequestDto,
             Authentication authentication
     ) {
         var currentAuthorId = userService.findByUsername(authentication.getName()).getId();
-        NovelResponseDto updatedNovel = novelService.update(id, novelRequestDto, currentAuthorId);
+        NovelResponseDto updatedNovel = novelService.update(novelId, novelRequestDto, currentAuthorId);
         return ResponseEntity.ok(updatedNovel);
     }
 
-    @PatchMapping("/{id}/status")
-    @PreAuthorize("@novelServiceImpl.isAuthor(#id, authentication.name) or hasAnyRole('ADMIN', 'SUPER_ADMIN', 'THE_MAKER')")
-    public ResponseEntity<NovelResponseDto> changeNovelStatus(
-            @PathVariable Long id,
-            @RequestBody NovelUpdateRequestDto newStatus,
-            Authentication authentication
-    ) {
-        var currentAuthorId = userService.findByUsername(authentication.getName()).getId();
-        NovelResponseDto changedNovel = novelService.changeStatus(id, currentAuthorId, newStatus);
-        return ResponseEntity.ok(changedNovel);
+    @PostMapping("{novelId}/cover")
+    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId, authentication.name) or hasAnyRole('ADMIN')")
+    public ResponseEntity<NovelResponseDto> updateCover(@RequestParam("file") MultipartFile file,@PathVariable Long novelId , Principal principal){
+        var novel = novelService.updateCoverUrl(novelId,file,principal);
+        return ResponseEntity.ok().body(novel);
     }
+
+    @GetMapping("/new")
+    public ResponseEntity<Page<NovelResponseDto>> findAllNewNovels(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ){
+        return ResponseEntity.ok().body(novelService.findNewNovels(page, size));
+    }
+    @GetMapping("/my")
+    public ResponseEntity<Page<NovelResponseDto>> findMyNovels(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication
+            ){
+        var currentAuthorId = userService.findByUsername(authentication.getName()).getId();
+        return ResponseEntity.ok().body(novelService.findMyNovels(page, size,currentAuthorId));
+    }
+
 //    @DeleteMapping("/{id}")
 //    @PreAuthorize("hasRole('ADMIN')")
 //    public ResponseEntity<Void> deleteNovel(@PathVariable Long id) {

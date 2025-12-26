@@ -8,7 +8,9 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.ZonedDateTime;
+import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "novel")
@@ -24,10 +26,10 @@ public class NovelEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status",nullable = false)
     private Novel status = Novel.IN_PROGRESS;
-    @Column(name = "description")
+    @Column(name = "description",length = 2000)
     private String description;
     @Column(name = "publication_date")
-    private ZonedDateTime publicationDate;
+    private OffsetDateTime publicationDate = OffsetDateTime.now();
     @Column(name = "chapter_count",nullable = false)
     private int chapterCount = 0;
     @Column(name = "average_rating", nullable = false, precision = 3, scale = 2)
@@ -36,6 +38,8 @@ public class NovelEntity {
     private int ratingCount = 0;
     @Column(name = "view_count",nullable = false)
     private Long viewCount = 0L;
+    @Column(name = "cover_url", length = 512)
+    private String coverUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
@@ -45,4 +49,20 @@ public class NovelEntity {
             foreignKey = @ForeignKey(name = "fk_novel_author")
     )
     private AppUserEntity author;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "novel_genre",
+            joinColumns = @JoinColumn(name = "novel_id"),
+            inverseJoinColumns = @JoinColumn(name = "genre_id")
+    )
+    private Set<GenreEntity> genres = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "novel_tag",
+            joinColumns = @JoinColumn(name = "novel_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private Set<TagEntity> tags = new HashSet<>();
 }
