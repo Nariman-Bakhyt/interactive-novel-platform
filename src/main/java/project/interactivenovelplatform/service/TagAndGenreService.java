@@ -1,0 +1,15 @@
+package project.interactivenovelplatform.service;
+
+import project.interactivenovelplatform.dto.request.TagOrGenreRequestDto;
+import project.interactivenovelplatform.dto.response.TagOrGenreResponseDto;
+import project.interactivenovelplatform.entity.NovelEntity;
+
+import java.util.List;
+
+public interface TagAndGenreService {
+    List<TagOrGenreResponseDto> UpdateTagOrGenreToNovel(List<TagOrGenreRequestDto> dto, boolean isTag, NovelEntity novelEntity);
+    List<TagOrGenreResponseDto> addTagOrGenre(List<TagOrGenreRequestDto> dto,boolean isTag);
+    List<TagOrGenreResponseDto> DeleteTagOrGenre(List<TagOrGenreRequestDto> dto,boolean isTag);
+    List<TagOrGenreResponseDto> GetAllTagOrGenre(boolean isTag);
+
+}

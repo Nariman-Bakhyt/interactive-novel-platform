@@ -31,11 +31,11 @@ public class NovelEntity {
     @Column(name = "publication_date")
     private OffsetDateTime publicationDate = OffsetDateTime.now();
     @Column(name = "chapter_count",nullable = false)
-    private int chapterCount = 0;
-    @Column(name = "average_rating", nullable = false, precision = 3, scale = 2)
-    private BigDecimal averageRating = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-    @Column(name = "rating_count",nullable = false)
-    private int ratingCount = 0;
+    private Integer chapterCount = 0;
+    @Column(name = "rating_count", nullable = false)
+    private Integer ratingCount = 0;
+    @Column(name = "total_score",nullable = false)
+    private Long totalScore = 0L;
     @Column(name = "view_count",nullable = false)
     private Long viewCount = 0L;
     @Column(name = "cover_url", length = 512)
@@ -65,4 +65,12 @@ public class NovelEntity {
             inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
     private Set<TagEntity> tags = new HashSet<>();
+
+    public double calculateAverage(){
+        if(ratingCount == 0){
+            return 0.0;
+        }
+        double average = (double) totalScore / ratingCount;
+        return Math.round(average * 100.0) / 100.0;
+    }
 }

@@ -6,7 +6,7 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum Novel {
-    RETRACTED("Отозвано автором"),
+    RETRACTED("Отозвано Администрацией"),
     ARCHIVED("Архивирован автором"),
     DRAFT("Черновик"),
     COMPLETED("завершенный"),

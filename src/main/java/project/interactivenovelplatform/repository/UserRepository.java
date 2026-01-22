@@ -3,13 +3,14 @@ package project.interactivenovelplatform.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import project.interactivenovelplatform.entity.AppUserEntity;
 
 import java.util.Optional;
 
-public interface UserRepository extends JpaRepository<AppUserEntity, Long> {
+public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaSpecificationExecutor<AppUserEntity> {
 
     Optional <AppUserEntity> findByUsernameIgnoreCase(String username);
     Optional<Boolean> findByEmailIgnoreCase(String email);

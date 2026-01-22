@@ -2,8 +2,7 @@ package project.interactivenovelplatform.controller;
 
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
-import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -13,7 +12,6 @@ import project.interactivenovelplatform.dto.request.ChangePasswordRequestDto;
 import project.interactivenovelplatform.dto.request.UserUpdateRequestDto;
 import project.interactivenovelplatform.dto.response.UserResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
-import project.interactivenovelplatform.repository.UserRepository;
 import project.interactivenovelplatform.service.StorageService;
 import project.interactivenovelplatform.service.UserService;
 
@@ -28,7 +26,7 @@ public class UserController {
 
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<UserResponseDto> findByUsername(Authentication authentication) {
+    public ResponseEntity<UserResponseDto> getMyProfile(Authentication authentication) {
         var user = userService.findByUsername(authentication.getName());
         return ResponseEntity.ok().body(user);
     }
@@ -54,6 +52,14 @@ public class UserController {
         Long id = Principall.getId();
         userService.changePassword(id, changePasswordRequestDto);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<Page<UserResponseDto>> findByUsername(
+            @RequestParam(required = false) String username,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size){
+        return ResponseEntity.ok().body(userService.searchUsers(page,size,username));
     }
 
 //    @GetMapping("/me")

@@ -1,20 +1,22 @@
 package project.interactivenovelplatform.service.impl;
 
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
-import project.interactivenovelplatform.error.GlobalException;
 import project.interactivenovelplatform.dto.request.ChangePasswordRequestDto;
 import project.interactivenovelplatform.dto.request.RegistrationRequestDto;
 import project.interactivenovelplatform.dto.request.UserUpdateRequestDto;
@@ -22,7 +24,9 @@ import project.interactivenovelplatform.dto.response.UserResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
 import project.interactivenovelplatform.entity.Role;
 import project.interactivenovelplatform.entity.RoleEntity;
+import project.interactivenovelplatform.error.GlobalException;
 import project.interactivenovelplatform.repository.UserRepository;
+import project.interactivenovelplatform.repository.UserSpecifications;
 import project.interactivenovelplatform.service.RoleService;
 import project.interactivenovelplatform.service.StorageService;
 import project.interactivenovelplatform.service.UserService;
@@ -48,6 +52,14 @@ public class UserServiceImpl  implements UserService {
                 user.getEmail(),
                 user.getAvatarUrl()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<UserResponseDto> searchUsers(int page , int size , String search){
+        Pageable pageable = PageRequest.of(page, size);
+        Specification<AppUserEntity> user = UserSpecifications.UserNameLike(search);
+        return userRepository.findAll(user, pageable).map(u -> convertToDto(u));
     }
 
     @Override

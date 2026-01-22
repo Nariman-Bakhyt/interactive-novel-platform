@@ -9,16 +9,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import project.interactivenovelplatform.dto.request.NovelRequestDto;
-import project.interactivenovelplatform.dto.request.NovelUpdateRequestDto;
+import project.interactivenovelplatform.dto.request.*;
+import project.interactivenovelplatform.dto.response.ChapterResponseDto;
+import project.interactivenovelplatform.dto.response.NovelAndChapterShortResponseDto;
 import project.interactivenovelplatform.dto.response.NovelResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
 import project.interactivenovelplatform.service.NovelService;
 import project.interactivenovelplatform.service.UserService;
 
 import java.security.Principal;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/novels")
@@ -27,22 +30,33 @@ public class NovelController {
     private final NovelService novelService;
     private final UserService userService;
 
-    @GetMapping
+    @GetMapping("/public")
     public ResponseEntity<Page<NovelResponseDto>> findAllNovels(
-            @PageableDefault(size = 20) Pageable pageable
-    ) {
-        Page<NovelResponseDto> novels = novelService.findAll(pageable);
+            @PageableDefault(size = 20) Pageable pageable,
+            @RequestBody NovelSearchRequestDto dto
+            ) {
+        Page<NovelResponseDto> novels = novelService.findAll(dto,pageable);
         return ResponseEntity.ok(novels);
     }
-    @GetMapping("/{novelId}")
-    public ResponseEntity<NovelResponseDto> findNovelById(@PathVariable Long novelId) {
-        NovelResponseDto novel = novelService.findById(novelId);
+    @GetMapping("/public/{novelId}")
+    public ResponseEntity<NovelAndChapterShortResponseDto> findNovelById(@PathVariable Long novelId,
+                                                                         @AuthenticationPrincipal AppUserEntity user) {
+        NovelAndChapterShortResponseDto novel;
+        if(user != null) {
+            novel = novelService.findById(novelId,user.getId());
+        }
+        else {
+            novel = novelService.findById(novelId,null);
+        }
+
         return ResponseEntity.ok(novel);
     }
     @GetMapping("/my/{novelId}")
-    public ResponseEntity<NovelResponseDto> findMyNovelById(@PathVariable Long novelId,Authentication authentication) {
-        var currentAuthorId = userService.findByUsername(authentication.getName()).getId();
-        NovelResponseDto novel = novelService.findMyNovel(novelId, currentAuthorId);
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<NovelAndChapterShortResponseDto> findMyNovelById(@PathVariable Long novelId,Authentication authentication) {
+        var principal = (AppUserEntity) authentication.getPrincipal();
+        var currentAuthorId = principal.getId();
+        NovelAndChapterShortResponseDto novel = novelService.findMyNovel(novelId, currentAuthorId);
         return ResponseEntity.ok(novel);
     }
 
@@ -52,7 +66,8 @@ public class NovelController {
             @RequestBody @Valid NovelRequestDto novelRequestDto,
             Authentication authentication
     ) {
-        var currentAuthorId = userService.findByUsername(authentication.getName()).getId();
+        var principal = (AppUserEntity) authentication.getPrincipal();
+        var currentAuthorId = principal.getId();
         NovelResponseDto createdNovel = novelService.create(novelRequestDto, currentAuthorId);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdNovel);
     }
@@ -61,11 +76,9 @@ public class NovelController {
     @PreAuthorize("@novelServiceImpl.isAuthor(#novelId, authentication.name) or hasRole('ADMIN')")
     public ResponseEntity<NovelResponseDto> updateNovel(
             @PathVariable Long novelId,
-            @RequestBody NovelUpdateRequestDto novelRequestDto,
-            Authentication authentication
+            @RequestBody NovelUpdateRequestDto novelRequestDto
     ) {
-        var currentAuthorId = userService.findByUsername(authentication.getName()).getId();
-        NovelResponseDto updatedNovel = novelService.update(novelId, novelRequestDto, currentAuthorId);
+        NovelResponseDto updatedNovel = novelService.update(novelId, novelRequestDto);
         return ResponseEntity.ok(updatedNovel);
     }
 
@@ -76,7 +89,7 @@ public class NovelController {
         return ResponseEntity.ok().body(novel);
     }
 
-    @GetMapping("/new")
+    @GetMapping("/public/new")
     public ResponseEntity<Page<NovelResponseDto>> findAllNewNovels(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
@@ -84,14 +97,55 @@ public class NovelController {
         return ResponseEntity.ok().body(novelService.findNewNovels(page, size));
     }
     @GetMapping("/my")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<NovelResponseDto>> findMyNovels(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication
             ){
-        var currentAuthorId = userService.findByUsername(authentication.getName()).getId();
+        var principal = (AppUserEntity) authentication.getPrincipal();
+        var currentAuthorId = principal.getId();
         return ResponseEntity.ok().body(novelService.findMyNovels(page, size,currentAuthorId));
     }
+    @PostMapping("/{novelId}/addchapter")
+    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or hasAnyRole('ADMIN') ")
+    public ResponseEntity<ChapterResponseDto> addChapter(@PathVariable Long novelId,
+                                                         @Valid @RequestBody ChapterRequestDto dto
+    ){
+        var chapter = novelService.addChapter(novelId,dto);
+        return ResponseEntity.ok().body(chapter);
+    }
+    @GetMapping("/public/{novelId}/chapter/{chapterId}")
+    public ResponseEntity<ChapterResponseDto> findChapter(@PathVariable Long novelId,
+                                                          @PathVariable Long chapterId,
+                                                          @AuthenticationPrincipal AppUserEntity user)
+    {
+        Long currentUserId = (user != null) ? user.getId() : null;
+        var chapter = novelService.findChapter(chapterId,novelId,currentUserId);
+        return ResponseEntity.ok().body(chapter);
+    }
+    @PutMapping("/{novelId}/updatechapter/{chapterId}")
+    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or hasAnyRole('ADMIN') ")
+    public ResponseEntity<ChapterResponseDto> updateChapter(@PathVariable Long novelId, @Valid @RequestBody ChapterRequestDto dto,@PathVariable Long chapterId){
+        var chapter =  novelService.updateChapter(novelId,chapterId,dto);
+        return ResponseEntity.ok().body(chapter);
+    }
+
+    @PostMapping("/{novelId}/updatenumeric")
+    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or hasAnyRole('ADMIN') ")
+    public ResponseEntity<?> updateChapterNumber(@PathVariable Long novelId, @RequestBody List<ChapterOrderUpdateRequestDto> dtos){
+        novelService.updateChapterNumber(novelId,dtos);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{novelId}/chapter/{chapterId}")
+    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or hasAnyRole('ADMIN') ")
+    public ResponseEntity<?> deleteChapter (@PathVariable Long novelId , @PathVariable Long chapterId)  {
+        novelService.deleteChapter(novelId,chapterId);
+        return ResponseEntity.ok().build();
+    }
+
+
 
 //    @DeleteMapping("/{id}")
 //    @PreAuthorize("hasRole('ADMIN')")

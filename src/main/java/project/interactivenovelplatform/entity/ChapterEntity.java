@@ -5,8 +5,18 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
-@Table(name= "chapter")
+@Table(name= "chapter",
+        uniqueConstraints = {
+            @UniqueConstraint(
+                    name = "uk_novel_chapter_number",
+                    columnNames = {"novel_id","chapter_number"}
+            )
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,13 +26,15 @@ public class ChapterEntity {
     private Long id;
 
     @Column(name = "chapter_number",nullable = false)
-    private Integer chapterNumber;
+    private Double chapterNumber;
 
     @Column(name = "title", nullable = false)
     private String title;
 
-    @Column(name = "content",nullable = false,columnDefinition = "TEXT")
-    private String content;
+    @OneToMany(mappedBy = "chapter", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sequenceOrder ASC")
+    private List<ChapterBlockEntity> blocks = new ArrayList<>();
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "novel_id",nullable = false)

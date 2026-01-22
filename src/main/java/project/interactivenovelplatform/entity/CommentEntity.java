@@ -44,8 +44,9 @@ public class CommentEntity {
     @JoinColumn(name = "chapter_id")
     private ChapterEntity chapter;
 
-    @Column(name = "paragraph_index")
-    private Integer paragraphIndex;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "block_id", nullable = false)
+    private ChapterBlockEntity block;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "channel_post_id")

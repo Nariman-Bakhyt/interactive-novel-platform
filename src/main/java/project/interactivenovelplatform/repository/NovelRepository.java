@@ -2,10 +2,8 @@ package project.interactivenovelplatform.repository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import project.interactivenovelplatform.entity.Novel;
 import project.interactivenovelplatform.entity.NovelEntity;
@@ -22,4 +20,7 @@ public interface NovelRepository extends JpaRepository<NovelEntity,Long>, JpaSpe
     Page<NovelEntity>  findAllByStatusNotInOrderByPublicationDateDesc (Collection<Novel> status, Pageable pageable);
     Page<NovelEntity> findAllByAuthor_Id(Long id, Pageable pageable);
     Optional<NovelEntity> findByAuthor_IdAndId(Long authorId, Long id);
+    @EntityGraph(attributePaths = {"tags","genres","author"})
+    @Override
+    Page<NovelEntity> findAll(Specification<NovelEntity> spec, Pageable pageable);
 }

@@ -1,24 +1,35 @@
 package project.interactivenovelplatform.repository;
 
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
 import project.interactivenovelplatform.entity.GenreEntity;
 import project.interactivenovelplatform.entity.Novel;
 import project.interactivenovelplatform.entity.NovelEntity;
 import project.interactivenovelplatform.entity.TagEntity;
 
-
-import java.math.BigDecimal;
 import java.util.Collection;
 
 public class NovelSpecifications {
-    public static Specification<NovelEntity> hasRatingInRange(BigDecimal min, BigDecimal max) {
+    public static Specification<NovelEntity> hasRatingInRange(Double min, Double max) {
         return (root, query, cb) -> {
             if (min == null && max == null) return null;
-            if (min != null && max != null) return cb.between(root.get("averageRating"), min, max);
-            if (min != null) return cb.greaterThanOrEqualTo(root.get("averageRating"), min);
-            return cb.lessThanOrEqualTo(root.get("averageRating"), max);
+            var ratingCount = root.get("ratingCount");
+            var totalScore = root.get("totalScore");
+
+            Expression<Double> divider = cb.selectCase()
+                    .when(cb.equal(ratingCount, 0), 1.0)
+                    .otherwise(ratingCount.as(Double.class))
+                    .as(Double.class);
+
+
+            Expression<Double> avgRating = (Expression<Double>) (Expression<?>) cb.quot(
+                    totalScore.as(Double.class),
+                    divider
+            );
+
+            if (min != null && max != null) return cb.between(avgRating, min, max);
+            if (min != null) return cb.greaterThanOrEqualTo(avgRating, min);
+            return cb.lessThanOrEqualTo(avgRating, max);
         };
     }
 
@@ -61,34 +72,61 @@ public class NovelSpecifications {
 
     }
 
-    public static Specification<NovelEntity> hasAllGenreIds(Collection<Long> genreIds) {
+    public static Specification<NovelEntity> filterByTags(Collection<Long> genreIds) {
         return (root, query, cb) -> {
             if (genreIds == null || genreIds.isEmpty()) return null;
 
-            Predicate[] predicates = genreIds.stream()
-                    .map(id -> {
-                        Join<NovelEntity, GenreEntity> genreJoin = root.join("genres");
-                        return cb.equal(genreJoin.get("id"), id);
-                    })
-                    .toArray(Predicate[]::new);
+            Subquery<Long> subquery = query.subquery(Long.class);
+            Root<NovelEntity> subRoot = subquery.from(NovelEntity.class);
+            Join<NovelEntity, GenreEntity> genreJoin = subRoot.join("genres");
 
-            return cb.and(predicates);
+            subquery.select(subRoot.get("id"))
+                    .where(genreJoin.get("id").in(genreIds))
+                    .groupBy(subRoot.get("id"))
+                    .having(cb.equal(cb.count(genreJoin), (long) genreIds.size()));
+
+            return root.get("id").in(subquery);
         };
     }
 
-    public static Specification<NovelEntity> hasAllTagIds(Collection<Long> tagIds) {
+    public static Specification<NovelEntity> filterByGenres(Collection<Long> includedIds, Collection<Long> excludedIds) {
         return (root, query, cb) -> {
-            if (tagIds == null || tagIds.isEmpty()) return null;
+            Predicate predicate = cb.conjunction(); // Пустое условие "И"
 
-            // Для каждого ID создаем отдельный Join, чтобы реализовать логику "И"
-            Predicate[] predicates = tagIds.stream()
-                    .map(id -> {
-                        Join<NovelEntity, TagEntity> genreJoin = root.join("tags");
-                        return cb.equal(genreJoin.get("id"), id);
-                    })
-                    .toArray(Predicate[]::new);
+            if (includedIds != null && !includedIds.isEmpty()) {
+                Subquery<Long> subqueryInclude = query.subquery(Long.class);
+                Root<NovelEntity> subRootInclude = subqueryInclude.from(NovelEntity.class);
+                Join<NovelEntity, GenreEntity> genreJoin = subRootInclude.join("genres");
 
-            return cb.and(predicates);
+                subqueryInclude.select(subRootInclude.get("id"))
+                        .where(genreJoin.get("id").in(includedIds))
+                        .groupBy(subRootInclude.get("id"))
+                        .having(cb.equal(cb.count(genreJoin), (long) includedIds.size()));
+
+                predicate = cb.and(predicate, root.get("id").in(subqueryInclude));
+            }
+
+            if (excludedIds != null && !excludedIds.isEmpty()) {
+                Subquery<Long> subqueryExclude = query.subquery(Long.class);
+                Root<NovelEntity> subRootExclude = subqueryExclude.from(NovelEntity.class);
+                Join<NovelEntity, GenreEntity> genreJoin = subRootExclude.join("genres");
+
+                subqueryExclude.select(subRootExclude.get("id"))
+                        .where(genreJoin.get("id").in(excludedIds));
+
+                predicate = cb.and(predicate, cb.not(root.get("id").in(subqueryExclude)));
+            }
+
+            return predicate;
         };
     }
+
+    public static Specification<NovelEntity> titleLike(String title){
+        return ((root, query, cb) ->{
+            if (title == null || title.isBlank()) return null;
+            return cb.like(cb.upper(root.get("title")), "%"+title.toUpperCase()+"%");
+        } );
+    }
+
+
 }
