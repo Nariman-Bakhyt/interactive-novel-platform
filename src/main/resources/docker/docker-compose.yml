@@ -1,0 +1,26 @@
+services:
+
+  postgres:
+    image: postgres:latest
+    container_name: my_postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Hulk
+      POSTGRES_DB: website
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data это что
+
+  minio:
+    image: minio/minio
+    container_name: my_minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: Admin123453421
+    volumes:
+      - ./minio_data:/data
+    command: server /data --console-address ":9001"

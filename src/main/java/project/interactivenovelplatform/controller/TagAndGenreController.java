@@ -18,7 +18,7 @@ public class TagAndGenreController {
 
 
     @GetMapping("/genres/public")
-    public ResponseEntity<List<TagOrGenreResponseDto>> findAllGenre(){
+    public ResponseEntity<List<TagOrGenreResponseDto>> getAllGenre(){
         return ResponseEntity.ok().body(tagAndGenreService.GetAllTagOrGenre(false));
     }
 

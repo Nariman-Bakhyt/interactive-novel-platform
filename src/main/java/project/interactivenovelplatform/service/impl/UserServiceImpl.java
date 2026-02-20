@@ -59,7 +59,7 @@ public class UserServiceImpl  implements UserService {
     public Page<UserResponseDto> searchUsers(int page , int size , String search){
         Pageable pageable = PageRequest.of(page, size);
         Specification<AppUserEntity> user = UserSpecifications.UserNameLike(search);
-        return userRepository.findAll(user, pageable).map(u -> convertToDto(u));
+        return userRepository.findAll(user, pageable).map(this::convertToDto);
     }
 
     @Override
@@ -160,7 +160,7 @@ public class UserServiceImpl  implements UserService {
         try {
             var username = principal.getName();
             var user = userRepository.findByUsernameIgnoreCase(username)
-                    .orElseThrow(()->new EntityNotFoundException("Пользователь с именем: " + username + " не найден"));;
+                    .orElseThrow(()->new EntityNotFoundException("Пользователь с именем: " + username + " не найден"));
             if(user.getAvatarUrl()!=null) {
                 storageService.deleteFile(user.getAvatarUrl());
                 user.setAvatarUrl(null);

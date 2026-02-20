@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -49,20 +50,19 @@ public class WebSecurityConfig {
         return source;
     }
 
-    //  AuthenticationManager (нужен для AuthController)
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
     //Связываем Spring Security с вашей базой данных
-    @Bean
-    public DaoAuthenticationProvider authenticationProvider(PasswordEncoder passwordEncoder) {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService); // Ваш UserServiceImpl
-        authProvider.setPasswordEncoder(passwordEncoder); // Ваш BCrypt
-        return authProvider;
-    }
+//    @Bean
+//    public DaoAuthenticationProvider authenticationProvider(PasswordEncoder passwordEncoder) {
+//        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+//        authProvider.setUserDetailsService(userDetailsService); // Ваш UserServiceImpl
+//        authProvider.setPasswordEncoder(passwordEncoder); // Ваш BCrypt
+//        return authProvider;
+//    }
 
     // Основная конфигурация фильтров (Сердце безопасности)
     @Bean
@@ -79,6 +79,8 @@ public class WebSecurityConfig {
                         .requestMatchers("/", "/error", "/static/**").permitAll()
                         .requestMatchers("/api/users/search").permitAll()
                         .requestMatchers("/api/*/public/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         .anyRequest().authenticated()
                 )
 
@@ -86,7 +88,7 @@ public class WebSecurityConfig {
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
                 )
 
-                .authenticationProvider(authenticationProvider(passwordEncoder))
+//                .authenticationProvider(authenticationProvider(passwordEncoder))
 
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

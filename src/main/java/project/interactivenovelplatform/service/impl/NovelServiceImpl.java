@@ -4,8 +4,10 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
 import org.apache.coyote.BadRequestException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,6 +21,7 @@ import project.interactivenovelplatform.entity.NovelEntity;
 import project.interactivenovelplatform.repository.ChapterBlockRepository;
 import project.interactivenovelplatform.repository.ChapterRepository;
 import project.interactivenovelplatform.repository.NovelRepository;
+import project.interactivenovelplatform.repository.NovelSpecifications;
 import project.interactivenovelplatform.service.NovelService;
 import project.interactivenovelplatform.service.StorageService;
 import project.interactivenovelplatform.service.TagAndGenreService;
@@ -148,10 +151,44 @@ public class NovelServiceImpl implements NovelService {
         return convertToDtoFull(novel,chapters);
     }
     @Override
-    public Page<NovelResponseDto> findAll(NovelSearchRequestDto dto,Pageable pageable) {
-        Page<NovelEntity> novelPage = novelRepository.findByStatusNotIn(NON_PUBLIC_STATUSES, pageable);
+    public Page<NovelResponseDto> findAll(NovelSearchRequestDto dto, Pageable pageable) {
 
-        return novelPage.map(this::convertToDto);
+        Specification<NovelEntity> spec = (root, query, cb) -> {
+            query.distinct(true);
+            return cb.not(root.get("status").in(NON_PUBLIC_STATUSES));
+        };
+
+        if (dto != null) {
+            spec = spec.and(NovelSpecifications.titleLike(dto.getTitle()))
+                    .and(NovelSpecifications.hasAuthor(dto.getAuthorId()))
+                    .and(NovelSpecifications.hasStatus(dto.getStatus()))
+                    .and(NovelSpecifications.hasRatingInRange(dto.getMinRating(), dto.getMaxRating()))
+                    .and(NovelSpecifications.filterByGenres(dto.getIncludedGenreIds(), dto.getExcludedGenreIds()))
+                    .and(NovelSpecifications.filterByTags(dto.getIncludedTagIds(), dto.getExcludedTagIds()));
+        }
+
+        Page<NovelEntity> thinPage = novelRepository.findAll(spec, pageable);
+
+        if (thinPage.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        List<Long> ids = thinPage.getContent().stream()
+                .map(NovelEntity::getId)
+                .toList();
+
+
+        List<NovelEntity> richNovels = novelRepository.findAllByIdIn(ids);
+
+
+        Map<Long, NovelEntity> novelMap = richNovels.stream()
+                .collect(Collectors.toMap(NovelEntity::getId, n -> n));
+
+        List<NovelResponseDto> content = ids.stream()
+                .map(id -> convertToDto(novelMap.get(id)))
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(content, pageable, thinPage.getTotalElements());
     }
     @Override
     @Transactional
@@ -191,7 +228,7 @@ public class NovelServiceImpl implements NovelService {
         return convertToDto(novelRepository.save(novel));
     }
 
-
+    @Transactional
     @Override
     public NovelResponseDto updateCoverUrl(Long id, @RequestParam("file") MultipartFile file, Principal principal){
         try {
@@ -210,7 +247,8 @@ public class NovelServiceImpl implements NovelService {
             if (!storageService.getAllowedExtensions().contains(fileExtension)) {
                 throw new BadRequestException("Недопустимый формат файла. Разрешены только JPG, PNG, GIF.");
             }
-            Long userId = Long.parseLong(principal.getName());
+
+            Long userId = novel.getAuthor().getId();
             String filename = "user_" + userId + id + fileExtension;
             String newCoverUrl = storageService.uploadFile(file,"Cover", filename);
             novel.setCoverUrl(newCoverUrl);

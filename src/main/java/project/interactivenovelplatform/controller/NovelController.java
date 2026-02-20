@@ -3,6 +3,7 @@ package project.interactivenovelplatform.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -30,11 +31,11 @@ public class NovelController {
     private final NovelService novelService;
     private final UserService userService;
 
-    @GetMapping("/public")
-    public ResponseEntity<Page<NovelResponseDto>> findAllNovels(
-            @PageableDefault(size = 20) Pageable pageable,
-            @RequestBody NovelSearchRequestDto dto
+    @PostMapping("/public")
+    public ResponseEntity<Page<NovelResponseDto>> findAllNovels(@RequestBody NovelSearchRequestDto dto
+            ,@RequestParam(defaultValue = "0") int page,@RequestParam(defaultValue = "20") int size
             ) {
+        Pageable pageable = PageRequest.of(page, size);
         Page<NovelResponseDto> novels = novelService.findAll(dto,pageable);
         return ResponseEntity.ok(novels);
     }

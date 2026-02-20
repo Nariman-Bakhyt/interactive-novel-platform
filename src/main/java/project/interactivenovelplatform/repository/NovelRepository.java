@@ -9,6 +9,7 @@ import project.interactivenovelplatform.entity.Novel;
 import project.interactivenovelplatform.entity.NovelEntity;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface NovelRepository extends JpaRepository<NovelEntity,Long>, JpaSpecificationExecutor<NovelEntity> {
@@ -20,7 +21,9 @@ public interface NovelRepository extends JpaRepository<NovelEntity,Long>, JpaSpe
     Page<NovelEntity>  findAllByStatusNotInOrderByPublicationDateDesc (Collection<Novel> status, Pageable pageable);
     Page<NovelEntity> findAllByAuthor_Id(Long id, Pageable pageable);
     Optional<NovelEntity> findByAuthor_IdAndId(Long authorId, Long id);
-    @EntityGraph(attributePaths = {"tags","genres","author"})
-    @Override
+
     Page<NovelEntity> findAll(Specification<NovelEntity> spec, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"tags", "genres", "author"})
+    List<NovelEntity> findAllByIdIn(Collection<Long> ids);
 }

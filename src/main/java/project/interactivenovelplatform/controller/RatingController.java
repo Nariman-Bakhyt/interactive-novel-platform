@@ -8,13 +8,13 @@ import org.springframework.web.bind.annotation.*;
 import project.interactivenovelplatform.dto.request.RatingRequestDto;
 import project.interactivenovelplatform.dto.response.RatingStatsDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
-import project.interactivenovelplatform.service.RatingService;
+import project.interactivenovelplatform.service.CommentService;
 
 @RestController
 @RequestMapping("/api/rating")
 @RequiredArgsConstructor
 public class RatingController {
-    private final RatingService ratingService;
+    private final CommentService ratingService;
 
 
     @PostMapping("/{novelId}")

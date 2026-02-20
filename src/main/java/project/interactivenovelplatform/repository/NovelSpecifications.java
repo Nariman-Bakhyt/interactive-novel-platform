@@ -72,26 +72,41 @@ public class NovelSpecifications {
 
     }
 
-    public static Specification<NovelEntity> filterByTags(Collection<Long> genreIds) {
+    public static Specification<NovelEntity> filterByTags(Collection<Long> includedIds, Collection<Long> excludedIds) {
         return (root, query, cb) -> {
-            if (genreIds == null || genreIds.isEmpty()) return null;
+            Predicate predicate = cb.conjunction();
+            if(includedIds != null && !includedIds.isEmpty()) {
+                Subquery<Long> subqueryInclude = query.subquery(Long.class);
+                Root<NovelEntity> subRootInclude = subqueryInclude.from(NovelEntity.class);
+                Join<NovelEntity, TagEntity> tagJoin = subRootInclude.join("tags");
 
-            Subquery<Long> subquery = query.subquery(Long.class);
-            Root<NovelEntity> subRoot = subquery.from(NovelEntity.class);
-            Join<NovelEntity, GenreEntity> genreJoin = subRoot.join("genres");
+                subqueryInclude.select(subRootInclude.get("id"))
+                        .where(tagJoin.get("id").in(includedIds))
+                        .groupBy(subRootInclude.get("id"))
+                        .having(cb.equal(cb.count(tagJoin), (long) includedIds.size()));
 
-            subquery.select(subRoot.get("id"))
-                    .where(genreJoin.get("id").in(genreIds))
-                    .groupBy(subRoot.get("id"))
-                    .having(cb.equal(cb.count(genreJoin), (long) genreIds.size()));
+                predicate = cb.and(predicate, root.get("id").in(subqueryInclude));
+            }
 
-            return root.get("id").in(subquery);
+            if (excludedIds != null && !excludedIds.isEmpty()) {
+                Subquery<Long> subqueryExclude = query.subquery(Long.class);
+                Root<NovelEntity> subRootExclude = subqueryExclude.from(NovelEntity.class);
+                Join<NovelEntity, TagEntity> tagJoin = subRootExclude.join("tags");
+
+                subqueryExclude.select(subRootExclude.get("id"))
+                        .where(tagJoin.get("id").in(excludedIds));
+
+                predicate = cb.and(predicate, cb.not(root.get("id").in(subqueryExclude)));
+            }
+
+            return predicate;
+
         };
     }
 
     public static Specification<NovelEntity> filterByGenres(Collection<Long> includedIds, Collection<Long> excludedIds) {
         return (root, query, cb) -> {
-            Predicate predicate = cb.conjunction(); // Пустое условие "И"
+            Predicate predicate = cb.conjunction();
 
             if (includedIds != null && !includedIds.isEmpty()) {
                 Subquery<Long> subqueryInclude = query.subquery(Long.class);

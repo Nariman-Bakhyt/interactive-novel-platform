@@ -7,7 +7,6 @@ import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.dto.request.ChangePasswordRequestDto;
 import project.interactivenovelplatform.dto.request.RegistrationRequestDto;
 import project.interactivenovelplatform.dto.request.UserUpdateRequestDto;
-import project.interactivenovelplatform.dto.response.NovelResponseDto;
 import project.interactivenovelplatform.dto.response.UserResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
 
