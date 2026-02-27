@@ -2,15 +2,17 @@ package project.interactivenovelplatform.service.impl;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.simpleframework.xml.Default;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.interactivenovelplatform.dto.request.CommentRequestDto;
 import project.interactivenovelplatform.dto.request.RatingRequestDto;
+import project.interactivenovelplatform.dto.response.AllRatingResponseDto;
+import project.interactivenovelplatform.dto.response.AllRatingsResponseDto;
 import project.interactivenovelplatform.dto.response.CommentResponseDto;
-import project.interactivenovelplatform.dto.response.RatingStatsDto;
+import project.interactivenovelplatform.dto.response.RatingResponseDto;
 import project.interactivenovelplatform.entity.CommentEntity;
 import project.interactivenovelplatform.entity.RatingEntity;
 import project.interactivenovelplatform.repository.*;
@@ -30,61 +32,83 @@ public class CommentServiceImpl implements CommentService {
 
     @Transactional
     @Override
-    public RatingStatsDto setRating(Long novelId, Long userId, RatingRequestDto dto){
+    public RatingResponseDto setRating(Long novelId, Long userId, RatingRequestDto dto){
         var novel = novelRepository.findById(novelId)
                 .orElseThrow(() -> new EntityNotFoundException("Роман с Id:"+ novelId +" не найден."));
         var user= userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Пользователь с Id:"+userId+" не найден"));
         if(novel.getAuthor().getId().equals(userId)) throw new IllegalArgumentException("Автор не может сам себя оценивать");
+        var timestamp = OffsetDateTime.now();
 
-        ratingRepository.findByUserIdAndNovelId(userId, novelId).ifPresentOrElse(existingRating -> {
-                    int oldScore = existingRating.getScore();
-                    int scoreDiff = dto.getScore()-oldScore;
-                    existingRating.setScore(dto.getScore());
-                    existingRating.setCommentText(dto.getCommentText());
-                    existingRating.setTimestamp(OffsetDateTime.now());
-                    ratingRepository.updateNovelStats(novelId, scoreDiff, 0);
-                    novel.setTotalScore(novel.getTotalScore()+scoreDiff);
-                    },
-                ()->{
-                    RatingEntity newRating = new RatingEntity();
-                    newRating.setNovel(novel);
-                    newRating.setUser(user);
-                    newRating.setScore(dto.getScore());
-                    newRating.setCommentText(dto.getCommentText());
-                    ratingRepository.save(newRating);
-                    ratingRepository.updateNovelStats(novelId, dto.getScore(), 1);
-                    novel.setTotalScore(novel.getTotalScore()+dto.getScore());
-                    novel.setRatingCount(novel.getRatingCount()+1);
-                }
-        );
+        RatingEntity rating = ratingRepository.findByUserIdAndNovelId(userId, novelId)
+                .orElseGet(() -> {
+                    RatingEntity newEntity = new RatingEntity();
+                    newEntity.setNovel(novel);
+                    newEntity.setUser(user);
+                    return newEntity;
+                });
 
-        return new RatingStatsDto(
-                novel.getTotalScore(),
-                novel.getRatingCount(),
-                novel.calculateAverage()
+        if (rating.getId() != null) {
+            int oldScore = rating.getScore();
+            int scoreDiff = dto.getScore() - oldScore;
+
+            ratingRepository.updateNovelStats(novelId, scoreDiff, 0);
+        } else {
+            ratingRepository.updateNovelStats(novelId, dto.getScore(), 1);
+        }
+
+        rating.setScore(dto.getScore());
+        rating.setCommentText(dto.getCommentText());
+        rating.setTimestamp(timestamp);
+
+        RatingEntity savedRating = ratingRepository.save(rating);
+
+        return new RatingResponseDto(
+                savedRating.getId(),
+                novel.getTotalScore()+dto.getScore(),
+                novel.getRatingCount()+1,
+                novel.calculateAverage(),
+                dto.getCommentText(),
+                user.getUsername(),
+                timestamp,
+                dto.getScore()
         );
+    }
+    @Override
+    public AllRatingsResponseDto getRatings(Long novelId, Pageable pageable){
+        var novel = novelRepository.findById(novelId)
+                .orElseThrow(() -> new EntityNotFoundException("Роман с Id:"+ novelId +" не найден."));
+        var ratings = ratingRepository.findByNovelId(novelId, pageable);
+        return new AllRatingsResponseDto( novel.getTotalScore(),novel.getRatingCount(),novel.calculateAverage(),ratings.map(rating -> new AllRatingResponseDto(
+                rating.getId(),
+                rating.getCommentText(),
+                rating.getUser().getUsername(),
+                rating.getTimestamp(),
+                rating.getScore()
+        )));
 
     }
 
     @Transactional
     @Override
-    public RatingStatsDto deleteRating(Long novelId, Long userId){
+    public RatingResponseDto deleteRating(Long novelId,Long ratingId, Long userId){
         var novel = novelRepository.findById(novelId)
                 .orElseThrow(() -> new EntityNotFoundException("Роман с Id:"+ novelId +" не найден."));
-        ratingRepository.findByUserIdAndNovelId(userId, novelId)
-                .ifPresent(rating -> {
-                    novel.setTotalScore(novel.getTotalScore()-rating.getScore());
-                    novel.setRatingCount(novel.getRatingCount()-1);
-                    ratingRepository.updateNovelStats(novelId, -rating.getScore(), -1);
-                    ratingRepository.delete(rating);
+        RatingEntity rating = ratingRepository.findByUserIdAndNovelId(userId, novelId)
+                .orElseThrow(() -> new EntityNotFoundException("вы не писали рейтинг в новелле с id "+novelId));
+        if(!rating.getId().equals(ratingId)) { throw new IllegalArgumentException("неверный id рейтинга "+ratingId); }
+        ratingRepository.updateNovelStats(novelId, -rating.getScore(), -1);
+        ratingRepository.delete(rating);
 
-                }
-        );
-        return new RatingStatsDto(
+        return new RatingResponseDto(
+                rating.getId(),
                 novel.getTotalScore(),
                 novel.getRatingCount(),
-                novel.calculateAverage()
+                novel.calculateAverage(),
+                null,
+                null,
+                null,
+                rating.getScore()
         );
     }
 
@@ -150,6 +174,20 @@ public class CommentServiceImpl implements CommentService {
         }
 
         return Page.empty();
+    }
+
+    @Override
+    @Transactional
+    public CommentResponseDto deleteComment(Long commentId , String userName){
+        CommentEntity comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new EntityNotFoundException("Комментарий не найден"));
+
+        if (!comment.getUser().getUsername().equals(userName)) {
+            throw new AccessDeniedException("Вы не являетесь автором этого комментария");
+        }
+
+        commentRepository.delete(comment);
+        return convertToResponse(comment);
     }
 
 }

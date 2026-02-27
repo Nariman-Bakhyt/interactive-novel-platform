@@ -12,8 +12,9 @@ import java.util.Optional;
 
 public interface RatingRepository extends JpaRepository<RatingEntity, Long> {
     Optional<RatingEntity> findByUserIdAndNovelId(Long userId, Long novelId);
+    @Query("SELECT r FROM RatingEntity r JOIN FETCH r.user WHERE r.novel.id = :novelId")
     Page<RatingEntity> findByNovelId(Long novelId, Pageable pageable);
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("""
         UPDATE NovelEntity n
         SET n.totalScore = n.totalScore + :scoreDiff,

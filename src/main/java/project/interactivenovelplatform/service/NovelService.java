@@ -26,4 +26,5 @@ public interface NovelService {
     ChapterResponseDto updateChapter(Long novelId, Long chapterId, ChapterRequestDto dto);
     void deleteChapter(Long novelId, Long chapterId);
     void updateChapterNumber(Long novelId, List<ChapterOrderUpdateRequestDto> chapterIds);
+
 }

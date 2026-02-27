@@ -57,7 +57,7 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    public Long getSubjectFromToken(String token) {
+    public Long getUserIdFromToken(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(this.key)
                 .build()

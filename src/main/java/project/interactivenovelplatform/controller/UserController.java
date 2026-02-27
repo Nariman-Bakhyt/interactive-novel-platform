@@ -40,16 +40,14 @@ public class UserController {
     @PostMapping("/me/update")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserResponseDto> updateProfile(Authentication authentication ,@Valid @RequestBody UserUpdateRequestDto dto){
-        var Principall= (AppUserEntity) authentication.getPrincipal();
-        Long id = Principall.getId();
+        Long id = ((AppUserEntity) authentication.getPrincipal()).getId();
         var user = userService.updateProfileDetails(id, dto);
         return ResponseEntity.ok().body(user);
     }
     @PostMapping("/me/password")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> changePassword ( Authentication authentication, @Valid @RequestBody ChangePasswordRequestDto changePasswordRequestDto ){
-        var Principall= (AppUserEntity) authentication.getPrincipal();
-        Long id = Principall.getId();
+        Long id = ((AppUserEntity) authentication.getPrincipal()).getId();
         userService.changePassword(id, changePasswordRequestDto);
         return ResponseEntity.ok().build();
     }
