@@ -27,14 +27,17 @@ public class MessageEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
-            name = "receiver_id",
+            name = "conversation_id",
             nullable = false,
-            foreignKey = @ForeignKey(name = "fk_message_user_receiver" , value = ConstraintMode.CONSTRAINT)
+            foreignKey = @ForeignKey(value = ConstraintMode.CONSTRAINT)
     )
-    private AppUserEntity receiver;
+    private ConversationsEntity conversations;
 
     @Column(name = "content",nullable = false,length = 3000)
     private String content;
     @Column(name = "timestamp")
     private OffsetDateTime timestamp = OffsetDateTime.now();
+
+    @Column(name = "is_deleted")
+    private Boolean isDeleted=false;
 }

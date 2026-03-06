@@ -6,21 +6,22 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "channel_member")
+@Table(name = "conversation_members")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChannelMemberEntity {
+public class ConversationMembersEntity {
     @EmbeddedId
-    private ChannelMemberId id = new ChannelMemberId();
+    private ConversationMembersId id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("channelId")
-    @JoinColumn(name = "channel_id")
-    private ChannelEntity channel;
+    @MapsId("conversationId")
+    @JoinColumn(name = "conversation_id")
+    private ConversationsEntity conversation;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("userId")
@@ -28,7 +29,10 @@ public class ChannelMemberEntity {
     private AppUserEntity user;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "role",nullable = false)
-    private ChannelRole role = ChannelRole.SUBSCRIBER;
+    @Column(name = "role" , length = 20)
+    private ConversationMembersRole role = ConversationMembersRole.MEMBER;
+    @Column(name = "joined_at")
+    private OffsetDateTime joinedAt = OffsetDateTime.now();
+
 
 }

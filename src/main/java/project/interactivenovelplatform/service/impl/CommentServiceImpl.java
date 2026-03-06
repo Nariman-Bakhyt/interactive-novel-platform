@@ -166,11 +166,11 @@ public class CommentServiceImpl implements CommentService {
     public Page<CommentResponseDto> getComments(CommentRequestDto dto, Pageable pageable   ) {
 
         if (dto.getBlockId() != null) {
-            return commentRepository.findByBlock_Id(dto.getBlockId(), pageable).map(this::convertToResponse);
+            return commentRepository.findByBlock_IdAndIsDeletedIsFalse(dto.getBlockId(), pageable).map(this::convertToResponse);
         } else if (dto.getChapterId() != null) {
-            return commentRepository.findByChapter_Id(dto.getChapterId(), pageable).map(this::convertToResponse);
+            return commentRepository.findByChapter_IdAndIsDeletedFalse(dto.getChapterId(), pageable).map(this::convertToResponse);
         } else if (dto.getNovelId() != null) {
-            return commentRepository.findByNovel_Id(dto.getNovelId(), pageable).map(this::convertToResponse);
+            return commentRepository.findByNovel_IdAndIsDeletedFalse(dto.getNovelId(), pageable).map(this::convertToResponse);
         }
 
         return Page.empty();
@@ -186,7 +186,8 @@ public class CommentServiceImpl implements CommentService {
             throw new AccessDeniedException("Вы не являетесь автором этого комментария");
         }
 
-        commentRepository.delete(comment);
+        comment.setIsDeleted(true);
+        commentRepository.save(comment);
         return convertToResponse(comment);
     }
 

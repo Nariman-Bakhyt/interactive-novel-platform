@@ -29,6 +29,9 @@ public class CommentEntity {
     @Column(name = "timestamp")
     private OffsetDateTime timestamp = OffsetDateTime.now();
 
+    @Column(name = "is_deleted")
+    private Boolean isDeleted = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_comment_id")
     private CommentEntity parentComment;
@@ -55,5 +58,6 @@ public class CommentEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "forum_topic_id")
     private ForumTopicEntity forumTopic;
+
 
 }
