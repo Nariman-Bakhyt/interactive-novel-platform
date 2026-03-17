@@ -8,8 +8,8 @@ import project.interactivenovelplatform.entity.CommentEntity;
 
 @Repository
 public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
-    Page<CommentEntity> findByBlock_IdAndIsDeletedIsFalse(Long blockId, Pageable pageable);
-    Page<CommentEntity> findByChapter_IdAndIsDeletedFalse(Long chapterId, Pageable pageable);
-    Page<CommentEntity> findByNovel_IdAndIsDeletedFalse(Long novelId, Pageable pageable);
+    Page<CommentEntity> findByBlock_Id(Long blockId, Pageable pageable);
+    Page<CommentEntity> findByChapter_Id(Long chapterId, Pageable pageable);
+    Page<CommentEntity> findByNovel_Id(Long novelId, Pageable pageable);
 
 }

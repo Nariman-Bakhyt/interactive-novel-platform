@@ -4,13 +4,14 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "message")
-@Getter
-@Setter
+@SQLRestriction("is_deleted = false")
+@Getter @Setter
 @NoArgsConstructor
 public class MessageEntity {
     @Id

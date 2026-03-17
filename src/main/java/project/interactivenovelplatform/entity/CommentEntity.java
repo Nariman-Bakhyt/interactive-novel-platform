@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -11,8 +12,8 @@ import java.util.List;
 
 @Entity
 @Table(name = "comment")
-@Getter
-@Setter
+@SQLRestriction("is_deleted = false")
+@Getter @Setter
 @NoArgsConstructor
 public class CommentEntity {
     @Id

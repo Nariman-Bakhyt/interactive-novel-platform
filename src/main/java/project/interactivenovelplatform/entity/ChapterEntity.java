@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,8 +18,8 @@ import java.util.List;
             )
         }
 )
-@Getter
-@Setter
+@SQLRestriction("is_deleted = false")
+@Getter @Setter
 @NoArgsConstructor
 public class ChapterEntity {
     @Id
@@ -30,6 +31,9 @@ public class ChapterEntity {
 
     @Column(name = "title", nullable = false)
     private String title;
+
+    @Column(name = "is_deleted")
+    private Boolean isDeleted = false;
 
     @OneToMany(mappedBy = "chapter", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sequenceOrder ASC")

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.OffsetDateTime;
 import java.util.HashSet;
@@ -11,8 +12,8 @@ import java.util.Set;
 
 @Entity
 @Table(name = "novel")
-@Getter
-@Setter
+@SQLRestriction("is_deleted = false")
+@Getter @Setter
 @NoArgsConstructor
 public class NovelEntity {
     @Id
@@ -37,6 +38,8 @@ public class NovelEntity {
     private Long viewCount = 0L;
     @Column(name = "cover_url", length = 512)
     private String coverUrl;
+    @Column(name = "is_deleted")
+    private Boolean isDeleted = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
