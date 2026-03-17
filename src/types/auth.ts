@@ -14,7 +14,9 @@ export interface RegistrationRequestDto {
   email:string;
 }
 export interface UserResponseDto {
-  id: bigint;
+  id: number;
   username:string;
   email:string;
+  avatarUrl: string | null;
 }
+

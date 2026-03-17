@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import {ref} from 'vue';
-  import {useAuthStore} from "@/stores/auth";
+  import {useAuthStore} from "@/api/auth.ts";
   import {useRouter} from "vue-router";
 
   const emit = defineEmits(['close'])
@@ -66,9 +66,9 @@
       </div>
       <div v-if="activeTab === 'login'" class="form-content">
         <form @submit.prevent="handleLogin">
-          <input v-model="username" type="text" placeholder="Логин" required />
-          <input v-model="password" type="password" placeholder="Пароль" required />
-          <button type="submit" class="submit-btn">Войти</button>
+          <input v-model="username" type="text" placeholder="Логин" class="btn-width" required />
+          <input v-model="password" type="password" placeholder="Пароль" class="btn-width" required />
+          <button type="submit" class="submit-btn ">Войти</button>
         </form>
       </div>
       <div v-else class="form-content">
@@ -81,9 +81,9 @@
         </div>
 
         <form @submit.prevent="handleRegister">
-          <input v-model="username" type="text" placeholder="Придумайте логин" required />
-          <input v-model="email" type="email" placeholder="Email" required />
-          <input v-model="password" type="password" placeholder="Придумайте пароль" required />
+          <input v-model="username" type="text" placeholder="Придумайте логин" class="btn-width" required />
+          <input v-model="email" type="email" placeholder="Email" class="btn-width" required />
+          <input v-model="password" type="password" placeholder="Придумайте пароль" class="btn-width" required />
           <button type="submit" class="submit-btn">Зарегистрироваться</button>
         </form>
       </div>
@@ -104,7 +104,7 @@
 }
 
 .modal-window {
-  background: white;
+  background: var(--bg-header);
   padding: 2rem;
   border-radius: 12px;
   width: 350px;
@@ -124,7 +124,7 @@
   background: none;
   cursor: pointer;
   font-weight: bold;
-  color: #888;
+  color: var(--text-header);
 }
 
 .tabs button.active {
@@ -142,6 +142,7 @@ input {
 
 .submit-btn {
   width: 100%;
+  margin-top: 5px;
   padding: 10px;
   background-color: #42b883;
   color: white;
@@ -149,5 +150,11 @@ input {
   border-radius: 4px;
   cursor: pointer;
   font-size: 1rem;
+}
+.btn-width{
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 10px 0;
+  display: block;
 }
 </style>

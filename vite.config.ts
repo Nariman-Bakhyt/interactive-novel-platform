@@ -6,6 +6,9 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    global: 'window', // Это "обманет" sockjs и заставит его думать, что window — это и есть global
+  },
   plugins: [
     vue(),
     vueDevTools(),

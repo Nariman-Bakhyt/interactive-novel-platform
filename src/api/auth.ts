@@ -1,6 +1,6 @@
 import {defineStore} from "pinia";
 import {ref,computed} from "vue";
-import apiClient from "@/api/axios.ts";
+import apiClient from "./axios.ts";
 import type {LoginRequest, AuthResponse, RegistrationRequestDto} from "@/types/auth.ts";
 import type {UserResponseDto} from "@/types/auth.ts";
 import router from "@/router";
@@ -10,8 +10,10 @@ export const useAuthStore = defineStore("auth", ()=> {
   const token = ref<String|null>(localStorage.getItem('jwt_token'));
   const user = ref<string|null>(localStorage.getItem('username'));
   const isAuthenticated = computed(()=> !!token.value);
-
   const userDetails = ref<UserResponseDto | null>(null);
+  const avatarTimestamp = ref<number>(Date.now());
+
+
   if (token.value) {
     // Убедитесь, что токен приводится к строке, если используется String|null
     apiClient.defaults.headers.common["Authorization"] = `Bearer ${token.value}`;
@@ -27,7 +29,7 @@ export const useAuthStore = defineStore("auth", ()=> {
       if(token.value){
         apiClient.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
       }
-
+      fetchUserDetails()
       return true;
     }
     catch(error){
@@ -58,6 +60,12 @@ export const useAuthStore = defineStore("auth", ()=> {
   }
 
   async function fetchUserDetails() {
+    const token = localStorage.getItem('jwt_token');
+    if (!token || token === 'null') {
+      console.log('Запрос профиля отменен: пользователь не авторизован');
+      userDetails.value = null; // Очищаем данные, если были
+      return null;
+    }
     try {
       const response = await apiClient.get<UserResponseDto>('/users/me');
 
@@ -84,6 +92,13 @@ export const useAuthStore = defineStore("auth", ()=> {
       throw e;
     }
   }
-  return {token, user, isAuthenticated,userDetails,login,logout,register,fetchUserDetails};
+  function setDetails(details: UserResponseDto) {
+    avatarTimestamp.value = Date.now();
+    userDetails.value = details;
+    user.value = details.username;
+    localStorage.setItem('username', details.username);
+  }
+
+  return {token, user, isAuthenticated,userDetails,avatarTimestamp,login,logout,register,fetchUserDetails,setDetails};
 });
 

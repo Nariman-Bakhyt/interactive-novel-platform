@@ -1,4 +1,4 @@
-/* src/assets/main.css */
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400..700&display=swap'); /* src/assets/main.css */
 
 /* 1. Сброс стандартных отступов */
 body, html {
@@ -6,9 +6,59 @@ body, html {
   padding: 0;/* Гарантируем, что браузер покажет минимум полный экран */
 }
 
-/* 2. ГЛАВНЫЙ ФИКС: Установка 100% высоты для контейнера Vue */
-/* Это позволяет вашему компоненту .hero-section наследовать эту высоту */
 #app {
-  height: 100%;
-  width: 100%;
+  height: 100vh;
+  width: 100vw;
+}
+
+
+:root {
+  --bg-header: #282828;
+  --text-header: #ffffff;
+  --bg-dropdown: #2c2c2c;
+  --border-color: #444;
+  --btn-plus: #2980b9;
+  --bg-main: #1a1a1a;
+  --hover-dropdowb: #3d3d3d;
+  --bg-app: #313233;
+  --bg-profile: #e0e0e0;
+  --text-muted: #aaa;
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --bg-editor-page: #0f0f0f;      /* Фон всей страницы (самый темный) */
+  --bg-editor-sheet: #1a1a1a;     /* Фон самого "листа" */
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --input-placeholder: #555;
+}
+
+[data-theme="light"] {
+  --bg-header: #FFFAEF;
+  --text-header: #2B2B2B;
+  --bg-dropdown: #f9f9f9;
+  --border-color: #ddd;
+  --btn-plus: #3498db;
+  --bg-main: #f4f4f4;
+  --hover-dropdowb: #e0e0e0;
+  --bg-app: #EDEDED;
+  --bg-profile: #444;
+  --text-inverse: #f9f9f9 ;
+  --text-muted: #666;
+  --border-subtle: rgba(0, 0, 0, 0.1);
+  --bg-editor-page: #EDEDED;      /* Светлый фон страницы */
+  --bg-editor-sheet: #ffffff;     /* Белый лист */
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --input-placeholder: #aaa;
+}
+
+:root {
+  --main-font: 'Onest', sans-serif;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-header);
+  transition: background-color 0.3s, color 0.3s;
+  margin: 0;
+  font-family: var(--main-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
