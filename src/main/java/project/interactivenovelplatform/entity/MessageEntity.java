@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.OffsetDateTime;
@@ -41,4 +42,9 @@ public class MessageEntity {
 
     @Column(name = "is_deleted")
     private Boolean isDeleted=false;
+
+    @JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "metadata")
+    private MessageMetadata metadata;
+
 }
