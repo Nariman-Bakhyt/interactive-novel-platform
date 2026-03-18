@@ -397,7 +397,6 @@ onMounted(fetchData);
   </div>
 </template>
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400..700&display=swap');
 
 .reader-page {
   min-height: 100vh;
@@ -567,10 +566,6 @@ onMounted(fetchData);
   opacity: 0;
   transform: translateY(-8px);
 }
-.sidebar-input {
-  padding: 20px;
-  border-top: 1px solid var(--border-subtle);
-}
 
 .sidebar-input input {
   width: 100%;
@@ -582,16 +577,6 @@ onMounted(fetchData);
   outline: none;
 }
 
-/* Анимация сайдбара */
-.slide-enter-active, .slide-leave-active { transition: transform 0.3s ease; }
-.slide-enter-from, .slide-leave-to { transform: translateX(100%); }
-
-.empty-msg {
-  text-align: center;
-  color: var(--text-muted);
-  margin-top: 40px;
-  font-size: 0.9rem;
-}
 
 /* Адаптив: на мобилках прячем смещение */
 @media (max-width: 1000px) {
@@ -773,7 +758,6 @@ onMounted(fetchData);
   transform: scale(0.95);
 }
 
-/* Контекстное меню (как в твоем примере) */
 .context-menu {
   position: fixed;
   background: var(--bg-editor-sheet);
@@ -796,21 +780,7 @@ onMounted(fetchData);
 .menu-item:hover {
   background: var(--bg-main);
 }
-.date-separator {
-  display: flex;
-  align-items: center;
-  text-align: center;
-  margin: 20px 0;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-}
 
-.date-separator::before,
-.date-separator::after {
-  content: '';
-  flex: 1;
-  border-bottom: 1px solid var(--border-subtle);
-}
 
 .date-separator span {
   padding: 0 10px;
