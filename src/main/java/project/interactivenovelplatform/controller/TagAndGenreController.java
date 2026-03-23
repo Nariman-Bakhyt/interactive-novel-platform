@@ -28,12 +28,12 @@ public class TagAndGenreController {
     }
 
     @PutMapping("/genres")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN')")
+    @PreAuthorize("@rsec.hasRank(T(project.interactivenovelplatform.entity.Role).SUPER_ADMIN)")
     public ResponseEntity<List<TagOrGenreResponseDto>> addGenre(@RequestBody List<TagOrGenreRequestDto> dto) {
         return ResponseEntity.ok().body(tagAndGenreService.addTagOrGenre(dto,false));
     }
     @PutMapping("/tags")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN')")
+    @PreAuthorize("@rsec.hasRank(T(project.interactivenovelplatform.entity.Role).SUPER_ADMIN)")
     public ResponseEntity<List<TagOrGenreResponseDto>> addTag(@RequestBody List<TagOrGenreRequestDto> dto) {
         return ResponseEntity.ok().body(tagAndGenreService.addTagOrGenre(dto,true));
     }

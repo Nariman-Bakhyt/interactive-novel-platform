@@ -5,11 +5,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.dto.request.CommentRequestDto;
 import project.interactivenovelplatform.dto.response.CommentResponseDto;
 import project.interactivenovelplatform.service.CommentService;
@@ -17,6 +19,7 @@ import project.interactivenovelplatform.service.NovelService;
 
 import java.security.Principal;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -35,12 +38,14 @@ public class CommentController {
         return ResponseEntity.ok(commentService.getComments(commentRequestDto, pageable));
     }
 
-    @MessageMapping("/comment.send")
-    public void createComment(CommentRequestDto commentRequestDto, Principal principal){
-        CommentResponseDto response = commentService.createComment(commentRequestDto, principal.getName());
+    @PostMapping(value = "/send", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<CommentResponseDto> createComment(@RequestPart(value = "files", required = false) List<MultipartFile> files
+            ,@RequestPart("comment") CommentRequestDto commentRequestDto, Principal principal){
+        CommentResponseDto response = commentService.createComment(files,commentRequestDto, principal.getName());
         String topic = determineTopic(response);
         messagingTemplate.convertAndSend(topic, response);
-
+        return ResponseEntity.ok(response);
     }
 
     private String determineTopic(CommentResponseDto response) {

@@ -33,7 +33,7 @@ public class UserController {
 
     @PostMapping("/me/avatar")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<UserResponseDto> uploadUserAvatar(@RequestParam("file") MultipartFile file, Principal principal) {
+    public ResponseEntity<UserResponseDto> uploadUserAvatar(@RequestParam(value = "file", required = false) MultipartFile file, Principal principal) {
         var user = userService.uploadUserAvatar(file, principal);
         return ResponseEntity.ok().body(user);
     }

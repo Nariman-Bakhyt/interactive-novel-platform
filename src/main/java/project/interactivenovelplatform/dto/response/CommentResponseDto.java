@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import project.interactivenovelplatform.entity.Metadata;
 
 import java.time.OffsetDateTime;
 
@@ -16,6 +17,7 @@ public class CommentResponseDto {
     private Long id;
     private String content;
     private OffsetDateTime timestamp;
+    private Metadata metadata;
 
     private Long userId;
     private String username;

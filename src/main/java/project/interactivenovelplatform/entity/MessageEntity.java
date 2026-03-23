@@ -45,6 +45,6 @@ public class MessageEntity {
 
     @JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(name = "metadata")
-    private MessageMetadata metadata;
+    private Metadata metadata;
 
 }

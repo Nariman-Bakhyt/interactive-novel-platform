@@ -9,6 +9,7 @@ import project.interactivenovelplatform.dto.request.RegistrationRequestDto;
 import project.interactivenovelplatform.dto.request.UserUpdateRequestDto;
 import project.interactivenovelplatform.dto.response.UserResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
+import project.interactivenovelplatform.entity.NovelEntity;
 
 import java.security.Principal;
 
@@ -20,9 +21,11 @@ public interface UserService extends UserDetailsService {
     UserResponseDto updateProfileDetails(Long userId, UserUpdateRequestDto dto);
     void changePassword(Long userId, ChangePasswordRequestDto dto);
     AppUserEntity getAuthorReference(Long authorId);
-    UserResponseDto uploadUserAvatar(@RequestParam("file") MultipartFile file, Principal principal);
+    UserResponseDto uploadUserAvatar(MultipartFile file, Principal principal);
     Page<UserResponseDto> searchUsers(int page , int size , String search);
     void handleFailedLogin(String username);
     void resetFailedAttempts(AppUserEntity user);
     void handleSuccessfulLogin(String username);
+    AppUserEntity getReference(Long id);
+    AppUserEntity getReferenceByUsername(String username);
 }

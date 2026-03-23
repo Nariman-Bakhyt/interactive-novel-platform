@@ -1,9 +1,9 @@
 package project.interactivenovelplatform.service.impl;
 
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
-import org.apache.coyote.BadRequestException;
+import org.apache.tika.mime.MimeTypes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
@@ -16,6 +16,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.dto.request.ChangePasswordRequestDto;
 import project.interactivenovelplatform.dto.request.RegistrationRequestDto;
@@ -44,6 +45,7 @@ public class UserServiceImpl  implements UserService {
     private final StorageService storageService;
     private final static Logger log = LoggerFactory.getLogger(GlobalException.class);
     private final PasswordEncoder passwordEncoder;
+    private final EntityManager entityManager;
 
     private UserResponseDto convertToDto(AppUserEntity user) {
         return new UserResponseDto(
@@ -156,25 +158,30 @@ public class UserServiceImpl  implements UserService {
         userRepository.save(user);
     }
     @Override
+    @Transactional
     public UserResponseDto uploadUserAvatar( MultipartFile file, Principal principal){
         try {
             var username = principal.getName();
             var user = userRepository.findByUsernameIgnoreCase(username)
                     .orElseThrow(()->new EntityNotFoundException("Пользователь с именем: " + username + " не найден"));
-            if(user.getAvatarUrl()!=null) {
-                storageService.deleteFile(user.getAvatarUrl());
-                user.setAvatarUrl(null);
-            }
-            if (file.isEmpty()){
-                userRepository.save(user);
+            if (file == null || file.isEmpty()) {
+                if (user.getAvatarUrl() != null) {
+                    storageService.deleteFile(user.getAvatarUrl());
+                    user.setAvatarUrl(null);
+                    userRepository.save(user);
+                }
                 return convertToDto(user);
             }
-
-            String fileExtension = storageService.getFileExtension(file.getOriginalFilename());
-            if (!storageService.getAllowedExtensions().contains(fileExtension)) {
-                throw new BadRequestException("Недопустимый формат файла. Разрешены только JPG, PNG, GIF.");
+            if (user.getAvatarUrl() != null) {
+                storageService.deleteFile(user.getAvatarUrl());
             }
-            String filename = "user_" + user.getId() + fileExtension;
+
+            String actualMimeType = storageService.verifyRealImageType(file);
+
+            String secureExtension = MimeTypes.getDefaultMimeTypes()
+                    .forName(actualMimeType)
+                    .getExtension();
+            String filename = "user_" + user.getId() + System.currentTimeMillis() + secureExtension;
             String newAvatarUrl = storageService.uploadFile(file,"avatars", filename);
             user.setAvatarUrl(newAvatarUrl);
             userRepository.save(user);
@@ -246,5 +253,18 @@ public class UserServiceImpl  implements UserService {
             user.setLockTime(null);
             userRepository.save(user);
         }
+    }
+
+    @Override
+    public AppUserEntity getReference(Long id) {
+        if (!userRepository.existsById(id))throw new EntityNotFoundException("Пользователь с Id:"+id+" не найден");
+        return entityManager.getReference(AppUserEntity.class, id);
+    }
+
+    @Override
+    public AppUserEntity getReferenceByUsername(String username) {
+        Long userId = userRepository.findIdByUsername(username)
+                .orElseThrow(()->new EntityNotFoundException("Пользователь с именем: " + username + " не найден"));
+        return entityManager.getReference(AppUserEntity.class, userId);
     }
 }

@@ -1,8 +1,11 @@
 package project.interactivenovelplatform.service.impl;
 
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
 import org.apache.coyote.BadRequestException;
+import org.apache.tika.Tika;
+import org.apache.tika.mime.MimeTypes;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -43,6 +46,7 @@ public class NovelServiceImpl implements NovelService {
             List.of(Novel.DRAFT, Novel.ARCHIVED, Novel.RETRACTED);
     private final ChapterRepository chapterRepository;
     private final ChapterBlockRepository chapterBlockRepository;
+    private final EntityManager entityManager;
 
     private NovelResponseDto convertToDto(NovelEntity novel) {
         return new NovelResponseDto(
@@ -230,27 +234,31 @@ public class NovelServiceImpl implements NovelService {
 
     @Transactional
     @Override
-    public NovelResponseDto updateCoverUrl(Long id, @RequestParam("file") MultipartFile file, Principal principal){
+    public NovelResponseDto updateCoverUrl(Long id, MultipartFile file, Principal principal){
         try {
             var novel = novelRepository.findById(id)
                     .orElseThrow(()->new EntityNotFoundException("новелла с ID: " + id + " не найден"));
-            if(novel.getCoverUrl()!=null) {
-                storageService.deleteFile(novel.getCoverUrl());
-                novel.setCoverUrl(null);
-            }
-            if (file.isEmpty()){
-                novelRepository.save(novel);
+            if (file == null || file.isEmpty()) {
+                if (novel.getCoverUrl() != null) {
+                    storageService.deleteFile(novel.getCoverUrl());
+                    novel.setCoverUrl(null);
+                    novelRepository.save(novel);
+                }
                 return convertToDto(novel);
             }
-
-            String fileExtension = storageService.getFileExtension(file.getOriginalFilename());
-            if (!storageService.getAllowedExtensions().contains(fileExtension)) {
-                throw new BadRequestException("Недопустимый формат файла. Разрешены только JPG, PNG, GIF.");
+            if (novel.getCoverUrl() != null) {
+                storageService.deleteFile(novel.getCoverUrl());
             }
 
+            String actualMimeType = storageService.verifyRealImageType(file);
+
+            String secureExtension = MimeTypes.getDefaultMimeTypes()
+                    .forName(actualMimeType)
+                    .getExtension();
+
             Long userId = novel.getAuthor().getId();
-            String filename = "user_" + userId + id + fileExtension;
-            String newCoverUrl = storageService.uploadFile(file,"Cover", filename);
+            String filename = "user_" + userId + id + System.currentTimeMillis() + secureExtension;
+            String newCoverUrl = storageService.uploadFile(file,"covers", filename);
             novel.setCoverUrl(newCoverUrl);
             novelRepository.save(novel);
             return convertToDto(novel);
@@ -385,4 +393,26 @@ public class NovelServiceImpl implements NovelService {
         return ChapterConvertToDto(chapter);
     }
 
+    @Override
+    public NovelEntity getNovelReference(Long id) {
+        if (!novelRepository.existsById(id)) throw new EntityNotFoundException("Роман с Id:"+ id +" не найден.");
+        return entityManager.getReference(NovelEntity.class, id);
+    }
+
+    @Override
+    public NovelResponseDto getNovelById(Long novelId) {
+        return convertToDto(novelRepository.findById(novelId).orElseThrow(() -> new EntityNotFoundException("Роман с Id:"+ novelId +" не найден.")));
+    }
+
+    @Override
+    public ChapterEntity getChapterReference(Long id) {
+        if(!chapterRepository.existsById(id)) throw new EntityNotFoundException("Глава с Id:"+ id +" не найден.");
+        return entityManager.getReference(ChapterEntity.class, id);
+    }
+
+    @Override
+    public ChapterBlockEntity getBlockReference(Long id) {
+        if (!chapterBlockRepository.existsById(id))throw new EntityNotFoundException("Блок с Id:"+ id +" не найден.");
+        return entityManager.getReference(ChapterBlockEntity.class, id);
+    }
 }

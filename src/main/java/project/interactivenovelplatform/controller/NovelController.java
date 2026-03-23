@@ -84,8 +84,8 @@ public class NovelController {
     }
 
     @PostMapping("{novelId}/cover")
-    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId, authentication.name) or hasAnyRole('ADMIN')")
-    public ResponseEntity<NovelResponseDto> updateCover(@RequestParam("file") MultipartFile file,@PathVariable Long novelId , Principal principal){
+    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId, authentication.name) or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN)")
+    public ResponseEntity<NovelResponseDto> updateCover(@RequestParam(value = "file", required = false) MultipartFile file,@PathVariable Long novelId , Principal principal){
         var novel = novelService.updateCoverUrl(novelId,file,principal);
         return ResponseEntity.ok().body(novel);
     }
@@ -109,7 +109,7 @@ public class NovelController {
         return ResponseEntity.ok().body(novelService.findMyNovels(page, size,currentAuthorId));
     }
     @PostMapping("/{novelId}/addchapter")
-    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or hasAnyRole('ADMIN') ")
+    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN) ")
     public ResponseEntity<ChapterResponseDto> addChapter(@PathVariable Long novelId,
                                                          @Valid @RequestBody ChapterRequestDto dto
     ){
@@ -126,21 +126,21 @@ public class NovelController {
         return ResponseEntity.ok().body(chapter);
     }
     @PutMapping("/{novelId}/updatechapter/{chapterId}")
-    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or hasAnyRole('ADMIN') ")
+    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN) ")
     public ResponseEntity<ChapterResponseDto> updateChapter(@PathVariable Long novelId, @Valid @RequestBody ChapterRequestDto dto,@PathVariable Long chapterId){
         var chapter =  novelService.updateChapter(novelId,chapterId,dto);
         return ResponseEntity.ok().body(chapter);
     }
 
     @PostMapping("/{novelId}/updatenumeric")
-    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or hasAnyRole('ADMIN') ")
+    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN) ")
     public ResponseEntity<?> updateChapterNumber(@PathVariable Long novelId, @RequestBody List<ChapterOrderUpdateRequestDto> dtos){
         novelService.updateChapterNumber(novelId,dtos);
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{novelId}/chapter/{chapterId}")
-    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or hasAnyRole('ADMIN') ")
+    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN) ")
     public ResponseEntity<?> deleteChapter (@PathVariable Long novelId , @PathVariable Long chapterId)  {
         novelService.deleteChapter(novelId,chapterId);
         return ResponseEntity.ok().build();

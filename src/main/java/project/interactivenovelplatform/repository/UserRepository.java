@@ -17,4 +17,6 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
     Page<AppUserEntity> findAll(Pageable pageable);
     @Query("SELECT u FROM AppUserEntity u WHERE UPPER(u.username)= UPPER(:username) OR UPPER(u.email)= UPPER(:email) ")
     Optional<AppUserEntity> findByUsernameIgnoreCaseOrEmailIgnoreCase(@Param("username") String username, @Param("email") String email);
+    @Query("SELECT u.id FROM AppUserEntity u WHERE LOWER(u.username) = LOWER(:username) ")
+    Optional<Long> findIdByUsername(@Param("username") String username);
 }

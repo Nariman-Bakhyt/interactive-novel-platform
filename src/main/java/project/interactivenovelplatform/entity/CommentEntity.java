@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.OffsetDateTime;
@@ -60,5 +61,8 @@ public class CommentEntity {
     @JoinColumn(name = "forum_topic_id")
     private ForumTopicEntity forumTopic;
 
+    @JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "metadata")
+    private Metadata metadata;
 
 }

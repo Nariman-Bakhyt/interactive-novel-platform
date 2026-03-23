@@ -10,4 +10,5 @@ public interface StorageService {
     void deleteFile(String publicUrl);
     String getFileExtension(String fileName);
     Set<String> getAllowedExtensions();
+    String verifyRealImageType(MultipartFile file);
 }

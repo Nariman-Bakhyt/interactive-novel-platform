@@ -8,6 +8,9 @@ import project.interactivenovelplatform.dto.request.*;
 import project.interactivenovelplatform.dto.response.ChapterResponseDto;
 import project.interactivenovelplatform.dto.response.NovelAndChapterShortResponseDto;
 import project.interactivenovelplatform.dto.response.NovelResponseDto;
+import project.interactivenovelplatform.entity.ChapterBlockEntity;
+import project.interactivenovelplatform.entity.ChapterEntity;
+import project.interactivenovelplatform.entity.NovelEntity;
 
 import java.security.Principal;
 import java.util.List;
@@ -17,7 +20,7 @@ public interface NovelService {
     NovelAndChapterShortResponseDto findById(Long id, Long userId);
     Page<NovelResponseDto> findAll(NovelSearchRequestDto request, Pageable pageable);
     NovelResponseDto update(Long id, NovelUpdateRequestDto dto);
-    NovelResponseDto updateCoverUrl(Long id, @RequestParam("file") MultipartFile file, Principal principal);
+    NovelResponseDto updateCoverUrl(Long id, MultipartFile file, Principal principal);
     Page<NovelResponseDto> findNewNovels(int page , int size);
     Page<NovelResponseDto> findMyNovels(int page , int size,Long authorId);
     NovelAndChapterShortResponseDto findMyNovel(Long id,Long authorId);
@@ -26,5 +29,8 @@ public interface NovelService {
     ChapterResponseDto updateChapter(Long novelId, Long chapterId, ChapterRequestDto dto);
     void deleteChapter(Long novelId, Long chapterId);
     void updateChapterNumber(Long novelId, List<ChapterOrderUpdateRequestDto> chapterIds);
-
+    NovelEntity getNovelReference(Long id);
+    NovelResponseDto getNovelById(Long id);
+    ChapterEntity getChapterReference(Long id);
+    ChapterBlockEntity getBlockReference(Long id);
 }

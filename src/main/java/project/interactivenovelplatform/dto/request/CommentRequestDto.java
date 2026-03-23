@@ -10,10 +10,14 @@ import lombok.Setter;
 public class CommentRequestDto {
     private String content;
     private Long parentCommentId;
+    private String type;
+    private String quoteText;
+    private String anchorUrl;
 
     private Long blockId;
     private Long chapterId;
     private Long novelId;
     private Long forumTopicId;
     private Long channelId;
+
 }

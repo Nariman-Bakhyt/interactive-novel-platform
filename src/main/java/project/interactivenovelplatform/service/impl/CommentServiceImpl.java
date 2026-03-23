@@ -2,41 +2,47 @@ package project.interactivenovelplatform.service.impl;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.apache.coyote.BadRequestException;
+import org.apache.tika.mime.MimeTypes;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.dto.request.CommentRequestDto;
 import project.interactivenovelplatform.dto.request.RatingRequestDto;
-import project.interactivenovelplatform.dto.response.AllRatingResponseDto;
-import project.interactivenovelplatform.dto.response.AllRatingsResponseDto;
-import project.interactivenovelplatform.dto.response.CommentResponseDto;
-import project.interactivenovelplatform.dto.response.RatingResponseDto;
-import project.interactivenovelplatform.entity.CommentEntity;
-import project.interactivenovelplatform.entity.RatingEntity;
+import project.interactivenovelplatform.dto.response.*;
+import project.interactivenovelplatform.entity.*;
 import project.interactivenovelplatform.repository.*;
+import project.interactivenovelplatform.security.UrlValidator;
 import project.interactivenovelplatform.service.CommentService;
+import project.interactivenovelplatform.service.NovelService;
+import project.interactivenovelplatform.service.StorageService;
+import project.interactivenovelplatform.service.UserService;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class CommentServiceImpl implements CommentService {
     private final RatingRepository ratingRepository;
-    private final NovelRepository novelRepository;
-    private final UserRepository userRepository;
+    private final NovelService novelService;
+    private final UserService userService;
     private final CommentRepository commentRepository;
-    private final ChapterBlockRepository chapterBlockRepository;
-    private final ChapterRepository chapterRepository;
+    private final StorageService storageService;
 
     @Transactional
     @Override
     public RatingResponseDto setRating(Long novelId, Long userId, RatingRequestDto dto){
-        var novel = novelRepository.findById(novelId)
-                .orElseThrow(() -> new EntityNotFoundException("Роман с Id:"+ novelId +" не найден."));
-        var user= userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Пользователь с Id:"+userId+" не найден"));
+        var novel = novelService.getNovelReference(novelId);
+        var user = userService.getReference(userId);
         if(novel.getAuthor().getId().equals(userId)) throw new IllegalArgumentException("Автор не может сам себя оценивать");
         var timestamp = OffsetDateTime.now();
 
@@ -76,10 +82,11 @@ public class CommentServiceImpl implements CommentService {
     }
     @Override
     public AllRatingsResponseDto getRatings(Long novelId, Pageable pageable){
-        var novel = novelRepository.findById(novelId)
-                .orElseThrow(() -> new EntityNotFoundException("Роман с Id:"+ novelId +" не найден."));
+        var novel = novelService.getNovelById(novelId);
         var ratings = ratingRepository.findByNovelId(novelId, pageable);
-        return new AllRatingsResponseDto( novel.getTotalScore(),novel.getRatingCount(),novel.calculateAverage(),ratings.map(rating -> new AllRatingResponseDto(
+        return new AllRatingsResponseDto( novel.getTotalScore(),novel.getRatingCount(),
+                calculateAverage(novel.getRatingCount(),novel.getTotalScore()),
+                ratings.map(rating -> new AllRatingResponseDto(
                 rating.getId(),
                 rating.getCommentText(),
                 rating.getUser().getUsername(),
@@ -88,12 +95,18 @@ public class CommentServiceImpl implements CommentService {
         )));
 
     }
+    private double calculateAverage(Integer ratingCount,Long totalScore){
+        if(ratingCount == 0){
+            return 0.0;
+        }
+        double average = (double) totalScore / ratingCount;
+        return Math.round(average * 100.0) / 100.0;
+    }
 
     @Transactional
     @Override
     public RatingResponseDto deleteRating(Long novelId,Long ratingId, Long userId){
-        var novel = novelRepository.findById(novelId)
-                .orElseThrow(() -> new EntityNotFoundException("Роман с Id:"+ novelId +" не найден."));
+        var novel = novelService.getNovelById(novelId);
         RatingEntity rating = ratingRepository.findByUserIdAndNovelId(userId, novelId)
                 .orElseThrow(() -> new EntityNotFoundException("вы не писали рейтинг в новелле с id "+novelId));
         if(!rating.getId().equals(ratingId)) { throw new IllegalArgumentException("неверный id рейтинга "+ratingId); }
@@ -104,7 +117,7 @@ public class CommentServiceImpl implements CommentService {
                 rating.getId(),
                 novel.getTotalScore(),
                 novel.getRatingCount(),
-                novel.calculateAverage(),
+                calculateAverage(novel.getRatingCount(),novel.getTotalScore()),
                 null,
                 null,
                 null,
@@ -120,6 +133,7 @@ public class CommentServiceImpl implements CommentService {
                 .userId(entity.getUser().getId())
                 .username(entity.getUser().getUsername())
                 .userAvatarUrl(entity.getUser().getAvatarUrl())
+                .metadata(entity.getMetadata())
 
                 .blockId(entity.getBlock() != null ? entity.getBlock().getId() : null)
                 .chapterId(entity.getChapter() != null ? entity.getChapter().getId() : null)
@@ -133,14 +147,77 @@ public class CommentServiceImpl implements CommentService {
 
     @Transactional
     @Override
-    public CommentResponseDto createComment(CommentRequestDto dto , String userName){
-        var user = userRepository.findByUsernameIgnoreCase(userName)
-                .orElseThrow(()->new EntityNotFoundException("Пользователь с именем: " + userName + " не найден"));
+    public CommentResponseDto createComment(List<MultipartFile> files, CommentRequestDto dto , String userName){
+        var user = userService.getReferenceByUsername(userName);
         CommentEntity commentEntity = new CommentEntity();
         commentEntity.setContent(dto.getContent());
         commentEntity.setTimestamp(OffsetDateTime.now());
         commentEntity.setUser(user);
+        Metadata metadata = new Metadata();
+        setCommentTarget(commentEntity, dto);
+        commentEntity = commentRepository.saveAndFlush(commentEntity);
+        List<String> imageUrls = new ArrayList<>();
+        try {
+            if ("IMAGE".equals(dto.getType())) {
+                if(files!=null && !files.isEmpty()) {
+                    if (files.size() > 10) throw new RuntimeException("Too many files!");
+                        for (MultipartFile file : files) {
+                            String actualMimeType = storageService.verifyRealImageType(file);
 
+                            String secureExtension = MimeTypes.getDefaultMimeTypes()
+                                    .forName(actualMimeType)
+                                    .getExtension();
+                            String datePath = commentEntity.getTimestamp().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+                            String folderPath = String.format("comments/users/%d/%s", user.getId(), datePath);
+                            String finalFileName = UUID.randomUUID().toString().substring(0, 8) + secureExtension;
+                            String url = storageService.uploadFile(file, folderPath, finalFileName);
+                            imageUrls.add(url);
+                        }
+                        metadata.setType(dto.getType());
+                        metadata.setImages(imageUrls);
+                }
+                else {
+                    throw new IllegalArgumentException("нету фото");
+                }
+            }
+            else if("QUOTE".equals(dto.getType())){
+                if (dto.getQuoteText() == null || dto.getQuoteText().isBlank() ||
+                        dto.getAnchorUrl() == null || dto.getAnchorUrl().isBlank()) {
+                    throw new BadRequestException("Для цитаты необходим текст и ссылка на источник");
+                }
+                if (!UrlValidator.isTrusted(dto.getAnchorUrl())) {
+                    throw new BadRequestException("Ссылка ведет на недоверенный ресурс");
+                }
+                // 2. Формируем чистую ссылку с Query-параметром ?q=
+                String rawText = dto.getQuoteText();
+                // Кодируем текст (пробелы станут %20, а не плюсики)
+                String encodedText = URLEncoder.encode(rawText, StandardCharsets.UTF_8).replace("+", "%20");
+
+                String finalUrl = dto.getAnchorUrl();
+
+                // Если в anchorUrl уже есть параметры (содержит ?), добавляем через &, если нет — через ?
+                String separator = finalUrl.contains("?") ? "&" : "?";
+                finalUrl += separator + "q=" + encodedText;
+
+                // 3. Сохраняем в метаданные
+                metadata.setType("QUOTE");
+                metadata.setQuoteText(rawText);
+                metadata.setAnchorUrl(finalUrl);
+
+            }
+            else {
+                metadata.setType("PLAIN");
+            }
+        }
+        catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        commentEntity.setMetadata(metadata);
+
+        var save = commentRepository.save(commentEntity);
+        return convertToResponse(save);
+    }
+    public void setCommentTarget(CommentEntity commentEntity, CommentRequestDto dto) {
         if (dto.getParentCommentId() != null){
             CommentEntity parent =  commentRepository.findById(dto.getParentCommentId())
                     .orElseThrow(()->new EntityNotFoundException("Родительский комментарий не найден"));
@@ -148,17 +225,15 @@ public class CommentServiceImpl implements CommentService {
         }
 
         if (dto.getBlockId() != null) {
-            commentEntity.setBlock(chapterBlockRepository.getReferenceById(dto.getBlockId()));
+            commentEntity.setBlock(novelService.getBlockReference(dto.getBlockId()));
         } else if (dto.getChapterId() != null) {
-            commentEntity.setChapter(chapterRepository.getReferenceById(dto.getChapterId()));
+            commentEntity.setChapter(novelService.getChapterReference(dto.getChapterId()));
         } else if (dto.getNovelId() != null) {
-            commentEntity.setNovel(novelRepository.getReferenceById(dto.getNovelId()));
+            commentEntity.setNovel(novelService.getNovelReference(dto.getNovelId()));
         } else {
             throw new IllegalArgumentException("Comment must have a target (block, chapter, or novel)");
         }
         // нужно дополнить форумами и тд
-        var save = commentRepository.save(commentEntity);
-        return convertToResponse(save);
     }
 
     @Override

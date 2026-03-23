@@ -3,6 +3,7 @@ package project.interactivenovelplatform.service.impl;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
+import org.apache.tika.Tika;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +12,8 @@ import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.error.GlobalException;
 import project.interactivenovelplatform.service.StorageService;
 
+import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -20,6 +23,7 @@ public class StorageServiceImpl implements StorageService {
     private final String endpoint; // Нужно добавить для формирования URL
     private final static Logger log = LoggerFactory.getLogger(GlobalException.class);
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(".jpg", ".jpeg", ".png", ".gif");
+    private final Tika tika = new Tika();
     public StorageServiceImpl(
             MinioClient minioClient,
             @Value("${minio.bucketName}") String bucketName,
@@ -75,6 +79,19 @@ public class StorageServiceImpl implements StorageService {
         int dotIndex = fileName.lastIndexOf('.');
         return (dotIndex == -1) ? "" : fileName.substring(dotIndex);
     }
+    public String verifyRealImageType(MultipartFile file) {
+        try {
+            String actualMimeType = tika.detect(file.getInputStream());
+            List<String> secureTypes = List.of("image/jpeg", "image/png", "image/webp", "image/gif");
+            if (!secureTypes.contains(actualMimeType)) {
+                throw new RuntimeException("Безопасность: Файл маскируется под фото, но это " + actualMimeType);
+            }
+            return actualMimeType;
+        } catch (IOException e) {
+            throw new RuntimeException("Ошибка анализа файла", e);
+        }
+    }
+
 
 
 }
