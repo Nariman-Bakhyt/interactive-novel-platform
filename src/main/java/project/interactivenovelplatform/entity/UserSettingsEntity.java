@@ -1,0 +1,27 @@
+package project.interactivenovelplatform.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Entity
+@Table(name = "user_settings")
+@Getter@Setter
+@NoArgsConstructor
+public class UserSettingsEntity {
+    @Id
+    private Long userId;
+
+    @MapsId
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private AppUserEntity user;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "can_send_message" ,nullable = false)
+    private PrivacyLevel canSendMessage;
+
+    @Column(name = "show_library")
+    private boolean showLibrary = false;
+}

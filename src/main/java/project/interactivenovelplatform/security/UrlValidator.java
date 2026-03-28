@@ -14,23 +14,29 @@ public class UrlValidator {
     public static boolean isTrusted(String url) {
         if (url == null || url.isBlank()) return false;
 
+        // 1. Если это относительный путь (начинается с /), значит он наш и доверенный
+        if (url.startsWith("/")) {
+            return true;
+        }
+
         try {
-            // Если протокола нет, добавляем http:// (так как у тебя пока http)
-            String testUrl = url.contains("://") ? url : "http://" + url;
+            // 2. Для абсолютных ссылок исправляем склейку
+            String cleanUrl = url.contains("://") ? url : "http://" + url;
 
-            URI uri = new URI(testUrl);
+            // Убираем возможный двойной слеш после протокола, если пришло "/novels..."
+            cleanUrl = cleanUrl.replace("http:///", "http://localhost/");
+
+            URI uri = new URI(cleanUrl);
             String host = uri.getHost();
-            int port = uri.getPort();
+            if (host == null) return false;
 
-            // Если порт стандартный для http (80), URI.getPort() вернет -1
-            // Нам нужно это учитывать при сравнении с localhost:5173
+            int port = uri.getPort();
             String hostWithPort = (port != -1) ? host + ":" + port : host;
 
-            return ALLOWED_DOMAINS.stream().anyMatch(domain -> {
-                return domain.equalsIgnoreCase(hostWithPort) || domain.equalsIgnoreCase(host);
-            });
+            return ALLOWED_DOMAINS.stream().anyMatch(domain ->
+                    domain.equalsIgnoreCase(hostWithPort) || domain.equalsIgnoreCase(host)
+            );
         } catch (Exception e) {
-
             return false;
         }
     }
