@@ -16,6 +16,7 @@ import project.interactivenovelplatform.dto.response.AllRatingResponseDto;
 import project.interactivenovelplatform.dto.response.AllRatingsResponseDto;
 import project.interactivenovelplatform.dto.response.RatingResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
+import project.interactivenovelplatform.security.UserPrincipal;
 import project.interactivenovelplatform.service.CommentService;
 
 import java.util.HashMap;
@@ -31,16 +32,16 @@ public class RatingController {
     @PostMapping("/{novelId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<RatingResponseDto> setRating(@PathVariable Long novelId, @RequestBody @Valid RatingRequestDto dto, Authentication authentication) {
-        AppUserEntity user = (AppUserEntity) authentication.getPrincipal();
+        UserPrincipal user = (UserPrincipal) authentication.getPrincipal();
         var body = ratingService.setRating(novelId, user.getId(), dto);
-        messagingTemplate.convertAndSend("/topic/novel." + novelId + ".ratings", body);
+        messagingTemplate.convertAndSend("/topic/novel." + novelId + ".ratings",(Object) body);
         return ResponseEntity.ok().body(body);
     }
 
     @DeleteMapping("/{novelId}/{ratingId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> deleteRating(@PathVariable Long novelId,@PathVariable Long ratingId, Authentication authentication){
-        AppUserEntity user = (AppUserEntity) authentication.getPrincipal();
+        UserPrincipal user = (UserPrincipal) authentication.getPrincipal();
         var body = ratingService.deleteRating(novelId,ratingId, user.getId());
 
         String destination = "/topic/novel." + novelId + ".ratings";
@@ -48,7 +49,7 @@ public class RatingController {
         payload.put("id", body.getRatingId());
         payload.put("deleted", true);
         payload.put("score", body.getScore());
-        messagingTemplate.convertAndSend(destination, payload);
+        messagingTemplate.convertAndSend(destination,(Object) payload);
         return ResponseEntity.ok().build();
     }
 

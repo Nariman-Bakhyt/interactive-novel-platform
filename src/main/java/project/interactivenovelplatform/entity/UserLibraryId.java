@@ -4,7 +4,6 @@ import jakarta.persistence.Embeddable;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.commons.lang3.builder.HashCodeExclude;
 
 import java.io.Serializable;
 

@@ -3,8 +3,6 @@ package project.interactivenovelplatform.service.impl;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
-import org.apache.coyote.BadRequestException;
-import org.apache.tika.Tika;
 import org.apache.tika.mime.MimeTypes;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -13,7 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.dto.request.*;
 import project.interactivenovelplatform.dto.response.*;
@@ -48,6 +46,9 @@ public class NovelServiceImpl implements NovelService {
     private final ChapterBlockRepository chapterBlockRepository;
     private final EntityManager entityManager;
 
+    private final TransactionTemplate transactionTemplate;
+
+
     private NovelResponseDto convertToDto(NovelEntity novel) {
         return new NovelResponseDto(
                 novel.getId(),
@@ -73,27 +74,7 @@ public class NovelServiceImpl implements NovelService {
     }
     private NovelAndChapterShortResponseDto convertToDtoFull(NovelEntity novel,List<ChapterShortResponseDto> chapters) {
         return new NovelAndChapterShortResponseDto(
-                new NovelResponseDto(
-                        novel.getId(),
-                        novel.getTitle(),
-                        novel.getStatus().toString(),
-                        novel.getDescription(),
-                        novel.getPublicationDate(),
-                        novel.getChapterCount(),
-                        novel.getTotalScore(),
-                        novel.getRatingCount(),
-                        novel.getViewCount(),
-                        novel.getAuthor().getUsername(),
-                        novel.getCoverUrl(),
-                        novel.getTags().stream().map(tag -> new TagOrGenreResponseDto(
-                                tag.getId(),
-                                tag.getName()
-                        )).toList(),
-                        novel.getGenres().stream().map(genre -> new TagOrGenreResponseDto(
-                                genre.getId(),
-                                genre.getName()
-                        )).toList()
-                ),
+                convertToDto(novel),
                 chapters
         );
     }
@@ -131,7 +112,6 @@ public class NovelServiceImpl implements NovelService {
     @Override
     @Transactional
     public NovelResponseDto create(NovelRequestDto dto, Long currentAuthorId){
-        var author = userService.findById(currentAuthorId);
         NovelEntity novelEntity = new NovelEntity();
         novelEntity.setTitle(dto.getTitle());
         novelEntity.setDescription(dto.getDescription());
@@ -155,6 +135,7 @@ public class NovelServiceImpl implements NovelService {
         return convertToDtoFull(novel,chapters);
     }
     @Override
+    @Transactional
     public Page<NovelResponseDto> findAll(NovelSearchRequestDto dto, Pageable pageable) {
 
         Specification<NovelEntity> spec = (root, query, cb) -> {
@@ -232,51 +213,66 @@ public class NovelServiceImpl implements NovelService {
         return convertToDto(novelRepository.save(novel));
     }
 
-    @Transactional
     @Override
     public NovelResponseDto updateCoverUrl(Long id, MultipartFile file, Principal principal){
+        var novel = novelRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("новелла не найдена"));
+        String oldCoverUrl = novel.getCoverUrl();
+        String newCoverUrl = null;
+
         try {
-            var novel = novelRepository.findById(id)
-                    .orElseThrow(()->new EntityNotFoundException("новелла с ID: " + id + " не найден"));
-            if (file == null || file.isEmpty()) {
-                if (novel.getCoverUrl() != null) {
-                    storageService.deleteFile(novel.getCoverUrl());
-                    novel.setCoverUrl(null);
-                    novelRepository.save(novel);
-                }
-                return convertToDto(novel);
-            }
-            if (novel.getCoverUrl() != null) {
-                storageService.deleteFile(novel.getCoverUrl());
+            if (file != null && !file.isEmpty()) {
+                String actualMimeType = storageService.verifyRealImageType(file);
+                String secureExtension = MimeTypes.getDefaultMimeTypes()
+                        .forName(actualMimeType).getExtension();
+
+                String filename = "user_" + novel.getAuthor().getId() + "_" + id + "_" + System.currentTimeMillis() + secureExtension;
+                newCoverUrl = storageService.uploadFile(file, "covers", filename);
             }
 
-            String actualMimeType = storageService.verifyRealImageType(file);
+            String finalUrl = newCoverUrl;
+            NovelEntity savedNovel = transactionTemplate.execute(_ -> saveNewCoverUrl(id, finalUrl));
 
-            String secureExtension = MimeTypes.getDefaultMimeTypes()
-                    .forName(actualMimeType)
-                    .getExtension();
+            if (oldCoverUrl != null && finalUrl != null) {
+                storageService.deleteFile(oldCoverUrl);
+            }
+            return convertToDto(savedNovel);
 
-            Long userId = novel.getAuthor().getId();
-            String filename = "user_" + userId + id + System.currentTimeMillis() + secureExtension;
-            String newCoverUrl = storageService.uploadFile(file,"covers", filename);
-            novel.setCoverUrl(newCoverUrl);
-            novelRepository.save(novel);
-            return convertToDto(novel);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            if (newCoverUrl != null) {
+                storageService.deleteFile(newCoverUrl);
+            }
+            throw new RuntimeException("Ошибка при обновлении обложки: " + e.getMessage(), e);
         }
     }
+
+    public NovelEntity saveNewCoverUrl( Long novelId,String newCoverUrl){
+        try {
+            var novel = novelRepository.findById(novelId)
+                    .orElseThrow(()->new EntityNotFoundException("новелла с ID: " + novelId + " не найден"));
+            novel.setCoverUrl(newCoverUrl);
+            return novelRepository.save(novel);
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Ошибка при обновлении обложки: " + e.getMessage(), e);
+        }
+
+    }
+
     @Override
+    @Transactional
     public Page<NovelResponseDto> findNewNovels(int page , int size){
         Pageable pageable = PageRequest.of(page, size);
         return novelRepository.findAllByStatusNotInOrderByPublicationDateDesc(NON_PUBLIC_STATUSES,pageable).map(this::convertToDto);
     }
     @Override
+    @Transactional
     public Page<NovelResponseDto> findMyNovels(int page , int size,Long authorId){
         Pageable pageable = PageRequest.of(page, size);
         return novelRepository.findAllByAuthor_Id(authorId, pageable).map(this::convertToDto);
     }
     @Override
+    @Transactional
     public NovelAndChapterShortResponseDto findMyNovel(Long id,Long authorId){
         var novel = novelRepository.findByAuthor_IdAndId(authorId,id).orElseThrow(
                 ()->new EntityNotFoundException("новелла с ID: " + id + " не найден"));
@@ -373,6 +369,7 @@ public class NovelServiceImpl implements NovelService {
     }
 
     @Override
+    @Transactional
     public void updateChapterNumber(Long novelId, List<ChapterOrderUpdateRequestDto> chapterIds){
         novelRepository.findById(novelId).orElseThrow(
                 ()->new EntityNotFoundException("Роман с id: " + novelId + " не найден"));
@@ -381,6 +378,7 @@ public class NovelServiceImpl implements NovelService {
         }
     }
     @Override
+    @Transactional
     public ChapterResponseDto findChapter(Long chapterId, Long novelId ,Long authorId){
         var novel = novelRepository.findById(novelId).orElseThrow(
                 ()->new EntityNotFoundException("новеллы с id: " + novelId + " нету"));

@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,8 +18,8 @@ import project.interactivenovelplatform.dto.response.ChapterResponseDto;
 import project.interactivenovelplatform.dto.response.NovelAndChapterShortResponseDto;
 import project.interactivenovelplatform.dto.response.NovelResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
+import project.interactivenovelplatform.security.UserPrincipal;
 import project.interactivenovelplatform.service.NovelService;
-import project.interactivenovelplatform.service.UserService;
 
 import java.security.Principal;
 import java.util.List;
@@ -29,15 +29,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NovelController {
     private final NovelService novelService;
-    private final UserService userService;
 
     @PostMapping("/public")
-    public ResponseEntity<Page<NovelResponseDto>> findAllNovels(@RequestBody NovelSearchRequestDto dto
-            ,@RequestParam(defaultValue = "0") int page,@RequestParam(defaultValue = "20") int size
+    public ResponseEntity<PagedModel<NovelResponseDto>> findAllNovels(@RequestBody NovelSearchRequestDto dto
+            , @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size
             ) {
         Pageable pageable = PageRequest.of(page, size);
         Page<NovelResponseDto> novels = novelService.findAll(dto,pageable);
-        return ResponseEntity.ok(novels);
+        return ResponseEntity.ok(new PagedModel<>(novels));
     }
     @GetMapping("/public/{novelId}")
     public ResponseEntity<NovelAndChapterShortResponseDto> findNovelById(@PathVariable Long novelId,
@@ -55,10 +54,13 @@ public class NovelController {
     @GetMapping("/my/{novelId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<NovelAndChapterShortResponseDto> findMyNovelById(@PathVariable Long novelId,Authentication authentication) {
-        var principal = (AppUserEntity) authentication.getPrincipal();
-        var currentAuthorId = principal.getId();
-        NovelAndChapterShortResponseDto novel = novelService.findMyNovel(novelId, currentAuthorId);
-        return ResponseEntity.ok(novel);
+        if (authentication.getPrincipal() instanceof UserPrincipal userDetails) {
+            var currentAuthorId = userDetails.getId();
+            NovelAndChapterShortResponseDto novel = novelService.findMyNovel(novelId, currentAuthorId);
+            return ResponseEntity.ok(novel);
+        }
+        throw new org.springframework.security.authentication.BadCredentialsException("Не удалось получить данные пользователя");
+
     }
 
     @PostMapping
@@ -67,10 +69,12 @@ public class NovelController {
             @RequestBody @Valid NovelRequestDto novelRequestDto,
             Authentication authentication
     ) {
-        var principal = (AppUserEntity) authentication.getPrincipal();
-        var currentAuthorId = principal.getId();
-        NovelResponseDto createdNovel = novelService.create(novelRequestDto, currentAuthorId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdNovel);
+        if (authentication.getPrincipal() instanceof UserPrincipal userDetails) {
+            var currentAuthorId = userDetails.getId();
+            NovelResponseDto createdNovel = novelService.create(novelRequestDto, currentAuthorId);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdNovel);
+        }
+        throw new org.springframework.security.authentication.BadCredentialsException("Не удалось получить данные пользователя");
     }
 
     @PutMapping("/{novelId}")
@@ -91,22 +95,27 @@ public class NovelController {
     }
 
     @GetMapping("/public/new")
-    public ResponseEntity<Page<NovelResponseDto>> findAllNewNovels(
+    public ResponseEntity<PagedModel<NovelResponseDto>> findAllNewNovels(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ){
-        return ResponseEntity.ok().body(novelService.findNewNovels(page, size));
+        Page<NovelResponseDto>  novels = novelService.findNewNovels(page, size) ;
+        return ResponseEntity.ok().body(new PagedModel<>(novels));
     }
     @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Page<NovelResponseDto>> findMyNovels(
+    public ResponseEntity<PagedModel<NovelResponseDto>> findMyNovels(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication
             ){
-        var principal = (AppUserEntity) authentication.getPrincipal();
-        var currentAuthorId = principal.getId();
-        return ResponseEntity.ok().body(novelService.findMyNovels(page, size,currentAuthorId));
+
+        if (authentication.getPrincipal() instanceof UserPrincipal userDetails) {
+            var currentAuthorId = userDetails.getId();
+            Page<NovelResponseDto>  novels =novelService.findMyNovels(page, size,currentAuthorId);
+            return ResponseEntity.ok().body(new PagedModel<>(novels));
+        }
+        throw new org.springframework.security.authentication.BadCredentialsException("Не удалось получить данные пользователя");
     }
     @PostMapping("/{novelId}/addchapter")
     @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN) ")

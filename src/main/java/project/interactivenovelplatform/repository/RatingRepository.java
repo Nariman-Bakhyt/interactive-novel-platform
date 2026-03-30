@@ -2,6 +2,7 @@ package project.interactivenovelplatform.repository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -12,7 +13,9 @@ import java.util.Optional;
 
 public interface RatingRepository extends JpaRepository<RatingEntity, Long> {
     Optional<RatingEntity> findByUserIdAndNovelId(Long userId, Long novelId);
-    @Query("SELECT r FROM RatingEntity r JOIN FETCH r.user WHERE r.novel.id = :novelId")
+
+    @EntityGraph(attributePaths = {"user"})
+    @Query("SELECT r FROM RatingEntity r WHERE r.novel.id = :novelId")
     Page<RatingEntity> findByNovelId(Long novelId, Pageable pageable);
     @Modifying(clearAutomatically = true)
     @Query("""

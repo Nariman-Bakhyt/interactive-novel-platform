@@ -6,17 +6,20 @@ import lombok.AllArgsConstructor;
 import org.apache.tika.mime.MimeTypes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.dto.request.ChangePasswordRequestDto;
 import project.interactivenovelplatform.dto.request.RegistrationRequestDto;
@@ -25,9 +28,12 @@ import project.interactivenovelplatform.dto.response.UserResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
 import project.interactivenovelplatform.entity.Role;
 import project.interactivenovelplatform.entity.RoleEntity;
+import project.interactivenovelplatform.entity.UserSettingsEntity;
 import project.interactivenovelplatform.error.GlobalException;
 import project.interactivenovelplatform.repository.UserRepository;
+import project.interactivenovelplatform.repository.UserSettingsRepository;
 import project.interactivenovelplatform.repository.UserSpecifications;
+import project.interactivenovelplatform.security.UserPrincipal;
 import project.interactivenovelplatform.service.RoleService;
 import project.interactivenovelplatform.service.StorageService;
 import project.interactivenovelplatform.service.UserService;
@@ -35,7 +41,10 @@ import project.interactivenovelplatform.service.UserService;
 import java.security.Principal;
 import java.time.OffsetDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @Service
@@ -43,9 +52,12 @@ public class UserServiceImpl  implements UserService {
     private final UserRepository userRepository;
     private final RoleService roleService;
     private final StorageService storageService;
+    private final UserSettingsRepository userSettingsRepository;
     private final static Logger log = LoggerFactory.getLogger(GlobalException.class);
     private final PasswordEncoder passwordEncoder;
     private final EntityManager entityManager;
+
+    private final TransactionTemplate transactionTemplate;
 
     private UserResponseDto convertToDto(AppUserEntity user) {
         return new UserResponseDto(
@@ -103,6 +115,11 @@ public class UserServiceImpl  implements UserService {
                 SetRole
         );
         var savedUser = userRepository.save(user);
+
+        var settings = new UserSettingsEntity();
+        settings.setUser(user);
+        userSettingsRepository.save(settings);
+
         return convertToDto(savedUser);
     }
 
@@ -158,51 +175,75 @@ public class UserServiceImpl  implements UserService {
         userRepository.save(user);
     }
     @Override
-    @Transactional
     public UserResponseDto uploadUserAvatar( MultipartFile file, Principal principal){
+        var username = principal.getName();
+        var user = userRepository.findByUsernameIgnoreCase(username)
+                .orElseThrow(()->new EntityNotFoundException("Пользователь с именем: " + username + " не найден"));
+        String oldAvatarUrl = user.getAvatarUrl();
+        String newAvatarUrl = null;
         try {
-            var username = principal.getName();
-            var user = userRepository.findByUsernameIgnoreCase(username)
-                    .orElseThrow(()->new EntityNotFoundException("Пользователь с именем: " + username + " не найден"));
-            if (file == null || file.isEmpty()) {
-                if (user.getAvatarUrl() != null) {
-                    storageService.deleteFile(user.getAvatarUrl());
-                    user.setAvatarUrl(null);
-                    userRepository.save(user);
-                }
-                return convertToDto(user);
-            }
-            if (user.getAvatarUrl() != null) {
-                storageService.deleteFile(user.getAvatarUrl());
-            }
 
-            String actualMimeType = storageService.verifyRealImageType(file);
 
-            String secureExtension = MimeTypes.getDefaultMimeTypes()
-                    .forName(actualMimeType)
-                    .getExtension();
-            String filename = "user_" + user.getId() + System.currentTimeMillis() + secureExtension;
-            String newAvatarUrl = storageService.uploadFile(file,"avatars", filename);
-            user.setAvatarUrl(newAvatarUrl);
-            userRepository.save(user);
-            return convertToDto(user);
+            if (file != null && !file.isEmpty()) {
+                String actualMimeType = storageService.verifyRealImageType(file);
+
+                String secureExtension = MimeTypes.getDefaultMimeTypes()
+                        .forName(actualMimeType)
+                        .getExtension();
+                String filename = "user_" + user.getId() + "_" + UUID.randomUUID().toString().substring(0, 8) + secureExtension;
+                newAvatarUrl = storageService.uploadFile(file,"avatars", filename);
+            }
+            String finalUrl = newAvatarUrl;
+            var finalEntity = transactionTemplate.execute(_ -> saveNewAvatarUrl(finalUrl,user.getId()));
+
+            if (oldAvatarUrl!= null) {
+                storageService.deleteFile(oldAvatarUrl);
+            }
+            return convertToDto(finalEntity);
         } catch (Exception e) {
+            if (newAvatarUrl != null) {
+                storageService.deleteFile(newAvatarUrl);
+            }
             throw new RuntimeException(e);
         }
 
     }
 
 
+    public AppUserEntity saveNewAvatarUrl(String newAvatarUrl, Long userId) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(()->new EntityNotFoundException("Пользователь с ID: " + userId + " не найден"));
+        user.setAvatarUrl(newAvatarUrl);
+        return userRepository.save(user);
+    }
+
+
 
     @Override
-    public UserDetails loadUserByUsername(String userId) throws UsernameNotFoundException {
-        if (userId.matches("\\d+")) {
-            return userRepository.findById(Long.parseLong(userId))
-                    .orElseThrow(() -> new UsernameNotFoundException("Пользователь с ID " + userId + " не найден"));
+    @Transactional(readOnly = true)
+    public UserDetails loadUserByUsername(String input) throws UsernameNotFoundException {
+        AppUserEntity user;
+
+        // 1. Пробуем найти по ID (если пришла строка из цифр) или по Username
+        if (input.matches("\\d+")) {
+            user = userRepository.findById(Long.parseLong(input))
+                    .orElseThrow(() -> new UsernameNotFoundException("Пользователь с ID " + input + " не найден"));
+        } else {
+            user = userRepository.findByUsernameIgnoreCase(input)
+                    .orElseThrow(() -> new UsernameNotFoundException("Пользователь с именем " + input + " не найден"));
         }
 
-        return userRepository.findByUsernameIgnoreCase(userId)
-                .orElseThrow(() -> new UsernameNotFoundException("Пользователь с именем " + userId + " не найден"));
+        List<SimpleGrantedAuthority> authorities = user.getRole().stream()
+                .map(role -> new SimpleGrantedAuthority(role.getName().name()))
+                .collect(Collectors.toList());
+
+
+        return new UserPrincipal(
+                user.getId(),
+                user.getUsername(),
+                user.getPasswordHash(),
+                authorities
+        );
     }
 
 

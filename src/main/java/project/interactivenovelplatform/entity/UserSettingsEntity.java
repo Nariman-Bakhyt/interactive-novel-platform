@@ -20,7 +20,7 @@ public class UserSettingsEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "can_send_message" ,nullable = false)
-    private PrivacyLevel canSendMessage;
+    private PrivacyLevel canSendMessage = PrivacyLevel.FRIENDS;
 
     @Column(name = "show_library")
     private boolean showLibrary = false;

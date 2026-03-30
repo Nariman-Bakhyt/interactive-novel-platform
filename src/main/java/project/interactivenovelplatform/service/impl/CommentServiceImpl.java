@@ -6,16 +6,25 @@ import org.apache.coyote.BadRequestException;
 import org.apache.tika.mime.MimeTypes;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedModel;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.dto.request.CommentRequestDto;
 import project.interactivenovelplatform.dto.request.RatingRequestDto;
-import project.interactivenovelplatform.dto.response.*;
-import project.interactivenovelplatform.entity.*;
-import project.interactivenovelplatform.repository.*;
+import project.interactivenovelplatform.dto.response.AllRatingResponseDto;
+import project.interactivenovelplatform.dto.response.AllRatingsResponseDto;
+import project.interactivenovelplatform.dto.response.CommentResponseDto;
+import project.interactivenovelplatform.dto.response.RatingResponseDto;
+import project.interactivenovelplatform.entity.CommentEntity;
+import project.interactivenovelplatform.entity.Metadata;
+import project.interactivenovelplatform.entity.RatingEntity;
+import project.interactivenovelplatform.repository.CommentRepository;
+import project.interactivenovelplatform.repository.RatingRepository;
 import project.interactivenovelplatform.security.UrlValidator;
+import project.interactivenovelplatform.security.UserPrincipal;
 import project.interactivenovelplatform.service.CommentService;
 import project.interactivenovelplatform.service.NovelService;
 import project.interactivenovelplatform.service.StorageService;
@@ -37,6 +46,9 @@ public class CommentServiceImpl implements CommentService {
     private final UserService userService;
     private final CommentRepository commentRepository;
     private final StorageService storageService;
+
+    private final TransactionTemplate transactionTemplate;
+
 
     @Transactional
     @Override
@@ -68,6 +80,7 @@ public class CommentServiceImpl implements CommentService {
         rating.setTimestamp(timestamp);
 
         RatingEntity savedRating = ratingRepository.save(rating);
+        var ratingUser = userService.findById(userId);
 
         return new RatingResponseDto(
                 savedRating.getId(),
@@ -75,24 +88,27 @@ public class CommentServiceImpl implements CommentService {
                 novel.getRatingCount()+1,
                 novel.calculateAverage(),
                 dto.getCommentText(),
-                user.getUsername(),
+                ratingUser.getUsername(),
                 timestamp,
                 dto.getScore()
         );
     }
     @Override
+    @Transactional
     public AllRatingsResponseDto getRatings(Long novelId, Pageable pageable){
         var novel = novelService.getNovelById(novelId);
-        var ratings = ratingRepository.findByNovelId(novelId, pageable);
-        return new AllRatingsResponseDto( novel.getTotalScore(),novel.getRatingCount(),
-                calculateAverage(novel.getRatingCount(),novel.getTotalScore()),
-                ratings.map(rating -> new AllRatingResponseDto(
+        var ratings =ratingRepository.findByNovelId(novelId, pageable);
+        Page<AllRatingResponseDto>  allRatingResponseDtoPage = ratings.map(rating -> new AllRatingResponseDto(
                 rating.getId(),
                 rating.getCommentText(),
                 rating.getUser().getUsername(),
                 rating.getTimestamp(),
-                rating.getScore()
-        )));
+                rating.getScore()));
+
+        return new AllRatingsResponseDto( novel.getTotalScore(),novel.getRatingCount(),
+                calculateAverage(novel.getRatingCount(),novel.getTotalScore()),
+                new PagedModel<>(allRatingResponseDtoPage)
+        );
 
     }
     private double calculateAverage(Integer ratingCount,Long totalScore){
@@ -145,36 +161,58 @@ public class CommentServiceImpl implements CommentService {
 
 
 
-    @Transactional
     @Override
-    public CommentResponseDto createComment(List<MultipartFile> files, CommentRequestDto dto , String userName){
-        var user = userService.getReferenceByUsername(userName);
+    public CommentResponseDto createComment(List<MultipartFile> files, CommentRequestDto dto , UserPrincipal principal){
+        CommentEntity commentEntity = transactionTemplate.execute(_ ->
+                saveCommentSkeleton(dto, principal.getId())
+        );
+
+        try {
+            String datePath = commentEntity.getTimestamp().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+            Metadata metadata = createMetadata(files, datePath, dto, principal.getId());
+            CommentEntity finalEntity = transactionTemplate.execute(_ -> updateCommentMetadata(metadata, commentEntity.getId()));
+            return convertToResponse(finalEntity);
+        } catch (Exception e) {
+            transactionTemplate.execute(_ -> {
+                commentRepository.delete(commentEntity);
+                return null;
+            });
+            throw e;
+        }
+
+    }
+
+    private CommentEntity saveCommentSkeleton(CommentRequestDto dto , Long userId){
+        var user = userService.getReference(userId);
         CommentEntity commentEntity = new CommentEntity();
         commentEntity.setContent(dto.getContent());
         commentEntity.setTimestamp(OffsetDateTime.now());
         commentEntity.setUser(user);
-        Metadata metadata = new Metadata();
         setCommentTarget(commentEntity, dto);
-        commentEntity = commentRepository.saveAndFlush(commentEntity);
+
+        return commentRepository.saveAndFlush(commentEntity);
+    }
+
+    private Metadata createMetadata(List<MultipartFile> files, String datePath , CommentRequestDto dto , Long userId){
+        Metadata metadata = new Metadata();
         List<String> imageUrls = new ArrayList<>();
         try {
             if ("IMAGE".equals(dto.getType())) {
                 if(files!=null && !files.isEmpty()) {
                     if (files.size() > 10) throw new RuntimeException("Too many files!");
-                        for (MultipartFile file : files) {
-                            String actualMimeType = storageService.verifyRealImageType(file);
+                    for (MultipartFile file : files) {
+                        String actualMimeType = storageService.verifyRealImageType(file);
 
-                            String secureExtension = MimeTypes.getDefaultMimeTypes()
-                                    .forName(actualMimeType)
-                                    .getExtension();
-                            String datePath = commentEntity.getTimestamp().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-                            String folderPath = String.format("comments/users/%d/%s", user.getId(), datePath);
-                            String finalFileName = UUID.randomUUID().toString().substring(0, 8) + secureExtension;
-                            String url = storageService.uploadFile(file, folderPath, finalFileName);
-                            imageUrls.add(url);
-                        }
-                        metadata.setType(dto.getType());
-                        metadata.setImages(imageUrls);
+                        String secureExtension = MimeTypes.getDefaultMimeTypes()
+                                .forName(actualMimeType)
+                                .getExtension();
+                        String folderPath = String.format("comments/users/%d/%s", userId, datePath);
+                        String finalFileName = UUID.randomUUID().toString().substring(0, 8) + secureExtension;
+                        String url = storageService.uploadFile(file, folderPath, finalFileName);
+                        imageUrls.add(url);
+                    }
+                    metadata.setType(dto.getType());
+                    metadata.setImages(imageUrls);
                 }
                 else {
                     throw new IllegalArgumentException("нету фото");
@@ -212,11 +250,16 @@ public class CommentServiceImpl implements CommentService {
         catch (Exception e) {
             throw new RuntimeException(e);
         }
-        commentEntity.setMetadata(metadata);
-
-        var save = commentRepository.save(commentEntity);
-        return convertToResponse(save);
+        return  metadata;
     }
+
+    private CommentEntity updateCommentMetadata(Metadata metadata, Long commentId ){
+        var commentEntity = commentRepository.findById(commentId)
+                .orElseThrow(()->new EntityNotFoundException("комментарий не найден"));
+        commentEntity.setMetadata(metadata);
+        return commentRepository.save(commentEntity);
+    }
+
     public void setCommentTarget(CommentEntity commentEntity, CommentRequestDto dto) {
         if (dto.getParentCommentId() != null){
             CommentEntity parent =  commentRepository.findById(dto.getParentCommentId())
@@ -237,7 +280,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public Page<CommentResponseDto> getComments(CommentRequestDto dto, Pageable pageable   ) {
 
         if (dto.getBlockId() != null) {

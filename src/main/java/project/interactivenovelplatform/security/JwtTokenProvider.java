@@ -7,13 +7,16 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 import project.interactivenovelplatform.entity.AppUserEntity;
 
+import javax.crypto.Mac;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Date;
-import java.util.List;
+import java.util.UUID;
 
 
 @Component
@@ -34,23 +37,67 @@ public class JwtTokenProvider {
 
     }
     // 1. Генерация Токена (вызывается при входе)
-    public String generateToken(Authentication authentication) {
-        AppUserEntity userPrincipal = (AppUserEntity) authentication.getPrincipal();
-
-        Long userId = userPrincipal.getId();
-        String username = userPrincipal.getUsername();
-        List<String> roles = authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .toList();
+    public String generateAccessToken(Authentication authentication) {
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + jwtExpiration);
+        // Ставим короткий срок, например 15 минут (900 000 мс)
+        Date expiryDate = new Date(now.getTime() + 900000);
+
+        return Jwts.builder()
+                .subject(userPrincipal.getId().toString())
+                .claim("userId", userPrincipal.getId())
+                .claim("username", userPrincipal.getUsername())
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(this.key)
+                .compact();
+    }
+
+    // Генерируем случайный Refresh Token (НЕ JWT, просто UUID)
+    public String generateRefreshToken() {
+        return UUID.randomUUID().toString();
+    }
+    public String generateSignedRefreshToken() {
+        String uuid = UUID.randomUUID().toString();
+        String signature = calculateHmac(uuid);
+        return uuid + "." + signature;
+    }
+
+    public boolean verifyRefreshTokenSignature(String tokenWithSignature) {
+        String[] parts = tokenWithSignature.split("\\.");
+        if (parts.length != 2) return false;
+
+        String uuid = parts[0];
+        String signature = parts[1];
+
+        // Считаем подпись заново для этого UUID и сравниваем
+        return signature.equals(calculateHmac(uuid));
+    }
+
+    // Приватный метод для вычисления подписи
+    private String calculateHmac(String data) {
+        try {
+            Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
+            SecretKeySpec secret_key = new SecretKeySpec(
+                    jwtSecret.getBytes(StandardCharsets.UTF_8),
+                    "HmacSHA256"
+            );
+            sha256_HMAC.init(secret_key);
+
+            byte[] hash = sha256_HMAC.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to calculate HMAC signature", e);
+        }
+    }
+
+    public String generateTokenFromUserId(Long userId) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + 900000); // Те же 15 минут
 
         return Jwts.builder()
                 .subject(userId.toString())
-                // Кастомные утверждения для удобства клиента и авторизации:
-                .claim("userId",userId)
-                .claim("username", username)
-                .claim("roles", roles)
+                .claim("userId", userId)
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(this.key)

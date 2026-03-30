@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.domain.Page;
+import org.springframework.data.web.PagedModel;
 
 @Getter
 @Setter
@@ -12,5 +13,5 @@ public class AllRatingsResponseDto {
     private Long totalScore;
     private Integer ratingCount;
     private Double averageRating;
-    private Page<AllRatingResponseDto> allRatings;
+    private PagedModel<AllRatingResponseDto> allRatings;
 }
