@@ -19,14 +19,11 @@ import org.springframework.web.bind.annotation.*;
 import project.interactivenovelplatform.dto.request.LoginRequestDto;
 import project.interactivenovelplatform.dto.request.RegistrationRequestDto;
 import project.interactivenovelplatform.dto.response.JwtAuthenticationResponseDto;
-import project.interactivenovelplatform.dto.response.UserResponseDto;
-import project.interactivenovelplatform.entity.AppUserEntity;
 import project.interactivenovelplatform.entity.UserSessionEntity;
 import project.interactivenovelplatform.repository.UserSessionRepository;
 import project.interactivenovelplatform.security.JwtTokenProvider;
 import project.interactivenovelplatform.security.UserPrincipal;
 import project.interactivenovelplatform.service.UserService;
-import project.interactivenovelplatform.service.impl.UserServiceImpl;
 
 import java.time.OffsetDateTime;
 import java.util.HashMap;

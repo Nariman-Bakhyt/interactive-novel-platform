@@ -4,7 +4,6 @@ package project.interactivenovelplatform.security;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-import project.interactivenovelplatform.entity.AppUserEntity;
 import project.interactivenovelplatform.entity.Role;
 
 @Component("rsec")

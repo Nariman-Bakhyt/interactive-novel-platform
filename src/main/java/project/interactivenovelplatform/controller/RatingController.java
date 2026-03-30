@@ -2,7 +2,6 @@ package project.interactivenovelplatform.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -12,10 +11,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import project.interactivenovelplatform.dto.request.RatingRequestDto;
-import project.interactivenovelplatform.dto.response.AllRatingResponseDto;
 import project.interactivenovelplatform.dto.response.AllRatingsResponseDto;
 import project.interactivenovelplatform.dto.response.RatingResponseDto;
-import project.interactivenovelplatform.entity.AppUserEntity;
 import project.interactivenovelplatform.security.UserPrincipal;
 import project.interactivenovelplatform.service.CommentService;
 
@@ -34,7 +31,7 @@ public class RatingController {
     public ResponseEntity<RatingResponseDto> setRating(@PathVariable Long novelId, @RequestBody @Valid RatingRequestDto dto, Authentication authentication) {
         UserPrincipal user = (UserPrincipal) authentication.getPrincipal();
         var body = ratingService.setRating(novelId, user.getId(), dto);
-        messagingTemplate.convertAndSend("/topic/novel." + novelId + ".ratings",(Object) body);
+        messagingTemplate.convertAndSend("/topic/novel." + novelId + ".ratings",body);
         return ResponseEntity.ok().body(body);
     }
 

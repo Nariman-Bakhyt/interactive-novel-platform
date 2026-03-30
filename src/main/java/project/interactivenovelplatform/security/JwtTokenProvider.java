@@ -8,7 +8,6 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
-import project.interactivenovelplatform.entity.AppUserEntity;
 
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
@@ -53,10 +52,6 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    // Генерируем случайный Refresh Token (НЕ JWT, просто UUID)
-    public String generateRefreshToken() {
-        return UUID.randomUUID().toString();
-    }
     public String generateSignedRefreshToken() {
         String uuid = UUID.randomUUID().toString();
         String signature = calculateHmac(uuid);
