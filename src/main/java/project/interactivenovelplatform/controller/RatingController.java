@@ -10,6 +10,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import project.interactivenovelplatform.config.RateLimited;
 import project.interactivenovelplatform.dto.request.RatingRequestDto;
 import project.interactivenovelplatform.dto.response.AllRatingsResponseDto;
 import project.interactivenovelplatform.dto.response.RatingResponseDto;
@@ -26,6 +27,7 @@ public class RatingController {
     private final CommentService ratingService;
     private final SimpMessagingTemplate messagingTemplate;
 
+    @RateLimited(capacity = 5, minutes = 10)
     @PostMapping("/{novelId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<RatingResponseDto> setRating(@PathVariable Long novelId, @RequestBody @Valid RatingRequestDto dto, Authentication authentication) {
@@ -34,7 +36,7 @@ public class RatingController {
         messagingTemplate.convertAndSend("/topic/novel." + novelId + ".ratings",body);
         return ResponseEntity.ok().body(body);
     }
-
+    @RateLimited(capacity = 10, minutes = 1)
     @DeleteMapping("/{novelId}/{ratingId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> deleteRating(@PathVariable Long novelId,@PathVariable Long ratingId, Authentication authentication){
@@ -49,7 +51,7 @@ public class RatingController {
         messagingTemplate.convertAndSend(destination,(Object) payload);
         return ResponseEntity.ok().build();
     }
-
+    @RateLimited(capacity = 30, minutes = 1)
     @GetMapping("/public/{novelId}")
     public ResponseEntity<AllRatingsResponseDto> getRatings(@PathVariable Long novelId,
                                                             @PageableDefault(size = 20, sort = "timestamp",

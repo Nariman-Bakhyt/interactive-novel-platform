@@ -1,3 +1,3 @@
 package project.interactivenovelplatform.entity;
 
-public enum RelationStatus { FOLLOWING, PENDING, FRIEND }
+public enum RelationStatus {PENDING, FRIEND }

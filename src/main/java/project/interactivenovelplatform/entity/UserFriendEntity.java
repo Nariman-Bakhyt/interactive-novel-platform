@@ -1,6 +1,5 @@
 package project.interactivenovelplatform.entity;
 
-
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,10 +8,11 @@ import lombok.Setter;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "user_relations")
-@Getter @Setter
+@Table(name = "user_friends")
+@Getter
+@Setter
 @NoArgsConstructor
-public class UserRelationEntity {
+public class UserFriendEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -26,9 +26,15 @@ public class UserRelationEntity {
     private AppUserEntity receiver;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status" ,nullable = false)
-    private RelationStatus status;
+    @Column(name = "status")
+    private RelationStatus status = RelationStatus.PENDING;
 
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt = OffsetDateTime.now();
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = OffsetDateTime.now();
+    }
+
 }

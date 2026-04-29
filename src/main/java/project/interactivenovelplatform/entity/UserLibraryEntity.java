@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.OffsetDateTime;
+
 
 @Entity
 @Table(name = "user_library")
@@ -13,7 +15,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class UserLibraryEntity {
     @EmbeddedId
-    private UserLibraryId userLibraryId;
+    private UserNovelId id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("userId")
@@ -29,6 +31,10 @@ public class UserLibraryEntity {
     @Column(name = "status", nullable = false)
     private LibraryStatus status;
 
-    @Column(name = "is_private")
-    private boolean isPrivate = true;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "privacy_level")
+    private PrivacyLevel privacyLevel = PrivacyLevel.NOBODY;
+
+    @Column(name = "created_at")
+    private OffsetDateTime createdAt =  OffsetDateTime.now();
 }

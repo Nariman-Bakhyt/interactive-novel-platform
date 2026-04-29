@@ -1,5 +1,6 @@
 package project.interactivenovelplatform.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -13,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import project.interactivenovelplatform.config.RateLimited;
 import project.interactivenovelplatform.dto.request.*;
 import project.interactivenovelplatform.dto.response.ChapterResponseDto;
 import project.interactivenovelplatform.dto.response.NovelAndChapterShortResponseDto;
@@ -30,6 +32,7 @@ import java.util.List;
 public class NovelController {
     private final NovelService novelService;
 
+    @RateLimited(capacity = 15, minutes = 1)
     @PostMapping("/public")
     public ResponseEntity<PagedModel<NovelResponseDto>> findAllNovels(@RequestBody NovelSearchRequestDto dto
             , @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size
@@ -38,6 +41,7 @@ public class NovelController {
         Page<NovelResponseDto> novels = novelService.findAll(dto,pageable);
         return ResponseEntity.ok(new PagedModel<>(novels));
     }
+    @RateLimited(capacity = 15, minutes = 1)
     @GetMapping("/public/{novelId}")
     public ResponseEntity<NovelAndChapterShortResponseDto> findNovelById(@PathVariable Long novelId,
                                                                          @AuthenticationPrincipal AppUserEntity user) {
@@ -51,6 +55,7 @@ public class NovelController {
 
         return ResponseEntity.ok(novel);
     }
+    @RateLimited(capacity = 15, minutes = 1)
     @GetMapping("/my/{novelId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<NovelAndChapterShortResponseDto> findMyNovelById(@PathVariable Long novelId,Authentication authentication) {
@@ -63,6 +68,7 @@ public class NovelController {
 
     }
 
+    @RateLimited(capacity = 5, minutes = 10)
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<NovelResponseDto> createNovel(
@@ -76,7 +82,7 @@ public class NovelController {
         }
         throw new org.springframework.security.authentication.BadCredentialsException("Не удалось получить данные пользователя");
     }
-
+    @RateLimited(capacity = 5, minutes = 10)
     @PutMapping("/{novelId}")
     @PreAuthorize("@novelServiceImpl.isAuthor(#novelId, authentication.name) or hasRole('ADMIN')")
     public ResponseEntity<NovelResponseDto> updateNovel(
@@ -86,7 +92,7 @@ public class NovelController {
         NovelResponseDto updatedNovel = novelService.update(novelId, novelRequestDto);
         return ResponseEntity.ok(updatedNovel);
     }
-
+    @RateLimited(capacity = 5, minutes = 60)
     @PostMapping("{novelId}/cover")
     @PreAuthorize("@novelServiceImpl.isAuthor(#novelId, authentication.name) or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN)")
     public ResponseEntity<NovelResponseDto> updateCover(@RequestParam(value = "file", required = false) MultipartFile file,@PathVariable Long novelId , Principal principal){
@@ -94,6 +100,7 @@ public class NovelController {
         return ResponseEntity.ok().body(novel);
     }
 
+    @RateLimited(capacity = 10, minutes = 1)
     @GetMapping("/public/new")
     public ResponseEntity<PagedModel<NovelResponseDto>> findAllNewNovels(
             @RequestParam(defaultValue = "0") int page,
@@ -102,6 +109,7 @@ public class NovelController {
         Page<NovelResponseDto>  novels = novelService.findNewNovels(page, size) ;
         return ResponseEntity.ok().body(new PagedModel<>(novels));
     }
+    @RateLimited(capacity = 10, minutes = 1)
     @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PagedModel<NovelResponseDto>> findMyNovels(
@@ -117,6 +125,7 @@ public class NovelController {
         }
         throw new org.springframework.security.authentication.BadCredentialsException("Не удалось получить данные пользователя");
     }
+    @RateLimited(capacity = 3, minutes = 1)
     @PostMapping("/{novelId}/addchapter")
     @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN) ")
     public ResponseEntity<ChapterResponseDto> addChapter(@PathVariable Long novelId,
@@ -125,34 +134,53 @@ public class NovelController {
         var chapter = novelService.addChapter(novelId,dto);
         return ResponseEntity.ok().body(chapter);
     }
+    @RateLimited(capacity = 30, minutes = 1)
     @GetMapping("/public/{novelId}/chapter/{chapterId}")
-    public ResponseEntity<ChapterResponseDto> findChapter(@PathVariable Long novelId,
-                                                          @PathVariable Long chapterId,
-                                                          @AuthenticationPrincipal AppUserEntity user)
-    {
-        Long currentUserId = (user != null) ? user.getId() : null;
-        var chapter = novelService.findChapter(chapterId,novelId,currentUserId);
+    public ResponseEntity<ChapterResponseDto> findChapter(
+            @PathVariable Long novelId,
+            @PathVariable Long chapterId,
+            @RequestParam(defaultValue = "false") boolean isLocallyViewed,
+            HttpServletRequest request,
+            Authentication authentication) {
+        Long currentUserId = null;
+        if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal principal) {
+            currentUserId = principal.getId();
+        }
+        String guestId = (String) request.getAttribute("VALID_GUEST_ID");
+
+        var chapter = novelService.findChapter(chapterId, novelId, currentUserId, isLocallyViewed, guestId);
         return ResponseEntity.ok().body(chapter);
     }
+    @RateLimited(capacity = 5, minutes = 1)
     @PutMapping("/{novelId}/updatechapter/{chapterId}")
     @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN) ")
     public ResponseEntity<ChapterResponseDto> updateChapter(@PathVariable Long novelId, @Valid @RequestBody ChapterRequestDto dto,@PathVariable Long chapterId){
         var chapter =  novelService.updateChapter(novelId,chapterId,dto);
         return ResponseEntity.ok().body(chapter);
     }
-
+    @RateLimited(capacity = 5, minutes = 5)
     @PostMapping("/{novelId}/updatenumeric")
     @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN) ")
     public ResponseEntity<?> updateChapterNumber(@PathVariable Long novelId, @RequestBody List<ChapterOrderUpdateRequestDto> dtos){
         novelService.updateChapterNumber(novelId,dtos);
         return ResponseEntity.ok().build();
     }
-
+    @RateLimited(capacity = 5, minutes = 10)
     @DeleteMapping("/{novelId}/chapter/{chapterId}")
     @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.name)or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN) ")
     public ResponseEntity<?> deleteChapter (@PathVariable Long novelId , @PathVariable Long chapterId)  {
         novelService.deleteChapter(novelId,chapterId);
         return ResponseEntity.ok().build();
+    }
+    @RateLimited(capacity = 40, minutes = 1)
+    @GetMapping("/public/search")
+    public ResponseEntity<PagedModel<NovelResponseDto>> searchNovels(
+            @RequestParam(required = false) String title,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size) {
+
+        Page<NovelResponseDto> body = novelService.searchNovels(page, size, title);
+        return ResponseEntity.ok(new PagedModel<>(body));
     }
 
 

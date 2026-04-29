@@ -7,6 +7,7 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
@@ -15,6 +16,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 
@@ -38,14 +40,21 @@ public class JwtTokenProvider {
     // 1. Генерация Токена (вызывается при входе)
     public String generateAccessToken(Authentication authentication) {
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        return generateAccessToken(userPrincipal); // Вызываем перегруженный метод
+    }
+    public String generateAccessToken(UserPrincipal userPrincipal) {
         Date now = new Date();
-        // Ставим короткий срок, например 15 минут (900 000 мс)
-        Date expiryDate = new Date(now.getTime() + 900000);
-
+        Date expiryDate = new Date(now.getTime() + 900000); // 15 минут
+        List<String> roles = userPrincipal.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList();
         return Jwts.builder()
                 .subject(userPrincipal.getId().toString())
                 .claim("userId", userPrincipal.getId())
                 .claim("username", userPrincipal.getUsername())
+                .claim("isActive", userPrincipal.isActive())
+                .claim("isLocked", userPrincipal.isLocked())
+                .claim("roles", roles)
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(this.key)
@@ -134,6 +143,13 @@ public class JwtTokenProvider {
             // Логирование ошибки
         }
         return false;
+    }
+    public Claims getClaimsFromToken(String token) {
+        return Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
 }

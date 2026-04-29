@@ -53,8 +53,8 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     @Override
     public RatingResponseDto setRating(Long novelId, Long userId, RatingRequestDto dto){
-        var novel = novelService.getNovelReference(novelId);
-        var user = userService.getReference(userId);
+        var novel = novelService.getNovelEntity(novelId);
+        var user = userService.getEntityIsActiveAndIsLockedFalse(userId);
         if(novel.getAuthor().getId().equals(userId)) throw new IllegalArgumentException("Автор не может сам себя оценивать");
         var timestamp = OffsetDateTime.now();
 
@@ -78,9 +78,7 @@ public class CommentServiceImpl implements CommentService {
         rating.setScore(dto.getScore());
         rating.setCommentText(dto.getCommentText());
         rating.setTimestamp(timestamp);
-
         RatingEntity savedRating = ratingRepository.save(rating);
-        var ratingUser = userService.findById(userId);
 
         return new RatingResponseDto(
                 savedRating.getId(),
@@ -88,13 +86,13 @@ public class CommentServiceImpl implements CommentService {
                 novel.getRatingCount()+1,
                 novel.calculateAverage(),
                 dto.getCommentText(),
-                ratingUser.getUsername(),
+                user.getUsername(),
                 timestamp,
                 dto.getScore()
         );
     }
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public AllRatingsResponseDto getRatings(Long novelId, Pageable pageable){
         var novel = novelService.getNovelById(novelId);
         var ratings =ratingRepository.findByNovelId(novelId, pageable);
@@ -183,7 +181,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     private CommentEntity saveCommentSkeleton(CommentRequestDto dto , Long userId){
-        var user = userService.getReference(userId);
+        var user = userService.getEntityIsActiveAndIsLockedFalse(userId);
         CommentEntity commentEntity = new CommentEntity();
         commentEntity.setContent(dto.getContent());
         commentEntity.setTimestamp(OffsetDateTime.now());
@@ -280,7 +278,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public Page<CommentResponseDto> getComments(CommentRequestDto dto, Pageable pageable   ) {
 
         if (dto.getBlockId() != null) {

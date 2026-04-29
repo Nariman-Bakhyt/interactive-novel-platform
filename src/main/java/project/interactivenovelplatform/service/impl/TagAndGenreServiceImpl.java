@@ -115,6 +115,7 @@ public class TagAndGenreServiceImpl implements TagAndGenreService {
         }
 
     }
+    @Transactional(readOnly = true)
     @Override
     public List<TagOrGenreResponseDto> GetAllTagOrGenre(boolean isTag){
         if(isTag){

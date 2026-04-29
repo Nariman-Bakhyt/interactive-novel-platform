@@ -10,12 +10,7 @@ public enum ChannelRole {
     MODERATOR("Moderator", 2),
     SUBSCRIBER("Subscriber", 3);
 
-
     private final String displayName;
     private final int rank;
 
-    @Override
-    public String toString() {
-        return displayName;
-    }
 }

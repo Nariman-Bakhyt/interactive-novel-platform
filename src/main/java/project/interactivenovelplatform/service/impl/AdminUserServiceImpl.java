@@ -39,7 +39,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 user.getRegistrationDate(),
                 user.getRole(),
                 user.getIsDeleted(),
-                user.getIsLocked(),
+                user.isLocked(),
                 user.getLockTime(),
                 user.getAvatarUrl()
         );

@@ -9,25 +9,30 @@ import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "forum_topic")
+@PrimaryKeyJoinColumn(name = "id")
+@DiscriminatorValue(SubscribableType.Values.FORUM_TOPIC)
 @Getter
 @Setter
 @NoArgsConstructor
-public class ForumTopicEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class ForumTopicEntity extends SubscribableEntity {
 
-    @Column(name = "title",nullable = false,length = 255)
+    @Column(nullable = false)
     private String title;
 
-    @Column(name = "description",columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "created_at")
-    private OffsetDateTime createdAt = OffsetDateTime.now();
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "creator_id",nullable = false)
-    private AppUserEntity creatorId;
+    @JoinColumn(name = "author_id", nullable = false)
+    private AppUserEntity author;
+
+    @Column(name = "is_locked")
+    private boolean isLocked = false;
+
+    @Column(name = "view_count")
+    private long viewCount = 0;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private OffsetDateTime createdAt;
 
 }

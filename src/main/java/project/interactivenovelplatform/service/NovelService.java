@@ -2,7 +2,6 @@ package project.interactivenovelplatform.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.dto.request.*;
 import project.interactivenovelplatform.dto.response.ChapterResponseDto;
@@ -24,7 +23,7 @@ public interface NovelService {
     Page<NovelResponseDto> findNewNovels(int page , int size);
     Page<NovelResponseDto> findMyNovels(int page , int size,Long authorId);
     NovelAndChapterShortResponseDto findMyNovel(Long id,Long authorId);
-    ChapterResponseDto findChapter(Long chapterId, Long novelId,Long authorId);
+    ChapterResponseDto findChapter(Long chapterId, Long novelId,Long currentUserId ,boolean isLocallyViewed, String deviceId);
     ChapterResponseDto addChapter(Long novelId, ChapterRequestDto dto);
     ChapterResponseDto updateChapter(Long novelId, Long chapterId, ChapterRequestDto dto);
     void deleteChapter(Long novelId, Long chapterId);
@@ -33,4 +32,8 @@ public interface NovelService {
     NovelResponseDto getNovelById(Long id);
     ChapterEntity getChapterReference(Long id);
     ChapterBlockEntity getBlockReference(Long id);
+    NovelEntity getNovelEntity(Long id);
+    ChapterEntity getChapterEntity(Long id);
+    ChapterBlockEntity getBlockEntity(Long id);
+    Page<NovelResponseDto> searchNovels(int page, int size, String title);
 }

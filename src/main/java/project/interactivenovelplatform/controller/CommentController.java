@@ -13,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import project.interactivenovelplatform.config.RateLimited;
 import project.interactivenovelplatform.dto.request.CommentRequestDto;
 import project.interactivenovelplatform.dto.response.CommentResponseDto;
 import project.interactivenovelplatform.security.UserPrincipal;
@@ -32,6 +33,7 @@ public class CommentController {
     private final NovelService novelService;
     private final SimpMessagingTemplate messagingTemplate;
 
+    @RateLimited(capacity = 100, minutes = 1)
     @GetMapping("/public")
     public ResponseEntity<PagedModel<CommentResponseDto>> getComments(CommentRequestDto commentRequestDto,
                                                                         @PageableDefault(size = 20, sort = "timestamp",
@@ -41,6 +43,7 @@ public class CommentController {
         return ResponseEntity.ok(new PagedModel<>(page));
     }
 
+    @RateLimited(capacity = 10, minutes = 1)
     @PostMapping(value = "/send", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CommentResponseDto> createComment(@RequestPart(value = "files", required = false) List<MultipartFile> files
@@ -57,7 +60,7 @@ public class CommentController {
         if (response.getNovelId() != null) return "/topic/novel." + response.getNovelId();
         return "/topic/global";
     }
-
+    @RateLimited(capacity = 10, minutes = 1)
     @DeleteMapping("/{commentId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> deleteComment(@PathVariable Long commentId, Principal principal){

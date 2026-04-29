@@ -12,7 +12,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,14 +21,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
-import project.interactivenovelplatform.dto.request.ChangePasswordRequestDto;
-import project.interactivenovelplatform.dto.request.RegistrationRequestDto;
-import project.interactivenovelplatform.dto.request.UserUpdateRequestDto;
+import project.interactivenovelplatform.dto.request.*;
+import project.interactivenovelplatform.dto.response.ProfileResponseDto;
 import project.interactivenovelplatform.dto.response.UserResponseDto;
-import project.interactivenovelplatform.entity.AppUserEntity;
-import project.interactivenovelplatform.entity.Role;
-import project.interactivenovelplatform.entity.RoleEntity;
-import project.interactivenovelplatform.entity.UserSettingsEntity;
+import project.interactivenovelplatform.dto.response.UserSettingsResponseDto;
+import project.interactivenovelplatform.entity.*;
 import project.interactivenovelplatform.error.GlobalException;
 import project.interactivenovelplatform.repository.UserRepository;
 import project.interactivenovelplatform.repository.UserSettingsRepository;
@@ -36,14 +34,10 @@ import project.interactivenovelplatform.security.UserPrincipal;
 import project.interactivenovelplatform.service.RoleService;
 import project.interactivenovelplatform.service.StorageService;
 import project.interactivenovelplatform.service.UserService;
+import project.interactivenovelplatform.service.VerificationService;
 
-import java.security.Principal;
 import java.time.OffsetDateTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.*;
 
 @AllArgsConstructor
 @Service
@@ -55,6 +49,7 @@ public class UserServiceImpl  implements UserService {
     private final static Logger log = LoggerFactory.getLogger(GlobalException.class);
     private final PasswordEncoder passwordEncoder;
     private final EntityManager entityManager;
+    private final VerificationService verificationService;
 
     private final TransactionTemplate transactionTemplate;
 
@@ -62,10 +57,10 @@ public class UserServiceImpl  implements UserService {
         return new UserResponseDto(
                 user.getId(),
                 user.getUsername(),
-                user.getEmail(),
                 user.getAvatarUrl()
         );
     }
+
 
     @Override
     @Transactional(readOnly = true)
@@ -74,21 +69,36 @@ public class UserServiceImpl  implements UserService {
         Specification<AppUserEntity> user = UserSpecifications.UserNameLike(search);
         return userRepository.findAll(user, pageable).map(this::convertToDto);
     }
-
     @Override
+    @Transactional(readOnly = true)
     public UserResponseDto findByUsername(String username) {
         return userRepository.findByUsernameIgnoreCase(username).map(this::convertToDto)
                 .orElseThrow(()->new EntityNotFoundException("Пользователь с именем: " + username + " не найден"));
     }
     @Override
+    @Transactional(readOnly = true)
     public UserResponseDto findById(Long id){
         return userRepository.findById(id).map(this::convertToDto)
                 .orElseThrow(()->new EntityNotFoundException("Пользователь с id: " + id + " не найден"));
     }
     @Override
-    public AppUserEntity getAuthorReference(Long authorId){
-        return userRepository.findById(authorId).orElseThrow(()->new EntityNotFoundException("Пользователь с id: " + authorId + " не найден"));
+    @Transactional(readOnly = true)
+    public ProfileResponseDto findProfileById(Long currentUserId ,Long targetUserId){
+        ProfileResponseDto profile = userRepository.getFullProfile(targetUserId, currentUserId)
+                .orElseThrow(() -> new EntityNotFoundException("Пользователь с id: " + targetUserId + " не найден"));
+
+        boolean isMe = currentUserId != null && currentUserId.equals(targetUserId);
+
+        if (isMe) {
+            profile.setMyProfile(true);
+        } else {
+            profile.setMyProfile(false);
+            profile.setBestFriendsCount(0);
+            profile.setEmail(null);
+        }
+        return profile;
     }
+
 
     @Override
     @Transactional
@@ -124,17 +134,14 @@ public class UserServiceImpl  implements UserService {
 
     @Override
     @Transactional
-    public UserResponseDto updateProfileDetails(Long userId, UserUpdateRequestDto dto){
+    public ProfileResponseDto updateProfileDetails(Long userId, UserUpdateRequestDto dto){
         AppUserEntity user = userRepository.findById(userId)
                 .orElseThrow(()->new EntityNotFoundException("Пользователь с таким id:" + userId + " не найден не найден"));
 
-        // Проверка, изменились ли поля
         boolean isUsernameChanged = dto.getNewUsername() != null && !dto.getNewUsername().equals(user.getUsername());
         boolean isEmailChanged = dto.getNewEmail() != null && !dto.getNewEmail().equals(user.getEmail());
 
         if (isUsernameChanged || isEmailChanged) {
-
-            // 1. Выполняем ОДИН запрос для проверки обоих полей
             var existingUser = userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(
                     dto.getNewUsername(),
                     dto.getNewEmail()
@@ -143,7 +150,6 @@ public class UserServiceImpl  implements UserService {
             if (existingUser.isPresent()) {
                 AppUserEntity conflictUser = existingUser.get();
 
-                // Конфликт по ИМЕНИ (проверяем, что введенное имя совпадает с именем конфликтующего пользователя)
                 if (isUsernameChanged && conflictUser.getUsername().equalsIgnoreCase(dto.getNewUsername()) && !userId.equals(conflictUser.getId())) {
                     throw new DuplicateKeyException("Имя пользователя уже занято.");
                 }
@@ -155,10 +161,10 @@ public class UserServiceImpl  implements UserService {
 
             }
             if(isUsernameChanged){user.setUsername(dto.getNewUsername());}
-            if(isEmailChanged){user.setEmail(dto.getNewEmail());}
+            if(isEmailChanged){verificationService.sendVerificationCode(userId, VerificationTokenType.EMAIL_CHANGE, dto.getNewEmail());}
         }
         userRepository.save(user);
-        return convertToDto(user) ;
+        return findProfileById(userId, userId) ;
     }
 
     @Override
@@ -174,8 +180,9 @@ public class UserServiceImpl  implements UserService {
         userRepository.save(user);
     }
     @Override
-    public UserResponseDto uploadUserAvatar( MultipartFile file, Principal principal){
-        var username = principal.getName();
+    public ProfileResponseDto uploadUserAvatar( MultipartFile file, UserPrincipal principal){
+        var username = principal.getUsername();
+        var userId = principal.getId();
         var user = userRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(()->new EntityNotFoundException("Пользователь с именем: " + username + " не найден"));
         String oldAvatarUrl = user.getAvatarUrl();
@@ -198,7 +205,7 @@ public class UserServiceImpl  implements UserService {
             if (oldAvatarUrl!= null) {
                 storageService.deleteFile(oldAvatarUrl);
             }
-            return convertToDto(finalEntity);
+            return findProfileById(userId, userId);
         } catch (Exception e) {
             if (newAvatarUrl != null) {
                 storageService.deleteFile(newAvatarUrl);
@@ -221,29 +228,31 @@ public class UserServiceImpl  implements UserService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String input) throws UsernameNotFoundException {
-        AppUserEntity user;
-
-        // 1. Пробуем найти по ID (если пришла строка из цифр) или по Username
-        if (input.matches("\\d+")) {
-            user = userRepository.findById(Long.parseLong(input))
-                    .orElseThrow(() -> new UsernameNotFoundException("Пользователь с ID " + input + " не найден"));
-        } else {
-            user = userRepository.findByUsernameIgnoreCase(input)
-                    .orElseThrow(() -> new UsernameNotFoundException("Пользователь с именем " + input + " не найден"));
+        AppUserEntity user = userRepository.findByIdentifier(input)
+                .orElseThrow(() -> new UsernameNotFoundException("Пользователь не найден: " + input));
+        if (user.isLocked()) {
+            throw new LockedException("Ваш аккаунт заблокирован. Пожалуйста, свяжитесь с поддержкой.");
         }
 
-        List<SimpleGrantedAuthority> authorities = user.getRole().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName().name()))
-                .collect(Collectors.toList());
-
-
-        return new UserPrincipal(
-                user.getId(),
-                user.getUsername(),
-                user.getPasswordHash(),
-                authorities
-        );
+        if (!user.isActive()) {
+            throw new DisabledException("Аккаунт не активирован. Проверьте вашу почту.");
+        }
+        return UserPrincipal.create(user);
     }
+
+    // Выносим вспомогательную логику в приватный метод для читаемости
+    private Optional<AppUserEntity> tryFindById(String input) {
+        if (input != null && input.matches("\\d+")) {
+            try {
+                return userRepository.findById(Long.parseLong(input));
+            } catch (NumberFormatException e) {
+                return Optional.empty();
+            }
+        }
+        return Optional.empty();
+    }
+
+
 
 
     public void handleFailedLogin(String username) {
@@ -251,7 +260,7 @@ public class UserServiceImpl  implements UserService {
                 .orElseThrow(() -> new UsernameNotFoundException(username));
 
         // Снимаем блокировку, если время истекло, но флаг isLocked не сброшен (на всякий случай)
-        if (user.getIsLocked() != null && user.getIsLocked() && user.getLockTime().isBefore(OffsetDateTime.now())) {
+        if (user.isLocked() && user.getLockTime().isBefore(OffsetDateTime.now())) {
             resetFailedAttempts(user); // Сбрасываем счетчик и флаги
         }
         int newCount = user.getFailedAttemptCount() + 1;
@@ -260,7 +269,7 @@ public class UserServiceImpl  implements UserService {
         if (newCount >= 3) {
             long minutesToLock = getLockDuration(newCount);
 
-            user.setIsLocked(true);
+            user.setLocked(true);
             user.setLockTime(OffsetDateTime.now().plusMinutes(minutesToLock));
         }
 
@@ -277,7 +286,7 @@ public class UserServiceImpl  implements UserService {
 
     // Метод для сброса счетчиков после успешного входа или истечения времени
     public void resetFailedAttempts(AppUserEntity user) {
-        user.setIsLocked(false);
+        user.setLocked(false);
         user.setLockTime(null);
     }
 
@@ -287,24 +296,100 @@ public class UserServiceImpl  implements UserService {
                 .orElseThrow(() -> new UsernameNotFoundException(username));
 
         // Если счетчик равен 0 и isLocked = false, ничего не делаем.
-        if (user.getFailedAttemptCount() > 0 || user.getIsLocked()) {
+        if (user.getFailedAttemptCount() > 0 || user.isLocked()) {
             user.setFailedAttemptCount(0);
-            user.setIsLocked(false);
+            user.setLocked(false);
             user.setLockTime(null);
             userRepository.save(user);
         }
     }
 
+    @Transactional
+    @Override
+    public void forgotPassword(Long currentUserId, ResetPasswordRequestDto dto) {
+        if(dto.getNewPassword() == null || dto.getNewPassword().isBlank())throw new IllegalArgumentException("не ввел новый пароль");
+        verificationService.sendVerificationCode(currentUserId,VerificationTokenType.PASSWORD_RESET,passwordEncoder.encode(dto.getNewPassword()));
+    }
+    @Transactional
+    @Override
+    public void verifyCode(VerificationRequestDto dto) {
+        verificationService.verifyCode(dto.getUserId(),dto.getCode() , dto.getType());
+    }
+
+    @Transactional
+    @Override
+    public void updateEmail(Long userId, EmailRequestDto dto) {
+        verificationService.sendVerificationCode(userId,VerificationTokenType.EMAIL_CHANGE, dto.getEmail());
+    }
+
+    @Transactional(readOnly = true)
     @Override
     public AppUserEntity getReference(Long id) {
         if (!userRepository.existsById(id))throw new EntityNotFoundException("Пользователь с Id:"+id+" не найден");
         return entityManager.getReference(AppUserEntity.class, id);
     }
-
+    @Transactional(readOnly = true)
     @Override
     public AppUserEntity getReferenceByUsername(String username) {
         Long userId = userRepository.findIdByUsername(username)
                 .orElseThrow(()->new EntityNotFoundException("Пользователь с именем: " + username + " не найден"));
         return entityManager.getReference(AppUserEntity.class, userId);
     }
+    @Transactional(readOnly = true)
+    @Override
+    public AppUserEntity getEntityIsActiveAndIsLockedFalse(Long id) {
+        return userRepository.findByIdAndIsActiveTrueAndIsLockedFalse(id)
+                .orElseThrow(()->new EntityNotFoundException("Пользователь с Id: " + id + " не найден"));
+    }
+    @Transactional(readOnly = true)
+    @Override
+    public AppUserEntity getEntityByUsername(String username) {
+        return userRepository.findByUsernameIgnoreCase(username)
+                .orElseThrow(()->new EntityNotFoundException("Пользователь с именем: " + username + " не найден"));
+    }
+    @Transactional(readOnly = true)
+    @Override
+    public AppUserEntity getEntityByEmail(String email) {
+        return userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(()->new EntityNotFoundException("Пользователь с почтой: " + email + " не найден"));
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public UserSettingsResponseDto getUserSettings(Long userId){
+        var setting = userSettingsRepository.findById(userId)
+                .orElseThrow(()->new EntityNotFoundException("Настройки пользователь с Id: " + userId + " не найден"));
+        return new UserSettingsResponseDto(
+                setting.getCanSendMessage(),
+                setting.getLibraryPrivacy()
+        );
+    }
+
+    @Transactional
+    @Override
+    public UserSettingsResponseDto updateUserSettings(Long userId, UserSettingsRequestDto dto){
+        var setting = userSettingsRepository.findById(userId)
+                .orElseThrow(()->new EntityNotFoundException("Настройки пользователь с Id: " + userId + " не найден"));
+
+        if (dto.getCanSendMessage() != null && setting.getCanSendMessage() != dto.getCanSendMessage()) {
+            setting.setCanSendMessage(dto.getCanSendMessage());
+        }
+        if (dto.getLibraryPrivacy() != null && setting.getLibraryPrivacy() != dto.getLibraryPrivacy()) {
+            setting.setLibraryPrivacy(dto.getLibraryPrivacy());
+        }
+        var finalEntity = userSettingsRepository.save(setting);
+        return new UserSettingsResponseDto(
+                finalEntity.getCanSendMessage(),
+                finalEntity.getLibraryPrivacy()
+        );
+    }
+    @Transactional(readOnly = true)
+    @Override
+    public UserSettingsEntity getUserSettingsEntity(Long userId){
+        return userSettingsRepository.findById(userId)
+                .orElseThrow(()->new EntityNotFoundException("Настройки пользователь с Id: " + userId + " не найден"));
+    }
+
+
+
 }

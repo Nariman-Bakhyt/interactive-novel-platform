@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 import project.interactivenovelplatform.entity.Novel;
 import project.interactivenovelplatform.entity.NovelEntity;
 
@@ -14,16 +15,18 @@ import java.util.Optional;
 
 public interface NovelRepository extends JpaRepository<NovelEntity,Long>, JpaSpecificationExecutor<NovelEntity> {
     @Modifying
-    @Query("UPDATE NovelEntity n SET n.viewCount = n.viewCount + 1 WHERE n.id = :novelId")
-    int incrementViewCount(@Param("novelId") Long novelId);
+    @Transactional
+    @Query("UPDATE NovelEntity n SET n.viewCount = n.viewCount + :delta WHERE n.id = :novelId")
+    void incrementViewCount(@Param("novelId") Long novelId, @Param("delta") Long delta);
 
     Page<NovelEntity> findByStatusNotIn(Collection<Novel> status, Pageable pageable);
+    @EntityGraph(attributePaths = {"author"})
     Page<NovelEntity>  findAllByStatusNotInOrderByPublicationDateDesc (Collection<Novel> status, Pageable pageable);
     Page<NovelEntity> findAllByAuthor_Id(Long id, Pageable pageable);
     Optional<NovelEntity> findByAuthor_IdAndId(Long authorId, Long id);
-
     Page<NovelEntity> findAll(Specification<NovelEntity> spec, Pageable pageable);
 
     @EntityGraph(attributePaths = {"tags", "genres", "author"})
     List<NovelEntity> findAllByIdIn(Collection<Long> ids);
+
 }

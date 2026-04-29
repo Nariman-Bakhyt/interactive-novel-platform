@@ -50,10 +50,13 @@ public class AppUserEntity implements UserDetails {
     private Integer failedAttemptCount = 0; // Счетчик неудачных попыток
 
     @Column(name = "is_locked")
-    private Boolean isLocked = false;       // Флаг полной блокировки
+    private boolean isLocked = false;       // Флаг полной блокировки
 
     @Column(name = "lock_time")
     private OffsetDateTime  lockTime;         // Время, когда блокировка будет снята
+
+    @Column(name = "is_active")
+    private boolean isActive = false;
 
     public AppUserEntity(String username, String passwordHash, String email, Set<RoleEntity> role ) {
         this.role = role;

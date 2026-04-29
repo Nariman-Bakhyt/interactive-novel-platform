@@ -11,7 +11,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class LoginRequestDto {
     @NotBlank
-    @Size(min = 4, max = 50, message = "Логин должен содержать от 4 до 50 символов.")
     private String username;
     @NotBlank
     @Size(min = 8,message = "Пароль должен быть не менее 8 символов.")

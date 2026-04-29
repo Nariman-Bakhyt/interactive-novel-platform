@@ -1,6 +1,5 @@
 package project.interactivenovelplatform.service;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Set;

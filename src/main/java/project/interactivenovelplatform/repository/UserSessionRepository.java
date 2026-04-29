@@ -18,4 +18,5 @@ public interface UserSessionRepository extends JpaRepository<UserSessionEntity,L
     @Query("DELETE FROM UserSessionEntity s WHERE s.expiresAt < :now")
     void deleteAllExpired(OffsetDateTime now);
 
+    Optional<UserSessionEntity> findByUserIdAndUserAgent(Long userId, String userAgent);
 }

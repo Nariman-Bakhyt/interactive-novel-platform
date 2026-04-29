@@ -1,13 +1,12 @@
 package project.interactivenovelplatform.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -19,10 +18,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import project.interactivenovelplatform.security.JwtAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import project.interactivenovelplatform.security.JwtAuthenticationFilter;
+
 import java.util.Arrays;
 
 
@@ -34,6 +34,32 @@ public class WebSecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsService userDetailsService;
+
+    private final GuestIdFilter guestIdFilter;
+    private final RateLimitFilter rateLimitFilter;
+
+    @Bean
+    public FilterRegistrationBean<GuestIdFilter> registrationGuest(GuestIdFilter filter) {
+        FilterRegistrationBean<GuestIdFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false); // Отключаем автоматическую регистрацию в Tomcat
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<RateLimitFilter> registrationRate(RateLimitFilter filter) {
+        FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false); // Отключаем автоматическую регистрацию в Tomcat
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> registrationJwt(JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false); // Тоже отключаем, чтобы не было двойного вызова
+        return registration;
+    }
+
+
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -89,8 +115,15 @@ public class WebSecurityConfig {
                 )
 
 //                .authenticationProvider(authenticationProvider(passwordEncoder))
+                // 1. Сначала проверяем JWT. Если он есть и валиден — пользователь авторизован.
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                // 2. Затем идет GuestIdFilter.
+                // Внутри него мы добавим проверку: если пользователь уже авторизован, просто идем дальше.
+                .addFilterAfter(guestIdFilter, JwtAuthenticationFilter.class)
+
+                // 3. Лимиты проверяем в самом конце, когда уже точно знаем либо userId, либо guestId.
+                .addFilterAfter(rateLimitFilter, GuestIdFilter.class);
 
         return http.build();
     }
