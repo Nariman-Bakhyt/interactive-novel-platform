@@ -23,7 +23,7 @@
       <div v-for="novel in novels" :key="novel.id" class="novel-card">
         <div class="cover-wrapper">
           <img
-            :src="novel.coverUrl || 'http://127.0.0.1:9000/interactive-novel-assets/Cover/default-cover.png'"
+            :src="novel.coverUrl || 'http://127.0.0.1:9000/interactive-novel-assets/covers/default-cover.png'"
             alt="Обложка"
             class="card-cover"
           >

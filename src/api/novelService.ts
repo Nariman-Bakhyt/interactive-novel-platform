@@ -7,19 +7,38 @@ import type {
   TagOrGenreResponseDto
 } from "@/types/novel";
 import axios, { type AxiosResponse } from "axios";
+import type {UserResponseDto} from "@/types/auth.ts";
 
-export async function createNovel(data: NovelRequestDto): Promise<NovelResponseDto> {
-  const response = await apiClient.post('/novels', data);
-  return response.data
-}
+export const createNovel = async (payload: NovelRequestDto) => {
+  const formData = new FormData();
+
+  formData.append('title', payload.title);
+  formData.append('description', payload.description);
+  formData.append('status', payload.status);
+
+  if (payload.coverImage) {
+    formData.append('coverImage', payload.coverImage); // Важно: имя 'file' для Java
+  }
+
+  payload.genres.forEach(id => formData.append('genres', id.toString()));
+  payload.tags.forEach(id => formData.append('tags', id.toString()));
+
+  const response = await apiClient.post('/novels', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return response.data;
+};
+
 export async function updateNovel(data: NovelUpdateRequestDto, novelId:number): Promise<NovelResponseDto> {
   const response = await apiClient.put(`/novels/${novelId}`, data);
   return response.data
 }
 
-export async function uploadNovelCover(novelId: number, file: File): Promise<NovelResponseDto> {
+export async function uploadNovelCover(novelId: number, file: File|null): Promise<NovelResponseDto> {
   const formData = new FormData();
-  formData.append("file", file);
+  if (file) {
+    formData.append("file", file);
+  }
   const response: AxiosResponse<NovelResponseDto> = await apiClient.post(
     `/novels/${novelId}/cover`,
     formData,
@@ -35,6 +54,7 @@ export async function uploadNovelCover(novelId: number, file: File): Promise<Nov
 export async function getNovelById(novelId: number):Promise<NovelAndChapterShortResponseDto> {
   const response: AxiosResponse<NovelAndChapterShortResponseDto> = await apiClient.get<NovelAndChapterShortResponseDto>(
     `/novels/public/${novelId}`);
+
   return response.data;
 }
 export async function getAllNovels(page: number=0, size: number = 20): Promise<any> {
@@ -82,7 +102,13 @@ export async function getChapter(novelId: number,chapterId: number): Promise<Cha
   const response = await apiClient.get(`/novels/public/${novelId}/chapter/${chapterId}`);
   return response.data;
 }
-export const searchNovels = async (dto: NovelSearchRequestDto, page: number, size: number) => {
+export const findAllNovels = async (dto: NovelSearchRequestDto, page: number, size: number) => {
   const response = await apiClient.post(`/novels/public?page=${page}&size=${size}`, dto);
   return response.data;
 };
+export async function searchNovels(title:string , page:number, size:number ):Promise<any> {
+  const response = await apiClient.get('/novels/public/search', {
+    params: {title, page, size}
+  })
+  return response.data;
+}

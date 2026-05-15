@@ -3,6 +3,9 @@ import {useAuthStore} from "@/api/auth.ts";
 import HomeView from "@/views/HomeView.vue";
 import MainLayout from "@/views/MainLayout.vue";
 
+
+
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   scrollBehavior(to, from, savedPosition) {
@@ -25,10 +28,10 @@ const router = createRouter({
           component: HomeView ,
         },
         {
-          path:'profile',
-          name:'profile',
-          component: ()=>import('@/views/ProfileView.vue'),
-          meta:{ requiresAuth: true },
+          path: '/profile/:id?', // Знак вопроса означает, что id не обязателен
+          name: 'profile',
+          component: () => import('@/views/ProfileView.vue'),
+          meta: { requiresAuth: true },
         },
         {
           path: '/my-novels',
@@ -79,6 +82,20 @@ const router = createRouter({
           path: '/novels',
           name: 'CatalogView',
           component: () => import('@/views/novels/CatalogView.vue'),
+        },
+        {
+          path: '/settings',
+          name: 'SettingsView',
+          component: () => import('@/views/SettingsView.vue')
+        },
+        {
+          path: '/social',
+          name: 'SocialConnections',
+          component: () => import('@/views/SocialView.vue'), // Ленивая загрузка страницы
+          meta: {
+            requiresAuth: true, // Страница только для залогиненных
+            title: 'Мои связи'
+          }
         }
 
       ]

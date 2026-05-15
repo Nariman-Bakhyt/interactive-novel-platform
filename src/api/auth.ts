@@ -1,35 +1,44 @@
 import {defineStore} from "pinia";
-import {ref,computed} from "vue";
+import {computed, ref} from "vue";
 import apiClient from "./axios.ts";
-import type {LoginRequest, AuthResponse, RegistrationRequestDto} from "@/types/auth.ts";
-import type {UserResponseDto} from "@/types/auth.ts";
-import router from "@/router";
-import {type AxiosError, isAxiosError} from "axios";
+import {
+  type AuthResponse, type EmailRequest,
+  type LoginRequest, type ProfileResponseDto,
+  type RegistrationRequestDto, type ResetPasswordRequest,
+  type UserResponseDto, type VerificationRequest, VerificationTokenType, type VerifyLoginCodeRequest
+} from "@/types/auth.ts";
+import type {UserSettingsRequestDto, UserSettingsResponseDto} from "@/types/user.ts";
+
 
 export const useAuthStore = defineStore("auth", ()=> {
   const token = ref<String|null>(localStorage.getItem('jwt_token'));
   const user = ref<string|null>(localStorage.getItem('username'));
   const isAuthenticated = computed(()=> !!token.value);
-  const userDetails = ref<UserResponseDto | null>(null);
+  const userDetails = ref<ProfileResponseDto | null>(null);
   const avatarTimestamp = ref<number>(Date.now());
+  const userSettings = ref<UserSettingsResponseDto | null>(null);
+  const showAuthModal = ref(false);
+  const isInitialized = ref(false);
+  apiClient.defaults.withCredentials = true;
 
-
-  if (token.value) {
-    // Убедитесь, что токен приводится к строке, если используется String|null
-    apiClient.defaults.headers.common["Authorization"] = `Bearer ${token.value}`;
+  async function refreshToken() {
+    try {
+      const response = await apiClient.post<AuthResponse>('/auth/refresh');
+      const { accessToken } = response.data;
+      token.value = accessToken;
+      localStorage.setItem('jwt_token', accessToken);
+      return accessToken;
+    } catch (error) {
+      await logout();
+      throw error;
+    }
   }
   async function login(credentials:LoginRequest){
     try {
       const response = await apiClient.post<AuthResponse>('/auth/login',credentials);
-      const {accessToken, username } = response.data ;
-      token.value = accessToken;
-      user.value = username;
-      localStorage.setItem('jwt_token', accessToken);
-      localStorage.setItem('username', username);
-      if(token.value){
-        apiClient.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
-      }
-      fetchUserDetails()
+      await setAccessToken(response.data.accessToken,response.data.username);
+      await fetchUserDetails();
+      await fetchUserSettings();
       return true;
     }
     catch(error){
@@ -38,20 +47,70 @@ export const useAuthStore = defineStore("auth", ()=> {
     }
   }
 
-  function logout(){
-    const response =  apiClient.post<void>('/auth/logout');
-    token.value = null;
-    user.value = null;
-    localStorage.removeItem('jwt_token');
-    localStorage.removeItem('username');
-    delete apiClient.defaults.headers.common['Authorization'];
+  async function requestLoginByEmail(data: EmailRequest): Promise<string> {
+    const response = await apiClient.post<string>('/auth/login/email', data);
+    return response.data;
+  }
+
+  async function setAccessToken(accessToken: string, username: string): Promise<void> {
+    token.value = accessToken;
+    user.value = username;
+    localStorage.setItem('jwt_token', accessToken);
+    localStorage.setItem('username', username);
+  }
+
+  async function verifyLoginCode(data: VerifyLoginCodeRequest): Promise<boolean> {
+    const response = await apiClient.post<AuthResponse>('/auth/login/verify', data);
+    await setAccessToken(response.data.accessToken,response.data.username);
+    await fetchUserDetails();
+    await fetchUserSettings();
+    return true;
+  }
+
+  async function verifyCode(data: VerificationRequest): Promise<string> {
+    const endpoint = data.type === VerificationTokenType.REGISTRATION_CONFIRMATION
+      ? '/auth/register/verify-code'
+      : '/user/verify-code';
+
+    const response = await apiClient.post<string>(endpoint, data);
+    return response.data;
+  }
+
+  async function requestPasswordReset(data: ResetPasswordRequest): Promise<string> {
+    const response = await apiClient.post<string>('/user/password/reset-request', data);
+    return response.data;
+  }
+
+    // Запрос на смену почты (внутри профиля)
+    async function requestEmailUpdate(data: EmailRequest): Promise<string> {
+    const response = await apiClient.post<string>('/user/email/update-request', data);
+    return response.data;
   }
 
 
-  async function register(credentials:RegistrationRequestDto){
+  async function logout() {
     try {
-      const response = await apiClient.post<void>('/auth/register',credentials);
-      return true;
+      await apiClient.post('/auth/logout');
+    } catch (e) {
+      console.error("Ошибка при логауте на сервере", e);
+    } finally {
+      token.value = null;
+      user.value = null;
+      userDetails.value = null;
+      userSettings.value = null;
+
+      localStorage.removeItem('jwt_token');
+      localStorage.removeItem('username');
+      isInitialized.value = false;
+      showAuthModal.value = false;
+    }
+  }
+
+
+  async function register(credentials:RegistrationRequestDto):Promise<number> {
+    try {
+      const response = await apiClient.post<number>('/auth/register',credentials);
+      return response.data;
     }
     catch(error){
       console.log('Ошибка регистрации:',error);
@@ -60,45 +119,78 @@ export const useAuthStore = defineStore("auth", ()=> {
   }
 
   async function fetchUserDetails() {
-    const token = localStorage.getItem('jwt_token');
-    if (!token || token === 'null') {
+    const currentToken = localStorage.getItem('jwt_token');
+    if (!currentToken || currentToken === 'null') {
       console.log('Запрос профиля отменен: пользователь не авторизован');
-      userDetails.value = null; // Очищаем данные, если были
+      userDetails.value = null;
       return null;
     }
     try {
-      const response = await apiClient.get<UserResponseDto>('/users/me');
-
-      userDetails.value = response.data; // ⬅️ Сохраняем полные детали
-
+      const response = await apiClient.get<ProfileResponseDto>('/users/me');
+      userDetails.value = response.data;
       return response.data;
-    }catch (e) {
-      if (isAxiosError(e)) {
-        const error = e as AxiosError;
-        console.error('Ошибка профиля, статус:', error.response?.status);
+    } catch (e) {
+      console.error('Не удалось загрузить профиль:', e);
+      throw e;
+    }
+    finally {
+      isInitialized.value = true;
+    }
+  }
 
-        // Обработка 401 (Если токен истек)
-        if (error.response && error.response.status === 401) {
-          logout();
-          router.push('/');
-          return; // Прекращаем выполнение функции после разлогина
-        }
-      } else {
-        // Ошибка, не связанная с Axios (например, сетевая ошибка или CORS)
-        console.error('Неизвестная ошибка профиля:', e);
-      }
-
-      // Выбросим ошибку, чтобы компонент ProfileView смог показать сообщение "Не удалось загрузить данные"
+  async function fetchUserDetailsById(id:number) {
+    const currentToken = localStorage.getItem('jwt_token');
+    if (!currentToken || currentToken === 'null') {
+      console.log('Запрос профиля отменен: пользователь не авторизован');
+      return null;
+    }
+    try {
+      const response = await apiClient.get<ProfileResponseDto>(`/users/profile/${id}`);
+      return response.data;
+    } catch (e) {
+      console.error('Не удалось загрузить профиль:', e);
       throw e;
     }
   }
-  function setDetails(details: UserResponseDto) {
+
+  async function fetchUserSettings() {
+    if (!isAuthenticated.value) return null;
+    try {
+      // Предполагаю, что базовый URL в контроллере /users
+      const response = await apiClient.get<UserSettingsResponseDto>('/users/setting');
+      userSettings.value = response.data;
+      return response.data;
+    } catch (e) {
+      console.error('Ошибка при получении настроек:', e);
+      throw e;
+    }
+  }
+
+  // Обновление настроек (PATCH)
+  async function updateUserSettings(dto: UserSettingsRequestDto) {
+    try {
+      const response = await apiClient.patch<UserSettingsResponseDto>('/users/setting', dto);
+      // Сразу обновляем локальный стейт, чтобы UI перерисовался без перезагрузки
+      userSettings.value = response.data;
+      return response.data;
+    } catch (e) {
+      console.error('Ошибка при обновлении настроек:', e);
+      throw e;
+    }
+  }
+
+  function setDetails(details: ProfileResponseDto) {
     avatarTimestamp.value = Date.now();
-    userDetails.value = details;
+    userDetails.value = details ;
+
     user.value = details.username;
     localStorage.setItem('username', details.username);
   }
 
-  return {token, user, isAuthenticated,userDetails,avatarTimestamp,login,logout,register,fetchUserDetails,setDetails};
-});
+  return {
+    token, user, isAuthenticated, userDetails, avatarTimestamp, userSettings, showAuthModal,isInitialized
+    ,requestLoginByEmail,verifyLoginCode,verifyCode,requestPasswordReset,requestEmailUpdate,
+    login, logout, register, fetchUserDetails, fetchUserSettings, updateUserSettings,
+    setDetails, refreshToken,fetchUserDetailsById
+  };});
 

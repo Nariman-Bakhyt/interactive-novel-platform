@@ -7,7 +7,7 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "test:unit": "vitest",
@@ -20,6 +20,7 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "@fingerprintjs/fingerprintjs": "^5.2.0",
     "@stomp/stompjs": "^7.3.0",
     "axios": "^1.13.2",
     "pinia": "^3.0.4",

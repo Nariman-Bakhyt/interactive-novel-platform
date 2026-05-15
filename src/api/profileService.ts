@@ -1,14 +1,17 @@
 import apiClient from "./axios.ts";
-import type {UserResponseDto} from "@/types/auth.ts";
+import type {ProfileResponseDto, UserResponseDto} from "@/types/auth.ts";
 import type {UserUpdateRequestDto, ChangePasswordRequestDto} from "@/types/user.ts";
 import type {AxiosError, AxiosResponse} from "axios";
+import type {PagedModel} from "@/types/PagedModel.ts";
 
-export async function uploadAvatar(file: File):Promise<UserResponseDto> {
+export async function uploadAvatar(file: File|null):Promise<ProfileResponseDto> {
 
   const formData = new FormData();
-  formData.append("file", file);
+  if (file) {
+    formData.append("file", file);
+  }
   try {
-    const response: AxiosResponse<UserResponseDto> = await apiClient.post(
+    const response: AxiosResponse<ProfileResponseDto> = await apiClient.post(
       '/users/me/avatar',
       formData,
       {
@@ -37,8 +40,8 @@ export async function uploadAvatar(file: File):Promise<UserResponseDto> {
 }
 
 
-export async function updateProfileApi(dto: UserUpdateRequestDto): Promise<UserResponseDto> {
-  const response: AxiosResponse<UserResponseDto> = await apiClient.post(
+export async function updateProfileApi(dto: UserUpdateRequestDto): Promise<ProfileResponseDto> {
+  const response: AxiosResponse<ProfileResponseDto> = await apiClient.post(
     '/users/me/update',
     dto
   );
@@ -51,4 +54,10 @@ export async function changePasswordApi(dto: ChangePasswordRequestDto): Promise<
     dto
   );
   return true;
+}
+export async function searchUsers(username:string , page:number, size:number ):Promise<PagedModel<UserResponseDto>> {
+  const response = await apiClient.get('/users/public/search', {
+    params: {username, page, size}
+  })
+  return response.data;
 }

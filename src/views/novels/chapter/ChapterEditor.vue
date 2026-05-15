@@ -1,24 +1,34 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick ,watch} from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import {computed, nextTick, onMounted, ref, watch} from 'vue';
+import {useRouter} from 'vue-router';
+import {createChapter, getChapter, updateChapter} from '@/api/novelService';
+import {getComments} from "@/api/commentService.ts";
 import {
-  createChapter,
-  updateChapter,
-  getChapter
-} from '@/api/novelService';
-import { deleteComment, getComments } from "@/api/commentService.ts";
-import { activeSubscriptions, sendMessage, subscribeToTopic, unsubscribeFromTopic } from "@/api/stompService.ts";
-import type { ChapterRequestDto } from '@/types/novel';
-import type { CommentResponseDto } from "@/types/comment.ts";
+  activeSubscriptions,
+  sendMessage,
+  subscribeToTopic,
+  unsubscribeFromTopic
+} from "@/api/stompService.ts";
+import type {ChapterRequestDto} from '@/types/novel';
+import type {CommentResponseDto} from "@/types/comment.ts";
+import {useCommentStore} from "@/components/chat/commentStore.ts";
 
-const route = useRoute();
+
+const props = defineProps<{ novelId: string | number; chapterId?: string | number; }>();
 const router = useRouter();
-const props = defineProps<{
-  novelId: string | number;
-  chapterId?: string | number;
-}>();
+const chatStore = useCommentStore(); // Используем тот же стор, что и в читалке
 
+// Состояние формы редактора
+const form = ref<ChapterRequestDto>({ title: '', blocks: [] });
+const activeBlockIndex = ref<number | null>(null);
+const showMenuIndex = ref<number | null>(null);
 
+// Открытие чата (используем МОЩНУЮ логику стора)
+const toggleComments = (blockId: number | null) => {
+  if (!blockId) return;
+  // Просто вызываем openChat из стора — он сам всё подпишет и загрузит
+  chatStore.openChat(blockId, 'BLOCK');
+};
 
 
 const nId = computed(() => Number(props.novelId));
@@ -26,21 +36,13 @@ const cId = computed(() => props.chapterId ? Number(props.chapterId) : null);
 const isEditMode = computed(() => !!cId.value);
 const isLoading = ref(false);
 const isSaving = ref(false);
-const activeBlockIndex = ref<number | null>(null);
-const showMenuIndex = ref<number | null>(null);
 const draggedItemIndex = ref<number | null>(null);
-const form = ref<ChapterRequestDto>({
-  title: '',
-  blocks: []
-});
+
 
 const activeCommentsBlockId = ref<number | null>(null);
 const comments = ref<CommentResponseDto[]>([]);
 const newCommentText = ref('');
-const commentsListRef = ref<HTMLElement | null>(null);
-const isScrolling = ref(false);
-let scrollTimeout: number | null = null;
-
+const commentsListRef = chatStore.commentsListRef;
 const contextMenu = ref({
   show: false,
   x: 0,
@@ -48,25 +50,6 @@ const contextMenu = ref({
   targetId: null as number | null
 });
 
-const groupedComments = computed(() => {
-  const groups: Record<string, CommentResponseDto[]> = {};
-  comments.value.forEach(comment => {
-    const date = new Date(comment.timestamp).toLocaleDateString();
-    if (!groups[date]) groups[date] = [];
-    groups[date].push(comment);
-  });
-  return groups;
-});
-
-const isToday = (dateStr: string) => new Date().toLocaleDateString() === dateStr;
-const formatTime = (timestamp: string) => new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-const scrollToBottom = async () => {
-  await nextTick();
-  if (commentsListRef.value) {
-    commentsListRef.value.scrollTop = commentsListRef.value.scrollHeight;
-  }
-};
 const unsubscribeFromCurrentBlock = () => {
   if (activeCommentsBlockId.value !== null) {
     const block = form.value.blocks[activeCommentsBlockId.value];
@@ -78,55 +61,35 @@ const unsubscribeFromCurrentBlock = () => {
   }
 };
 
-const toggleComments = async (index: number, blockId: number | null) => {
-  if (!blockId) return;
+const submitComment = async () => {
+  if (!newCommentText.value.trim()) return;
 
-  if (activeCommentsBlockId.value === index) {
-    unsubscribeFromCurrentBlock();
-    activeCommentsBlockId.value = null;
+  await chatStore.send({
+    content: newCommentText.value
+  });
+
+  newCommentText.value = '';
+  await chatStore.scrollToBottom();
+};
+const handleDelete = async () => {
+  if (!contextMenu.value.targetId) return;
+  try {
+    await chatStore.removeComment(contextMenu.value.targetId);
+    contextMenu.value.show = false;
+  } catch (error) {
+    alert("Ошибка удаления");
+  }
+};
+
+const initStickyObserver = async () => {
+  await nextTick(); // Ждем, пока v-if отрисует сайдбар
+
+  const container = chatStore.commentsListRef; // Берем напрямую из стора
+  if (!container) {
+    console.warn("Container not found for observer");
     return;
   }
 
-  if (activeCommentsBlockId.value !== null) unsubscribeFromCurrentBlock();
-
-  activeCommentsBlockId.value = index;
-  const wsTopic = `/topic/block.${blockId}`;
-
-  if (!activeSubscriptions.has(wsTopic)) {
-    subscribeToTopic<any>(wsTopic, (newComment) => {
-      if (newComment.deleted) {
-        comments.value = comments.value.filter(c => c.id !== newComment.id);
-      } else if (!comments.value.some(c => c.id === newComment.id)) {
-        comments.value.push(newComment);
-        scrollToBottom();
-      }
-    });
-  }
-
-  try {
-    const history = await getComments({ blockId });
-    comments.value = history.content;
-    scrollToBottom();
-  } catch (error) {
-    console.error("Ошибка загрузки истории:", error);
-  }
-};
-
-const submitComment = () => {
-  if (!newCommentText.value.trim() || activeCommentsBlockId.value === null) return;
-  const currentBlock = form.value.blocks[activeCommentsBlockId.value];
-  if (!currentBlock?.id) return;
-
-  sendMessage('/app/comment.send', {
-    blockId: currentBlock.id,
-    content: newCommentText.value
-  });
-  newCommentText.value = '';
-};
-
-const initStickyObserver = () => {
-  const container = commentsListRef.value;
-  if (!container) return;
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       const header = entry.target.nextElementSibling;
@@ -134,32 +97,8 @@ const initStickyObserver = () => {
       if (badge) badge.toggleAttribute('data-in-text', entry.isIntersecting);
     });
   }, { root: container, threshold: [0, 1] });
+
   container.querySelectorAll('.sticky-sentinel').forEach((el) => observer.observe(el));
-};
-
-const handleScroll = () => {
-  isScrolling.value = true;
-  initStickyObserver();
-  if (scrollTimeout) clearTimeout(scrollTimeout);
-  scrollTimeout = window.setTimeout(() => { isScrolling.value = false; }, 1500);
-};
-
-// --- УДАЛЕНИЕ ---
-const openContextMenu = (e: MouseEvent, id: number) => {
-  e.preventDefault();
-  contextMenu.value = { show: true, x: e.clientX, y: e.clientY, targetId: id };
-  const close = () => { contextMenu.value.show = false; document.removeEventListener('click', close); };
-  setTimeout(() => document.addEventListener('click', close), 50);
-};
-
-const handleDelete = async () => {
-  if (!contextMenu.value.targetId) return;
-  try {
-    await deleteComment(contextMenu.value.targetId);
-    contextMenu.value.show = false;
-  } catch (error) {
-    alert("Ошибка удаления");
-  }
 };
 
 onMounted(async () => {
@@ -235,16 +174,7 @@ const handleEnter = (index: number, event: KeyboardEvent) => {
     (allTextareas[index + 1] as HTMLElement)?.focus();
   });
 };
-const handleKeydown = (e: KeyboardEvent) => {
-  if (e.shiftKey) return; // Shift + Enter — перенос строки
 
-  if (e.key === 'Enter') {
-    if (window.innerWidth > 400) { // На десктопе отправляем по Enter
-      e.preventDefault();
-      submitComment();
-    }
-  }
-};
 const handleBackspace = (index: number, event: KeyboardEvent) => {
   const block = form.value.blocks[index];
   if (block && block.content === '' && form.value.blocks.length > 1) {
@@ -385,7 +315,7 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
                 v-if="block.id"
                 class="comment-trigger-small"
                 :class="{ 'is-active': activeCommentsBlockId === index }"
-                @click="toggleComments(index, block.id)"
+                @click="toggleComments(block.id)"
                 title="Обсудить блок"
               >
                 💬
@@ -404,67 +334,6 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
         </div>
       </div>
     </div>
-    <Transition name="slide">
-      <div v-if="activeCommentsBlockId !== null" class="comments-sidebar">
-        <div class="sidebar-header">
-          <h3>Обсуждение блока</h3>
-          <button class="close-btn" @click="activeCommentsBlockId = null">✕</button>
-        </div>
-
-        <div class="comments-list" ref="commentsListRef" @scroll = "handleScroll">
-          <div v-for="(group, date) in groupedComments" :key="date" class="comment-group">
-            <div class="sticky-sentinel"></div>
-            <div class="date-sticky-header" :class="{ 'is-scrolling-active': isScrolling }">
-              <span class="date-badge">{{ isToday(date) ? 'Сегодня' : date }}</span>
-            </div>
-
-            <div
-              v-for="comment in group"
-              :key="comment.id"
-              class="comment-item"
-              @contextmenu="(e) => openContextMenu(e, comment.id)"
-            >
-              <div class="comment-bubble">
-                <div class="comment-item-header">
-                  <span class="user-badge">{{ comment.username }}</span>
-                </div>
-                <p class="comment-body">{{ comment.content }}</p>
-                <div class="comment-footer">
-                  <span class="comment-date">{{ formatTime(comment.timestamp) }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="sidebar-input-area">
-      <textarea
-        v-model="newCommentText"
-        @keydown="handleKeydown"
-        placeholder="Написать комментарий... (Enter для отправки)"
-        rows="1"
-      ></textarea>
-          <button
-            class="send-btn"
-            :disabled="!newCommentText.trim()"
-            @click="submitComment"
-          >
-            ▲
-          </button>
-        </div>
-      </div>
-    </Transition>
-    <Teleport to="body">
-      <div
-        v-if="contextMenu.show"
-        class="context-menu"
-        :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
-      >
-        <div class="menu-item delete" @click="handleDelete">
-          🗑 Удалить
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 

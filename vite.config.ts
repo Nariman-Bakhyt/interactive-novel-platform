@@ -1,31 +1,36 @@
 import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
-export default defineConfig({
-  define: {
-    global: 'window', // Это "обманет" sockjs и заставит его думать, что window — это и есть global
-  },
-  plugins: [
-    vue(),
-    vueDevTools(),
-  ],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+export default defineConfig(({ mode }) => {
+  // Загружаем переменные окружения из .env
+  const env = loadEnv(mode, process.cwd(), '');
+
+  return {
+    define: {
+      global: 'window', 
     },
-  },
-  server: {
-    proxy: {
-      // Все запросы, начинающиеся с /api, будут перенаправлены на 8080
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true, // Изменяет заголовок Origin на адрес целевого сервера
-        rewrite: (path) => path.replace(/^\/api/, '/api'), // Убедитесь, что /api остается, если он нужен бэкенду
+    plugins: [
+      vue(),
+      vueDevTools(),
+    ],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url))
+      },
+    },
+    server: {
+      proxy: {
+        // Все запросы, начинающиеся с /api, будут перенаправлены на backend
+        '/api': {
+          target: `http://${env.VITE_API_IP}:8080`,
+          changeOrigin: true, 
+          rewrite: (path) => path.replace(/^\/api/, '/api'), 
+        }
       }
     }
-  }
+  };
 })

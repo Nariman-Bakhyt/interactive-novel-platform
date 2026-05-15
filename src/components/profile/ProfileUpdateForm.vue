@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { updateProfileApi,changePasswordApi } from '@/api/profileService.ts';
 import type {UserUpdateRequestDto, ChangePasswordRequestDto } from '@/types/user';
-import type {UserResponseDto} from '@/types/auth';
+import type {ProfileResponseDto, UserResponseDto} from '@/types/auth';
 import { defineProps, defineEmits, reactive, ref } from 'vue';
 import {useAuthStore} from "@/api/auth.ts";
 
@@ -12,7 +12,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'profile-updated', userDto: UserResponseDto): void;
+  (e: 'profile-updated', userDto: ProfileResponseDto): void;
   (e: 'password-changed'): void;
 }>();
 

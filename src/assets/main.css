@@ -28,6 +28,11 @@ body, html {
   --bg-editor-sheet: #1a1a1a;     /* Фон самого "листа" */
   --shadow-color: rgba(0, 0, 0, 0.5);
   --input-placeholder: #555;
+
+  --avatar-text: #ffffff;           /* Цвет букв в плейсхолдерах */
+  --aura-opacity: 0.4;             /* Прозрачность свечения (ярче для темной темы) */
+  --aura-blur: 12px;               /* Радиус размытия */
+  --unread-dot: #ff4757;           /* Цвет индикатора непрочитанных */
 }
 
 [data-theme="light"] {
@@ -47,11 +52,17 @@ body, html {
   --bg-editor-sheet: #ffffff;     /* Белый лист */
   --shadow-color: rgba(0, 0, 0, 0.1);
   --input-placeholder: #aaa;
+
+  --avatar-text: #ffffff;           /* Буквы оставляем белыми для контраста с HSL цветом */
+  --aura-opacity: 0.25;            /* Делаем свечение мягче, чтобы не "грязнить" светлый фон */
+  --aura-blur: 8px;
+  --unread-dot: #e84118;
 }
 
 :root {
   --main-font: 'Onest', sans-serif;
 }
+
 
 body {
   background-color: var(--bg-main);
@@ -61,4 +72,16 @@ body {
   font-family: var(--main-font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Это магический селектор для твоего JS-кода */
+::highlight(search-results) {
+  background-color: #f1c40f !important; /* Яркий желтый */
+  color: #000 !important;              /* Черный текст для контраста */
+  text-decoration: underline;          /* Подчеркивание для верности */
+}
+
+/* Добавим плавности, чтобы не резало глаза */
+::highlight(search-results) {
+  transition: background-color 0.5s ease;
 }

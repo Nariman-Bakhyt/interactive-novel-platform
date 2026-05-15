@@ -2,19 +2,71 @@
 import { useAuthStore } from '@/api/auth.ts'; // Используем ваш Pinia Store
 import { useRouter } from 'vue-router';
 import AuthModal from "@/views/auth/AuthModal.vue";
-import {computed, onMounted, ref} from "vue";
+import {computed, inject, onMounted, ref, watch} from "vue";
 import {useThemeStore} from "@/api/theme.ts";
+import {searchNovels} from "@/api/novelService.ts";
+import {searchUsers} from "@/api/profileService.ts";
 
-
-const showAuthModal = ref(false);
 const router = useRouter();
 const authStore = useAuthStore();
 const showCreateMenu = ref(false);
 const showDropdown = ref(false);
 const themeStore = useThemeStore();
+
 onMounted(() => {
   themeStore.applyTheme();
 });
+
+const isSearchOpen = ref(false);
+const searchQuery = ref('');
+const searchType = ref<'novels' | 'users'>('novels');
+const searchResults = ref<any[]>([]);
+const isSearching = ref(false);
+
+let searchTimeout: number;
+
+
+const openUserMenu = inject('openUserMenu') as (event: MouseEvent, userId: number, username: string) => void;
+
+// Живой поиск
+watch(searchQuery, (newQuery) => {
+  clearTimeout(searchTimeout);
+  if (newQuery.length < 2) {
+    searchResults.value = [];
+    return;
+  }
+
+  isSearching.value = true;
+  searchTimeout = window.setTimeout(async () => {
+    try {
+      if (searchType.value === 'novels') {
+        const data = await searchNovels(newQuery, 0, 5);
+        searchResults.value = data.content;
+      } else {
+        const data = await searchUsers(newQuery, 0, 5);
+        searchResults.value = data.content;
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      isSearching.value = false;
+    }
+  }, 500);
+});
+
+const closeSearch = () => {
+  isSearchOpen.value = false;
+  searchQuery.value = '';
+  searchResults.value = [];
+};
+
+const handleResultClick = (id: number) => {
+  const path = searchType.value === 'novels' ? `/novel/${id}` : `/profile/${id}`;
+  router.push(path);
+  closeSearch();
+};
+
+
 // Функция для выхода
 const handleLogout = () => {
   authStore.logout();
@@ -55,72 +107,122 @@ const avatarDisplayUrl = computed(() => {
   }
   return `${url}?t=${authStore.avatarTimestamp}`;
 });
+
+const menu = (event: MouseEvent,res:any) => {
+  if(res.username){
+    openUserMenu(event, res.id, res.username)
+  }
+}
+
 </script>
 
 <template>
   <header class="main-header">
     <RouterLink to="/" class="logo">Novels Platform</RouterLink>
-
-    <nav>
-      <div v-if="authStore.isAuthenticated" class="user-status">
-
-        <div class="menu-wrapper">
-          <button
-            class="icon-button plus-btn"
-            @click="toggleCreateMenu"
-            @blur="closeCreateMenuWithDelay"
-          >
-            <span class="plus-icon">+</span>
-          </button>
-
-          <div v-if="showCreateMenu" class="dropdown-menu create-menu">
-            <button @click="router.push('/novels/create'); showCreateMenu = false;">
-              ✨ Создать новеллу
-            </button>
-            <button @click="router.push('/my-novels'); showCreateMenu = false;">
-              📚 Мои новеллы
-            </button>
-          </div>
-        </div>
-        <nav>
-          <button @click="themeStore.toggleTheme" class="theme-toggle">
-            {{ themeStore.isDark ? '🌙' : '☀️' }}
-          </button>
-        </nav>
-        <div class="menu-wrapper" >
-          <div
-            class="dropdown-trigger"
-            tabindex="0"
-            @click="toggleDropdown"
-            @blur="closeDropdownWithDelay"
-          >
-            <span class="username">{{ authStore.user }}</span>
-            <img :src="avatarDisplayUrl" alt="Аватар" class="user-avatar-lg">
-          </div>
-
-          <div v-if="showDropdown" class="dropdown-menu profile-menu">
-            <button @click="goToProfile">Профиль</button>
-            <button @click="router.push('/settings'); showDropdown = false;">Настройки</button>
-            <div class="separator"></div>
-            <button @click="handleLogout" class="logout-item">Выход</button>
-          </div>
-        </div>
-      </div>
-
-      <div v-else class="user-status">
-        <nav>
-          <button @click="themeStore.toggleTheme" class="theme-toggle">
-            {{ themeStore.isDark ? '🌙' : '☀️' }}
-          </button>
-        </nav>
-        <button class="login-button-corner" @click="showAuthModal = true">
-          Войти
+    <div class="header-right">
+      <div class="search-container" :class="{ 'is-open': isSearchOpen }">
+        <button class="search-trigger" @click="isSearchOpen = !isSearchOpen" v-if="!isSearchOpen">
+          🔍
         </button>
+
+        <div v-if="isSearchOpen" class="search-bar-wrapper">
+          <select v-model="searchType" class="search-type-select">
+            <option value="novels">📖 Новеллы</option>
+            <option value="users">👤 Люди</option>
+          </select>
+          <input
+            v-model="searchQuery"
+            type="text"
+            :placeholder="searchType === 'novels' ? 'Найти новеллу...' : 'Найти пользователя...'"
+            class="search-input"
+            autoFocus
+          />
+          <button class="close-search" @click="closeSearch">✕</button>
+
+          <div v-if="searchResults.length > 0" class="search-results">
+            <div
+              v-for="res in searchResults"
+              :key="res.id"
+              class="result-item"
+              @click="handleResultClick(res.id)"
+              @contextmenu.prevent="menu($event,res)"
+            >
+              <img
+                :src="res.coverUrl || res.avatarUrl || (searchType === 'novels'
+                ? 'http://127.0.0.1:9000/interactive-novel-assets/covers/default-cover.png'
+                : 'http://127.0.0.1:9000/interactive-novel-assets/avatars/default-avatar.png')"
+                class="res-thumb"
+              >
+              <div class="res-info">
+                <span class="res-name">{{ res.title || res.username }}</span>
+                <span class="res-sub">{{ searchType === 'novels' ? res.status : 'Пользователь' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </nav>
+      <nav>
+        <div v-if="authStore.isAuthenticated" class="user-status">
+
+          <div class="menu-wrapper">
+            <button
+              class="icon-button plus-btn"
+              @click="toggleCreateMenu"
+              @blur="closeCreateMenuWithDelay"
+            >
+              <span class="plus-icon">+</span>
+            </button>
+
+            <div v-if="showCreateMenu" class="dropdown-menu create-menu">
+              <button @click="router.push('/novels/create'); showCreateMenu = false;">
+                ✨ Создать новеллу
+              </button>
+              <button @click="router.push('/my-novels'); showCreateMenu = false;">
+                📚 Мои новеллы
+              </button>
+            </div>
+          </div>
+          <nav>
+            <button @click="themeStore.toggleTheme" class="theme-toggle">
+              {{ themeStore.isDark ? '🌙' : '☀️' }}
+            </button>
+          </nav>
+          <div class="menu-wrapper" >
+            <div
+              class="dropdown-trigger"
+              tabindex="0"
+              @click="toggleDropdown"
+              @blur="closeDropdownWithDelay"
+            >
+              <span class="username">{{ authStore.user }}</span>
+              <img :src="avatarDisplayUrl" alt="Аватар" class="user-avatar-lg">
+            </div>
+
+            <div v-if="showDropdown" class="dropdown-menu profile-menu">
+              <button @click="goToProfile">Профиль</button>
+              <button @click="router.push('/social'); showDropdown = false;">Сообщество</button>
+              <button @click="router.push('/settings'); showDropdown = false;">Настройки</button>
+              <div class="separator"></div>
+              <button @click="handleLogout" class="logout-item">Выход</button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="user-status">
+          <nav>
+            <button @click="themeStore.toggleTheme" class="theme-toggle">
+              {{ themeStore.isDark ? '🌙' : '☀️' }}
+            </button>
+          </nav>
+          <button class="login-button-corner" @click="authStore.showAuthModal = true">
+            Войти
+          </button>
+        </div>
+      </nav>
+    </div>
   </header>
   <Transition name="fade">
-    <AuthModal v-if="showAuthModal" @close="showAuthModal = false" />
+    <AuthModal v-if="authStore.showAuthModal" @close="authStore.showAuthModal = false" />
   </Transition>
 </template>
 
@@ -259,5 +361,109 @@ const avatarDisplayUrl = computed(() => {
   border: none;
   border-radius: 5px;
   cursor: pointer;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.search-container {
+  display: flex;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.search-trigger {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.search-bar-wrapper {
+  display: flex;
+  align-items: center;
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 2px 10px;
+  width: 400px; /* Ширина развернутого поиска */
+  position: relative;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from { width: 0; opacity: 0; }
+  to { width: 400px; opacity: 1; }
+}
+
+.search-input {
+  background: none;
+  border: none;
+  color: var(--text-header);
+  padding: 8px;
+  width: 100%;
+  outline: none;
+}
+
+.search-type-select {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  outline: none;
+  margin-right: 5px;
+}
+
+.search-results {
+  position: absolute;
+  top: 45px;
+  left: 0;
+  right: 0;
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.result-item:hover {
+  background: var(--hover-dropdowb);
+}
+
+.res-thumb {
+  width: 35px;
+  height: 45px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.res-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.res-name { font-size: 0.9rem; font-weight: 600; }
+.res-sub { font-size: 0.75rem; color: var(--text-muted); }
+
+.close-search {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 5px;
 }
 </style>

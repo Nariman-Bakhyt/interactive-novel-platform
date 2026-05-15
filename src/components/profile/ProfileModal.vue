@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { defineProps, defineEmits, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '@/api/auth.ts';
-import type { UserResponseDto } from '@/types/auth';
+import type {ProfileResponseDto, UserResponseDto} from '@/types/auth';
 import AvatarUploader from './AvatarUploader.vue';
 import ProfileUpdateForm from './ProfileUpdateForm.vue';
 
@@ -25,11 +25,11 @@ const handleEsc = (e: KeyboardEvent) => {
 onMounted(() => window.addEventListener('keydown', handleEsc));
 onUnmounted(() => window.removeEventListener('keydown', handleEsc));
 
-const handleAvatarUpdate = (updatedUserDto: UserResponseDto) => {
+const handleAvatarUpdate = (updatedUserDto: ProfileResponseDto) => {
   authStore.setDetails(updatedUserDto);
 };
 
-const handleProfileUpdate = (updatedUserDto: UserResponseDto) => {
+const handleProfileUpdate = (updatedUserDto: ProfileResponseDto) => {
   authStore.setDetails(updatedUserDto);
 };
 </script>

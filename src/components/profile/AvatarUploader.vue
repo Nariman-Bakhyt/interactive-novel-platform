@@ -1,13 +1,13 @@
 <script setup lang = "ts">
 import {ref, defineProps, defineEmits, watch, computed} from 'vue';
 import {uploadAvatar} from "@/api/profileService.ts";
-import type {UserResponseDto} from '@/types/auth';
+import type {ProfileResponseDto, UserResponseDto} from '@/types/auth';
 import {useAuthStore} from "@/api/auth.ts";
 const props = defineProps<{
   initialAvatarUrl: string | null;
 }>();
 const emit = defineEmits<{
-  (e: 'avatar-updated',userDto: UserResponseDto): void
+  (e: 'avatar-updated',userDto: ProfileResponseDto): void
 }>();
 
 const currentAvatarUrl = ref(props.initialAvatarUrl);
@@ -76,12 +76,12 @@ const validateFile = (file: File): boolean => {
 const handleDeleteAvatar = async () => {
   if (!confirm('Вы уверены, что хотите удалить аватар?')) return;
 
-  const emptyFile = new Blob([], { type: 'application/octet-stream' });
+
 
   try {
-    const updatedUserDto = await uploadAvatar(emptyFile as File);
+    const updatedUserDto = await uploadAvatar(null);
 
-    currentAvatarUrl.value = null;
+    currentAvatarUrl.value = updatedUserDto.avatarUrl;
     message.value = 'Аватар успешно удален.';
     authStore.setDetails(updatedUserDto);
     emit('avatar-updated', updatedUserDto);
@@ -92,13 +92,7 @@ const handleDeleteAvatar = async () => {
 };
 
 const avatarDisplayUrl = computed(() => {
-  const url = authStore.userDetails?.avatarUrl;
-
-  if (!url) {
-    return 'http://127.0.0.1:9000/interactive-novel-assets/avatars/default-avatar.png';
-  }
-  // Добавляем timestamp, чтобы избежать кэширования при обновлении
-  return `${url}?t=${authStore.avatarTimestamp}`;
+  return authStore.userDetails?.avatarUrl ||'';
 });
 </script>
 <template>

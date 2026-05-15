@@ -1,19 +1,24 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import {computed, onMounted, onUnmounted, ref} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
 import {
   createNovel,
-  updateNovel,
-  getMyNovel,
-  uploadNovelCover,
   getAllGenres,
-  getAllTags
+  getAllTags,
+  getMyNovel,
+  updateNovel,
+  uploadNovelCover
 } from '@/api/novelService';
-import type {ChapterShortResponseDto, TagOrGenreResponseDto} from "@/types/novel.ts";
+import type {
+  ChapterShortResponseDto,
+  NovelRequestDto,
+  TagOrGenreResponseDto
+} from "@/types/novel.ts";
+import {useToastStore} from "@/components/toast/toastStore.ts";
 
 const route = useRoute();
 const router = useRouter();
-
+const toastStore = useToastStore();
 // Состояния
 const novelId = computed(() => route.params.id);
 const isEditMode = computed(() => !!novelId.value);
@@ -22,7 +27,7 @@ const isLoading = ref(false);
 const isSaving = ref(false);
 const isUploadingCover = ref(false);
 
-const defaultCover = 'http://127.0.0.1:9000/interactive-novel-assets/Cover/default-cover.png';
+const defaultCover = 'http://127.0.0.1:9000/interactive-novel-assets/covers/default-cover.png';
 const fileInput = ref<HTMLInputElement | null>(null);
 const chaptersList = ref<ChapterShortResponseDto[]>([]);
 const allGenres = ref<TagOrGenreResponseDto[]>([]);
@@ -33,6 +38,7 @@ const form = ref({
   status: 'DRAFT',
   description: '',
   cover: '',
+  coverImage: null as File | null,
   genres: [] as TagOrGenreResponseDto[],
   tags: [] as TagOrGenreResponseDto[]
 });
@@ -43,6 +49,12 @@ const statusOptions = [
   { value: 'HIATUS', label: 'Перерыв' },
   { value: 'ARCHIVED', label: 'В архиве' }
 ];
+
+onUnmounted(() => {
+  if (form.value.cover && form.value.cover.startsWith('blob:')) {
+    URL.revokeObjectURL(form.value.cover);
+  }
+});
 
 // Загрузка данных
 onMounted(async () => {
@@ -63,6 +75,7 @@ onMounted(async () => {
         status: data.novel.status,
         description: data.novel.description,
         cover: data.novel.coverUrl,
+        coverImage: null,
         genres: data.novel.genres || [],
         tags: data.novel.tags || []
       };
@@ -92,21 +105,26 @@ const isSelected = (id: number, listName: 'genres' | 'tags') => {
 // Сохранение текстовых данных
 const saveNovel = async () => {
   isSaving.value = true;
-  const payload = {
-    ...form.value,
+
+  // Собираем payload строго по DTO
+  const payload: NovelRequestDto = {
+    title: form.value.title,
+    status: (isEditMode.value ? form.value.status : 'DRAFT') as string,
+    description: form.value.description,
+    coverImage: form.value.coverImage, // Передаем файл, если он есть
     genres: form.value.genres.map(g => g.id),
     tags: form.value.tags.map(t => t.id)
   };
   try {
     if (isEditMode.value) {
-      await updateNovel(form.value, Number(novelId.value));
+      await updateNovel(payload, Number(novelId.value));
       isEditingNow.value = false;
     } else {
-      const newNovel = await createNovel(form.value as any);
+      const newNovel = await createNovel(payload);
       router.push(`/novels/${newNovel.id}/edit`);
     }
   } catch (e) {
-    alert("Ошибка при сохранении");
+    toastStore.error("Ошибка при сохранении");
   } finally {
     isSaving.value = false;
   }
@@ -115,18 +133,55 @@ const saveNovel = async () => {
 // Загрузка файла обложки
 const triggerFileUpload = () => fileInput.value?.click();
 
-const handleCoverUpload = async (event: Event) => {
-  const file = (event.target as HTMLInputElement).files?.[0];
-  if (!file || !novelId.value) return;
+const handleDeleteCover = async () => {
+  if (!confirm('Вы уверены, что хотите полностью удалить обложку?')) return;
 
+  // Если мы на этапе создания, просто стираем локальные данные
+  if (!isEditMode.value) {
+    form.value.coverImage = null;
+    form.value.cover = '';
+    return;
+  }
+
+  // Если это режим редактирования, шлем запрос на удаление
   isUploadingCover.value = true;
   try {
-    const updatedNovel = await uploadNovelCover(Number(novelId.value), file);
+    const updatedNovel = await uploadNovelCover(Number(novelId.value), null);
     form.value.cover = updatedNovel.coverUrl;
-  } catch (e) {
-    alert("Ошибка при загрузке обложки");
+    toastStore.success('Обложка успешно удалена');
+  } catch (e: any) {
+    console.error("Ошибка при удалении:", e);
+    toastStore.error(e.message || 'Не удалось удалить обложку');
   } finally {
     isUploadingCover.value = false;
+  }
+};
+
+const handleCoverUpload = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+
+  // 1. Показываем локальное превью пользователю сразу
+  if (form.value.cover.startsWith('blob:')) {
+    URL.revokeObjectURL(form.value.cover);
+  }
+  form.value.cover = URL.createObjectURL(file);
+
+  // 2. Разделяем логику для редактирования и создания
+  if (isEditMode.value && novelId.value) {
+    // Если новелла уже существует — загружаем в MinIO сразу (по твоему API)
+    isUploadingCover.value = true;
+    try {
+      const updatedNovel = await uploadNovelCover(Number(novelId.value), file);
+      form.value.cover = updatedNovel.coverUrl;
+    } catch (e) {
+      toastStore.error("Ошибка при загрузке обложки");
+    } finally {
+      isUploadingCover.value = false;
+    }
+  } else {
+    // Если мы только создаем новеллу — просто запоминаем файл в форму
+    form.value.coverImage = file;
   }
 };
 
@@ -232,22 +287,30 @@ const truncate = (text: string, length: number) => {
                       <span>{{ isUploadingCover ? 'Загрузка...' : 'Изменить обложку' }}</span>
                     </div>
                   </div>
+                  <button
+                    v-if="form.cover && form.cover !== defaultCover"
+                    type="button"
+                    class="btn-remove-link"
+                    @click="handleDeleteCover"
+                    :disabled="isUploadingCover"
+                  >
+                    <span class="icon">🗑️</span> Удалить текущую обложку
+                  </button>
                   <input type="file" ref="fileInput" @change="handleCoverUpload" accept="image/*" hidden>
                 </div>
 
-                <div class="form-group">
-                  <label>Статус</label>
-                  <div class="status-selector">
-                    <button
-                      v-for="status in statusOptions"
-                      :key="status.value"
-                      type="button"
-                      :class="['status-btn', { active: form.status === status.value }]"
-                      @click="form.status = status.value"
-                    >
-                      {{ status.label }}
-                    </button>
-                  </div>
+                <div class="form-group" v-if="isEditMode">
+                  <label>Статус</label> <div class="status-selector">
+                  <button
+                    v-for="status in statusOptions"
+                    :key="status.value"
+                    type="button"
+                    :class="['status-btn', { active: form.status === status.value }]"
+                    @click="form.status = status.value"
+                  >
+                    {{ status.label }}
+                  </button>
+                </div>
                 </div>
 
                 <div class="form-group">
@@ -844,5 +907,35 @@ textarea {
   .form-sidebar-right {
     order: -1; /* Обложка и настройки сверху на мобилках */
   }
+}
+.btn-remove-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: #ff4757; /* Цвет ошибки/удаления */
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-remove-link:hover {
+  background: rgba(255, 71, 87, 0.1);
+  border-color: #ff4757;
+}
+
+.btn-remove-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-remove-link .icon {
+  font-size: 1.1rem;
 }
 </style>

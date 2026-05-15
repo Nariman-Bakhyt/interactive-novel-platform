@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref ,watch} from 'vue';
+import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {getNovelById} from "@/api/novelService.ts";
 import type {ChapterShortResponseDto, NovelResponseDto} from "@/types/novel.ts";
 import type {AllRatingResponseDto} from "@/types/rating.ts";
-import {deleteRating, getRatings, setRating} from "@/api/RatingService.ts";
+import {deleteRating, getRatings, setRating} from "@/api/ratingService.ts";
 import type {CommentResponseDto} from "@/types/comment.ts";
 import {deleteComment, getComments} from "@/api/commentService.ts";
 import {
@@ -47,6 +47,56 @@ const fetchNovelData = async () => {
   }
 };
 
+const fetchComments = async () => {
+  if (isCommentsLoading.value || isCommentsLastPage.value || !novel.value) return;
+
+  isCommentsLoading.value = true;
+  try {
+    const topicId = `novel.${novel.value.id}`;
+    const response = await getComments({ novelId: novel.value.id }, commentsPage.value, PAGE_SIZE, 'timestamp,asc');
+
+    const newItems = response.content || [];
+
+    if (newItems.length > 0) {
+      if (!commentsMap.value[topicId]) commentsMap.value[topicId] = [];
+      commentsMap.value[topicId].push(...newItems);
+
+      // Логика для PagedModel (структура как на твоем скриншоте была)
+      if (response.page) {
+        isCommentsLastPage.value = (response.page.number + 1) >= response.page.totalPages;
+      } else {
+        isCommentsLastPage.value = response.last ?? (newItems.length < PAGE_SIZE);
+      }
+
+      if (!isCommentsLastPage.value) {
+        commentsPage.value++;
+      }
+    } else {
+      isCommentsLastPage.value = true;
+    }
+  } catch (e) {
+    console.error(e);
+    isCommentsLastPage.value = true;
+  } finally {
+    setTimeout(() => {
+      isCommentsLoading.value = false;
+    }, 200);
+  }
+};
+
+const setupBottomObserver = (targetRef: HTMLElement | null, loadMoreFn: () => void, isLoadingRef: any, isLastRef: any) => {
+  // Отключаем старого наблюдателя, если перешли на другую вкладку
+  if (bottomObserver) bottomObserver.disconnect();
+  if (!targetRef) return;
+
+  bottomObserver = new IntersectionObserver(([entry]) => {
+    if (entry && entry.isIntersecting && !isLoadingRef.value && !isLastRef.value) {
+      loadMoreFn();
+    }
+  }, { threshold: 0.1 });
+
+  bottomObserver.observe(targetRef);
+};
 
 onUnmounted(() => {
   if (novel.value) {
@@ -54,42 +104,79 @@ onUnmounted(() => {
     unsubscribeFromTopic(`/topic/novel.${id}`);
     unsubscribeFromTopic(`/topic/novel.${id}.ratings`);
   }
+  if (bottomObserver) bottomObserver.disconnect();
 });
 
 type Tab = 'chapters'| 'comments' | 'ratings';
 const activeTab= ref<Tab>('chapters');
 const ratingsList = ref<AllRatingResponseDto[]>([]);
-const isRatingsLoading = ref(false);
-const currentPage = ref(0);
-const isLastPage = ref(false);
-const loadMoreTrigger = ref<HTMLElement | null>(null);
+
 const commentsMap = ref<Record<string, CommentResponseDto[]>>({});
 
-const fetchRatings = async () => {
-  if (isRatingsLoading.value || isLastPage.value || !novel.value) return;
+const ratingsPage = ref(0);
+const isRatingsLastPage = ref(false);
+const isRatingsLoading = ref(false);
+const ratingsTrigger = ref<HTMLElement | null>(null); // Невидимый див рейтингов
 
-  try {
-    isRatingsLoading.value = true;
-    const response = await getRatings(novel.value.id, currentPage.value, 20,'timestamp,desc');
-    novel.value.totalScore = response.totalScore;
-    novel.value.ratingCount = response.ratingCount;
-    ratingsList.value.push(...response.allRatings.content);
+// --- Состояние для Комментариев ---
+const commentsPage = ref(0);
+const isCommentsLastPage = ref(false);
+const isCommentsLoading = ref(false);
+const commentsTrigger = ref<HTMLElement | null>(null); // Невидимый див комментариев
 
-    isLastPage.value = response.allRatings.last;
-    if (!isLastPage.value) {
-      currentPage.value++;
+// --- Общий Observer ---
+let bottomObserver: IntersectionObserver | null = null;
+const PAGE_SIZE = 20; // Удобно для дебага (поставь 3 для проверки автозаполнения)
+
+const checkTriggerVisibility = (triggerEl: HTMLElement | null, fetchFn: () => void, isLast: boolean) => {
+  if (!isLast && triggerEl) {
+    const rect = triggerEl.getBoundingClientRect();
+    if (rect.top <= window.innerHeight) {
+      setTimeout(fetchFn, 100);
     }
+  }
+};
+
+
+const fetchRatings = async () => {
+  // КРИТИЧЕСКАЯ БЛОКИРОВКА: если уже грузим или страниц больше нет - СТОП
+  if (isRatingsLoading.value || isRatingsLastPage.value || !novel.value) return;
+
+  isRatingsLoading.value = true;
+  try {
+    const response = await getRatings(novel.value.id, ratingsPage.value, PAGE_SIZE, 'timestamp,asc');
+
+    const newItems = response.allRatings.content || [];
+
+    if (newItems.length > 0) {
+      ratingsList.value.push(...newItems);
+      // Проверяем: это реально последняя страница?
+      // Сравниваем текущую страницу с общим количеством страниц
+      isRatingsLastPage.value = (response.allRatings.number + 1) >= response.allRatings.totalPages;
+
+      if (!isRatingsLastPage.value) {
+        ratingsPage.value++;
+      }
+    } else {
+      // Если контент пустой - это точно конец
+      isRatingsLastPage.value = true;
+    }
+
   } catch (error) {
-    console.error("Ошибка загрузки отзывов:", error);
+    console.error("Ошибка:", error);
+    isRatingsLastPage.value = true; // Останавливаем при ошибке, чтобы не спамить
   } finally {
-    isRatingsLoading.value = false;
+    // Даем небольшую задержку перед разблокировкой, чтобы DOM успел "отдвинуть" триггер
+    setTimeout(() => {
+      isRatingsLoading.value = false;
+    }, 200);
   }
 };
 
 const handleTabChange = async (tab: Tab) => {
   if (!novel.value) return;
   activeTab.value = tab;
-
+  await nextTick();
   if (tab === 'comments' ) {
     const topicId = `novel.${novel.value.id}`;
     const wsTopic = `/topic/${topicId}`;
@@ -113,14 +200,9 @@ const handleTabChange = async (tab: Tab) => {
     }
 
     if (!commentsMap.value[topicId] || commentsMap.value[topicId].length === 0) {
-      try {
-        const history = await getComments({ novelId: novel.value.id });
-        commentsMap.value[topicId] = history.content;
-      } catch (e) {
-        console.error("Ошибка загрузки истории комментариев", e);
-      }
+      await fetchComments();
     }
-
+    setupBottomObserver(commentsTrigger.value, fetchComments, isCommentsLoading, isCommentsLastPage);
   }
   if (tab === 'ratings' ) {
     const ratingsTopic = `/topic/novel.${novel.value.id}.ratings`;
@@ -168,7 +250,11 @@ const handleTabChange = async (tab: Tab) => {
       });
     }
 
-    await fetchRatings();
+    if (ratingsList.value.length === 0) {
+      await fetchRatings();
+    }
+    // Вешаем обсервер на див рейтингов
+    setupBottomObserver(ratingsTrigger.value, fetchRatings, isRatingsLoading, isRatingsLastPage);
   }
 
 };
@@ -198,10 +284,9 @@ const submitRating = async () => {
     newRating.value = { score: 5, commentText: '' };
     isRatingModalOpen.value = false;
 
-    // Обнуляем список отзывов, чтобы пользователь увидел свой новый отзыв при перезагрузке
     ratingsList.value = [];
-    currentPage.value = 0;
-    isLastPage.value = false;
+    ratingsPage.value = 0; // было currentPage
+    isRatingsLastPage.value = false; // было isLastPage
     await fetchRatings();
 
   } catch (error) {
@@ -353,7 +438,7 @@ const handleDelete = async () => {
       <header class="novel-header">
         <div class="cover-section">
           <img
-            :src="novel.coverUrl || 'http://127.0.0.1:9000/interactive-novel-assets/Cover/default-cover.png'"
+            :src="novel.coverUrl || 'http://127.0.0.1:9000/interactive-novel-assets/covers/default-cover.png'"
             :alt="novel.title"
             class="main-cover"
           />
@@ -436,7 +521,9 @@ const handleDelete = async () => {
                 <span class="ch-icon">→</span>
               </div>
             </div>
-            <div v-else class="empty-state">Главы еще не добавлены.</div>
+            <div v-if="!isRatingsLoading && ratingsList.length === 0 && isRatingsLastPage" class="empty-state">
+              Пока никто не оценил это произведение. Станьте первым!
+            </div>
           </div>
 
           <div v-if="activeTab === 'comments'" class="comments-container fade-in">
@@ -474,8 +561,12 @@ const handleDelete = async () => {
                 <p class="comment-body">{{ comment.content }}</p>
               </div>
             </div>
+            <div ref="commentsTrigger" class="loading-anchor">
+              <div v-if="isCommentsLoading" class="mini-spinner"></div>
+              <p v-if="isCommentsLastPage" class="end-message">Больше комментариев нет.</p>
+            </div>
 
-            <div v-else class="empty-state">
+            <div v-if="!isCommentsLoading && currentComments.length === 0 && isCommentsLastPage" class="empty-state">
               Здесь пока нет комментариев. Будьте первым, кто оставит след в истории!
             </div>
           </div>
@@ -546,9 +637,9 @@ const handleDelete = async () => {
               </div>
             </div>
 
-            <div ref="loadMoreTrigger" class="loading-anchor">
+            <div ref="ratingsTrigger" class="loading-anchor">
               <div v-if="isRatingsLoading" class="mini-spinner"></div>
-              <p v-if="isLastPage" class="end-message">Это все отзывы на данный момент.</p>
+              <p v-if="isRatingsLastPage" class="end-message">Это все отзывы на данный момент.</p>
             </div>
           </div>
 

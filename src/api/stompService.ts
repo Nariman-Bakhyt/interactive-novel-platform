@@ -7,7 +7,7 @@ export const isConnected = ref(false);
 
 
 const stompClient = new Client({
-  brokerURL: 'ws://localhost:8080/ws',
+  brokerURL: `ws://${import.meta.env.VITE_API_IP}:8080/ws`,
   // Убрали статический connectHeaders отсюда
   debug: (str) => console.log('STOMP Debug:', str),
   reconnectDelay: 5000,
@@ -66,7 +66,12 @@ export function subscribeToTopic<T>(topic: string, onMessage: (data: T) => void)
 
   if (stompClient.connected) {
     const sub = stompClient.subscribe(topic, (message) => {
-      onMessage(JSON.parse(message.body));
+      try {
+        const data = JSON.parse(message.body);
+        onMessage(data);
+      } catch (e) {
+        console.error("STOMP: Ошибка парсинга JSON", e, message.body);
+      }
     });
     activeSubscriptions.get(topic)!.sub = sub;
   }

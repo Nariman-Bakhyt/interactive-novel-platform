@@ -8,6 +8,12 @@ export interface CommentRequestDto {
   channelId?: number;
 
 }
+export interface Metadata{
+  type?:string;
+  images?:string[];
+  quoteText?:string;
+  anchorUrl?:string;
+}
 
 export interface CommentResponseDto extends CommentRequestDto{
   id: number;
@@ -15,5 +21,8 @@ export interface CommentResponseDto extends CommentRequestDto{
   userId: number;
   username: string;
   userAvatarUrl: string;
+  metadata:Metadata;
+
 
 }
+

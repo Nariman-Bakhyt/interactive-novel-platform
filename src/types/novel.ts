@@ -17,8 +17,9 @@ export interface NovelRequestDto {
   title: string;
   status: string;
   description: string;
-  tags:Array<TagOrGenreResponseDto>;
-  genres:Array<TagOrGenreResponseDto>;
+  coverImage:File|null
+  tags:Array<number>;
+  genres:Array<number>;
 }
 export interface NovelUpdateRequestDto extends Partial<NovelRequestDto> {
 }
@@ -26,6 +27,14 @@ export interface NovelUpdateRequestDto extends Partial<NovelRequestDto> {
 export interface TagOrGenreResponseDto{
   id: number;
   name: string;
+}
+export enum novelStatus {
+  RETRACTED = 'RETRACTED',
+  ARCHIVED = 'ARCHIVED',
+  DRAFT = 'DRAFT',
+  COMPLETED = 'COMPLETED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  HIATUS = 'HIATUS',
 }
 
 export interface NovelSearchRequestDto{
@@ -37,7 +46,7 @@ export interface NovelSearchRequestDto{
   excludedTagIds: number[];
   minRating: number | null;        // Чтобы 0 не считался отсутствием значения
   maxRating?: number | null;
-  status: string | null;
+  status: novelStatus | null;
 }
 
 export interface ChapterShortResponseDto {
@@ -58,6 +67,12 @@ export interface ChapterBlockRequestDto{
   content: string;
 }
 
+export interface ChapterBlockResponseDto{
+  id: number;
+  sequenceOrder: number;
+  type: string;
+  content: string;
+}
 
 export interface ChapterRequestDto{
   title: string;
@@ -68,7 +83,5 @@ export interface ChapterResponseDto{
   id: number;
   chapterNumber: number;
   title: string;
-  blocks: ChapterBlockRequestDto[];
+  blocks: ChapterBlockResponseDto[];
 }
-
-
