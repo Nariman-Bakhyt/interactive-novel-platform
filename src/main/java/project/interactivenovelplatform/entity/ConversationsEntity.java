@@ -32,10 +32,19 @@ public class ConversationsEntity {
     @Column(name = "created_at")
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
-    @OneToMany(mappedBy = "conversations")
+    @OneToMany(mappedBy = "conversation")
     private List<MessageEntity> messages;
 
     @OneToMany(mappedBy = "conversation",cascade = CascadeType.ALL , orphanRemoval = true)
     @Builder.Default
     private List<ConversationMembersEntity> members = new ArrayList<>();
+
+    @Column(name = "last_message_at")
+    private OffsetDateTime lastMessageAt = OffsetDateTime.now();
+
+    @Column(name = "last_message_preview", length = 255)
+    private String lastMessagePreview;
+
+    @Column(name = "is_deleted")
+    private boolean isDeleted = false;
 }

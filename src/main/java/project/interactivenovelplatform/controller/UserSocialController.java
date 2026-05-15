@@ -165,7 +165,7 @@ public class UserSocialController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PagedModel<UserRelationResponseDto>> getMyBlackList(
             @AuthenticationPrincipal UserPrincipal principal,
-            @PageableDefault(size = 20, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(userSocialService.getMyBlacklist(principal.getId(), pageable));
     }
 

@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import project.interactivenovelplatform.error.GlobalException;
+import project.interactivenovelplatform.error.GlobalExceptionHandler;
 import project.interactivenovelplatform.entity.Role;
 import project.interactivenovelplatform.entity.RoleEntity;
 import project.interactivenovelplatform.repository.RoleRepository;
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 public class RoleServiceImpl implements RoleService {
 
     private final RoleRepository roleRepository;
-    private final static Logger log = LoggerFactory.getLogger(GlobalException.class);
+    private final static Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @Override
     public Set<RoleEntity> findByNameIn(Set<String> name){

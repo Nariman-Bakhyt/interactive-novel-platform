@@ -33,7 +33,7 @@ public class MessageEntity {
             nullable = false,
             foreignKey = @ForeignKey(value = ConstraintMode.CONSTRAINT)
     )
-    private ConversationsEntity conversations;
+    private ConversationsEntity conversation;
 
     @Column(name = "content",nullable = false,length = 3000)
     private String content;

@@ -14,6 +14,6 @@ public class NovelUpdateRequestDto {
     private String title;
     private String status;
     private String description;
-    private List<TagOrGenreRequestDto> tags;
-    private List<TagOrGenreRequestDto> genres;
+    private List<Long> tags;
+    private List<Long> genres;
 }

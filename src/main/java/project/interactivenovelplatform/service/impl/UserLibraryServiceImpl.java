@@ -9,6 +9,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.interactivenovelplatform.dto.request.UserLibraryRequestDto;
+import project.interactivenovelplatform.dto.response.RelationshipStateDto;
 import project.interactivenovelplatform.dto.response.UserLibraryResponseDto;
 import project.interactivenovelplatform.dto.response.UserLibraryStatusDto;
 import project.interactivenovelplatform.entity.PrivacyLevel;
@@ -77,15 +78,24 @@ public class UserLibraryServiceImpl implements UserLibraryService {
             var page = userLibraryRepository.findByUserId(targetUserId, pageable);
             return new PagedModel<>(page.map(this::convertToDto));
         }
+        RelationshipStateDto relation = userService.getRelationshipState(targetUserId, currentUserId);
+        if(relation.isBlockedByMe()){
+            throw new AccessDeniedException("Вы находитесь в черном списке пользователя");
+        }
+        else if (relation.isBlockedByTarget()){
+            throw new AccessDeniedException("Пользователь находится в вашем черном списке");
+        }
 
         var settings = userService.getUserSettings(targetUserId);
         PrivacyLevel globalPrivacy = settings.getLibraryPrivacy();
         if (settings.getLibraryPrivacy() == PrivacyLevel.NOBODY) {
         throw new AccessDeniedException("Пользователь скрыл свою библиотеку настройками приватности");
         }
-        boolean isFriend = userSocialService.checkFriend(currentUserId, targetUserId);
-        boolean isBestFriend = isFriend && userSocialService.checkCloseFriends(currentUserId, targetUserId);
-        boolean isFollower = isFriend || userSocialService.checkFollower(currentUserId, targetUserId);
+
+
+        boolean isFriend = relation.isFriend();
+        boolean isBestFriend = isFriend && relation.isBestFriend();
+        boolean isFollower = isFriend || relation.isFollowing();
 
         if (globalPrivacy == PrivacyLevel.BEST_FRIENDS && !isBestFriend) {
             throw new AccessDeniedException("Библиотека доступна только для близких друзей");

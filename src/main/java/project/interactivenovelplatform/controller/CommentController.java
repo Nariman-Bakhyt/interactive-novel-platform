@@ -48,7 +48,7 @@ public class CommentController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CommentResponseDto> createComment(@RequestPart(value = "files", required = false) List<MultipartFile> files
             ,@RequestPart("comment") CommentRequestDto commentRequestDto, @AuthenticationPrincipal UserPrincipal principal){
-        CommentResponseDto response = commentService.createComment(files,commentRequestDto, principal);
+        CommentResponseDto response = commentService.createComment(files,commentRequestDto, principal.getId());
         String topic = determineTopic(response);
         messagingTemplate.convertAndSend(topic, (Object) response);
         return ResponseEntity.ok(response);

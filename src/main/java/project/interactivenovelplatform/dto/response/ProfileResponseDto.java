@@ -28,4 +28,6 @@ public class ProfileResponseDto {
     private boolean isFollowed;
     private boolean isFriend;
     private boolean isBestFriend;
+    private boolean isBlockedByMe;
+    private boolean isBlockedByTarget;
 }

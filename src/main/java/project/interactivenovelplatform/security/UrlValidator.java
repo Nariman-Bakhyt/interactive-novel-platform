@@ -6,8 +6,10 @@ import java.util.List;
 public class UrlValidator {
     private static final List<String> ALLOWED_DOMAINS = List.of(
             "localhost:5173",
+            "http://192.168.8.*:5173",
             "interactivenovel.ru",
             "localhost:9000",
+            "http://192.168.8.*:9000",
             "127.0.0.1:9000"
     );
 

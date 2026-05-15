@@ -25,4 +25,8 @@ public class UserSettingsEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "library_privacy")
     private PrivacyLevel libraryPrivacy = PrivacyLevel.NOBODY;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "communication_privacy")
+    private PrivacyLevel communicationPrivacy = PrivacyLevel.FRIENDS;
 }

@@ -16,8 +16,9 @@ public interface CommentService {
     RatingResponseDto setRating(Long novelId, Long userId, RatingRequestDto dto);
     AllRatingsResponseDto getRatings(Long novelId, Pageable pageable);
     RatingResponseDto deleteRating(Long novelId,Long ratingId, Long userId);
-    CommentResponseDto createComment(List<MultipartFile> files, CommentRequestDto dto , UserPrincipal principal);
     CommentResponseDto deleteComment(Long commentId , String userName);
+    CommentResponseDto createComment(List<MultipartFile> files, CommentRequestDto dto, Long currentId);
+
     Page<CommentResponseDto> getComments(CommentRequestDto filter, Pageable pageable);
 
 }

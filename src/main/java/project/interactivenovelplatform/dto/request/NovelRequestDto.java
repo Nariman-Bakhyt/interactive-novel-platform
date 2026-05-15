@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -18,8 +19,9 @@ public class NovelRequestDto {
     @NotBlank
     private String status;
     private String description;
+    private MultipartFile coverImage;
 
-    private List<TagOrGenreRequestDto> tags;
-    private List<TagOrGenreRequestDto> genres;
+    private List<Long> tags;
+    private List<Long> genres;
 
 }

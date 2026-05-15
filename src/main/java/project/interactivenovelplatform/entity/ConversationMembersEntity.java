@@ -31,8 +31,23 @@ public class ConversationMembersEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "role" , length = 20)
     private ConversationMembersRole role = ConversationMembersRole.MEMBER;
+
     @Column(name = "joined_at")
     private OffsetDateTime joinedAt = OffsetDateTime.now();
 
+    @Column(name = "cleared_at")
+    private OffsetDateTime clearedAt ;
+
+    @Column(name = "is_pinned")
+    private boolean isPinned = false;
+
+    @Column(name = "is_muted")
+    private boolean isMuted = false;
+
+    @Column(name = "is_deleted")
+    private boolean isDeleted = false; // Юзер "удалил" чат у себя (скрыл)
+
+    @Column(name = "last_read_at")
+    private OffsetDateTime lastReadAt = OffsetDateTime.now();
 
 }

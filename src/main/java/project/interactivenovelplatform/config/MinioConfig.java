@@ -4,9 +4,12 @@ import io.minio.MinioClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Configuration
 public class MinioConfig {
+    private static final Logger log = LoggerFactory.getLogger(MinioConfig.class);
     @Value("${minio.endpoint}")
     private String endpoint;
     @Value("${minio.accessKey}")
@@ -29,8 +32,8 @@ public class MinioConfig {
                 System.out.println("Корзина " + bucketName + " не найдена. Создаю...");
                 client.makeBucket(io.minio.MakeBucketArgs.builder().bucket(bucketName).build());
             }
-        } catch (Exception e) {
-            System.err.println("Ошибка подключения к MinIO: " + e.getMessage());
+        } catch (Exception e) { // Логируем ошибку через SLF4J
+            log.error("Ошибка подключения или инициализации MinIO: {}", e.getMessage(), e);
         }
 
         return client;

@@ -10,4 +10,5 @@ public interface StorageService {
     String getFileExtension(String fileName);
     Set<String> getAllowedExtensions();
     String verifyRealImageType(MultipartFile file);
+    String getPublicUrl(String blobName);
 }

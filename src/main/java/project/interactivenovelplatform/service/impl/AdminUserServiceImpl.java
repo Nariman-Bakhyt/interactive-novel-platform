@@ -10,7 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import project.interactivenovelplatform.error.GlobalException;
+import project.interactivenovelplatform.error.GlobalExceptionHandler;
 import project.interactivenovelplatform.dto.request.RoleRequestDto;
 import project.interactivenovelplatform.dto.request.UserNameRequestDto;
 import project.interactivenovelplatform.dto.response.AdminUserResponseDto;
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 public class AdminUserServiceImpl implements AdminUserService {
     private final UserRepository userRepository;
     private final RoleService roleService;
-    private final static Logger log = LoggerFactory.getLogger(GlobalException.class);
+    private final static Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     private AdminUserResponseDto convertToDto(AppUserEntity user) {
         return new AdminUserResponseDto(
@@ -37,7 +37,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 user.getUsername(),
                 user.getEmail(),
                 user.getRegistrationDate(),
-                user.getRole(),
+                user.getRole().stream().map(role -> role.getName().toString()).collect(Collectors.toSet()),
                 user.getIsDeleted(),
                 user.isLocked(),
                 user.getLockTime(),

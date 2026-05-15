@@ -50,7 +50,7 @@ public class CommentEntity {
     private ChapterEntity chapter;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "block_id", nullable = false)
+    @JoinColumn(name = "block_id")
     private ChapterBlockEntity block;
 
     @ManyToOne(fetch = FetchType.LAZY)

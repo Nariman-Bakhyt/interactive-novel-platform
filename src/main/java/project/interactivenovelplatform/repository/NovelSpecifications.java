@@ -139,7 +139,20 @@ public class NovelSpecifications {
     public static Specification<NovelEntity> titleLike(String title){
         return ((root, query, cb) ->{
             if (title == null || title.isBlank()) return null;
-            return cb.like(cb.upper(root.get("title")), "%"+title.toUpperCase()+"%");
+
+            String pattern = "%" + title.toUpperCase() + "%";
+            String startPattern = title.toUpperCase() + "%";
+            var likePredicate = cb.like(cb.upper(root.get("title")), pattern);
+
+            var caseExpression = cb.selectCase()
+                    .when(cb.like(cb.upper(root.get("title")), startPattern), 0)
+                    .otherwise(1);
+
+            query.orderBy(
+                    cb.asc(caseExpression),           // Сначала совпадения в начале
+                    cb.asc(root.get("title"))     // Затем по алфавиту для одинаковых групп
+            );
+            return likePredicate;
         } );
     }
 

@@ -23,21 +23,20 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.dto.request.*;
 import project.interactivenovelplatform.dto.response.ProfileResponseDto;
+import project.interactivenovelplatform.dto.response.RelationshipStateDto;
 import project.interactivenovelplatform.dto.response.UserResponseDto;
 import project.interactivenovelplatform.dto.response.UserSettingsResponseDto;
 import project.interactivenovelplatform.entity.*;
-import project.interactivenovelplatform.error.GlobalException;
+import project.interactivenovelplatform.error.GlobalExceptionHandler;
 import project.interactivenovelplatform.repository.UserRepository;
 import project.interactivenovelplatform.repository.UserSettingsRepository;
 import project.interactivenovelplatform.repository.UserSpecifications;
 import project.interactivenovelplatform.security.UserPrincipal;
-import project.interactivenovelplatform.service.RoleService;
-import project.interactivenovelplatform.service.StorageService;
-import project.interactivenovelplatform.service.UserService;
-import project.interactivenovelplatform.service.VerificationService;
+import project.interactivenovelplatform.service.*;
 
 import java.time.OffsetDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @Service
@@ -46,18 +45,20 @@ public class UserServiceImpl  implements UserService {
     private final RoleService roleService;
     private final StorageService storageService;
     private final UserSettingsRepository userSettingsRepository;
-    private final static Logger log = LoggerFactory.getLogger(GlobalException.class);
+    private final static Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private final PasswordEncoder passwordEncoder;
     private final EntityManager entityManager;
     private final VerificationService verificationService;
 
     private final TransactionTemplate transactionTemplate;
-
+    private final StorageHelper storageHelper;
+    
     private UserResponseDto convertToDto(AppUserEntity user) {
+        String publicUrl = user.getAvatarUrl() != null ? storageService.getPublicUrl(user.getAvatarUrl()) : null;
         return new UserResponseDto(
                 user.getId(),
                 user.getUsername(),
-                user.getAvatarUrl()
+                storageHelper.getAvatarOrDefault(publicUrl)
         );
     }
 
@@ -66,7 +67,7 @@ public class UserServiceImpl  implements UserService {
     @Transactional(readOnly = true)
     public Page<UserResponseDto> searchUsers(int page , int size , String search){
         Pageable pageable = PageRequest.of(page, size);
-        Specification<AppUserEntity> user = UserSpecifications.UserNameLike(search);
+        Specification<AppUserEntity> user = UserSpecifications.userNameLike(search);
         return userRepository.findAll(user, pageable).map(this::convertToDto);
     }
     @Override
@@ -88,7 +89,8 @@ public class UserServiceImpl  implements UserService {
                 .orElseThrow(() -> new EntityNotFoundException("Пользователь с id: " + targetUserId + " не найден"));
 
         boolean isMe = currentUserId != null && currentUserId.equals(targetUserId);
-
+        String publicUrl = profile.getAvatarUrl() != null ? storageService.getPublicUrl(profile.getAvatarUrl()) : null;
+        profile.setAvatarUrl(storageHelper.getAvatarOrDefault(publicUrl));
         if (isMe) {
             profile.setMyProfile(true);
         } else {
@@ -98,7 +100,19 @@ public class UserServiceImpl  implements UserService {
         }
         return profile;
     }
-
+    @Transactional(readOnly = true)
+    @Override
+    public RelationshipStateDto getRelationshipState(Long currentUserId, Long targetUserId){
+        return userRepository.getRelationshipState(currentUserId, targetUserId)
+                .orElseThrow(() -> new EntityNotFoundException("Пользователь с id: " + targetUserId + " не найден"));
+    }
+    @Transactional(readOnly = true)
+    @Override
+    public Map<Long, RelationshipStateDto> getRelationshipStates(Long currentUserId, List<Long> targetUserIds) {
+        return userRepository.findAllRelationshipStates(currentUserId, targetUserIds)
+                .stream()
+                .collect(Collectors.toMap(RelationshipStateDto::getUserId, dto -> dto));
+    }
 
     @Override
     @Transactional
@@ -181,14 +195,15 @@ public class UserServiceImpl  implements UserService {
     }
     @Override
     public ProfileResponseDto uploadUserAvatar( MultipartFile file, UserPrincipal principal){
-        var username = principal.getUsername();
         var userId = principal.getId();
-        var user = userRepository.findByUsernameIgnoreCase(username)
-                .orElseThrow(()->new EntityNotFoundException("Пользователь с именем: " + username + " не найден"));
+        var user = userRepository.findById(userId)
+                .orElseThrow(()->new EntityNotFoundException("Пользователь с Id: " + userId + " не найден"));
         String oldAvatarUrl = user.getAvatarUrl();
+
+        // 2. Используем дату создания новеллы для пути (чтобы папка не менялась)
+        String folderPath = "avatars/users/" + user.getId();
         String newAvatarUrl = null;
         try {
-
 
             if (file != null && !file.isEmpty()) {
                 String actualMimeType = storageService.verifyRealImageType(file);
@@ -196,11 +211,11 @@ public class UserServiceImpl  implements UserService {
                 String secureExtension = MimeTypes.getDefaultMimeTypes()
                         .forName(actualMimeType)
                         .getExtension();
-                String filename = "user_" + user.getId() + "_" + UUID.randomUUID().toString().substring(0, 8) + secureExtension;
-                newAvatarUrl = storageService.uploadFile(file,"avatars", filename);
+                String filename = "avatar_" + System.currentTimeMillis() + secureExtension;
+                newAvatarUrl = storageService.uploadFile(file,folderPath, filename);
             }
             String finalUrl = newAvatarUrl;
-            var finalEntity = transactionTemplate.execute(_ -> saveNewAvatarUrl(finalUrl,user.getId()));
+            transactionTemplate.execute(_ -> saveNewAvatarUrl(finalUrl,user.getId()));
 
             if (oldAvatarUrl!= null) {
                 storageService.deleteFile(oldAvatarUrl);
@@ -341,6 +356,24 @@ public class UserServiceImpl  implements UserService {
         return userRepository.findByIdAndIsActiveTrueAndIsLockedFalse(id)
                 .orElseThrow(()->new EntityNotFoundException("Пользователь с Id: " + id + " не найден"));
     }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<AppUserEntity> getAllEntitiesActiveAndNotLocked(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<AppUserEntity> users = userRepository.findAllByIdInAndIsActiveTrueAndIsLockedFalse(ids);
+
+        if (users.size() < ids.size()) {
+            log.warn("Некоторые пользователи из списка не найдены или заблокированы. Запрошено: {}, Найдено: {}",
+                    ids.size(), users.size());
+        }
+
+        return users;
+    }
+
+
     @Transactional(readOnly = true)
     @Override
     public AppUserEntity getEntityByUsername(String username) {
@@ -363,6 +396,13 @@ public class UserServiceImpl  implements UserService {
                 setting.getCanSendMessage(),
                 setting.getLibraryPrivacy()
         );
+    }
+    @Transactional(readOnly = true)
+    @Override
+    public Map<Long, UserSettingsResponseDto> getUserSettingsMap(List<Long> targetUserIds) {
+        return userSettingsRepository.findAllByUserIdIn(targetUserIds)
+                .stream().collect(Collectors.toMap(UserSettingsEntity::getUserId,dto ->
+                                new UserSettingsResponseDto(dto.getCanSendMessage(), dto.getLibraryPrivacy())));
     }
 
     @Transactional

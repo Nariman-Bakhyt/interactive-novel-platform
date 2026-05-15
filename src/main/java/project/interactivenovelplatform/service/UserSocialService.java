@@ -5,8 +5,10 @@ import org.springframework.data.web.PagedModel;
 import project.interactivenovelplatform.dto.request.UserRelationRequestDto;
 import project.interactivenovelplatform.dto.response.SocialGraphResponseDto;
 import project.interactivenovelplatform.dto.response.UserRelationResponseDto;
+import project.interactivenovelplatform.repository.UserBlockRepository;
 
 import java.util.List;
+import java.util.Set;
 
 public interface UserSocialService {
     UserRelationResponseDto follow(Long currentUserId, UserRelationRequestDto dto);
@@ -34,6 +36,10 @@ public interface UserSocialService {
     Boolean checkFollower(Long currentUserId , Long followerId);
     Boolean checkFriend(Long currentUserId , Long friendId);
     Boolean checkCloseFriends(Long currentUserId , Long friendId);
+
+    Boolean checkBlocked(Long currentUserId, Long friendId);
+
+    List<UserBlockRepository.BlockInfo> getAllBlockInfoBetween(Long myId, Set<Long> opponentIds);
 
     SocialGraphResponseDto getSocialGraph(Long userId);
 }

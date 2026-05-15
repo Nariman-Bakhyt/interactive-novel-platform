@@ -24,19 +24,19 @@ public class TagAndGenreServiceImpl implements TagAndGenreService {
 
     @Override
     @Transactional
-    public List<TagOrGenreResponseDto> UpdateTagOrGenreToNovel(List<TagOrGenreRequestDto> dto, boolean isTag, NovelEntity novelEntity) {
-        if(dto == null)return List.of();
-        List<Long> uniqueId =dto.stream().map(TagOrGenreRequestDto::getId).filter(Objects::nonNull).distinct().toList();
+    public List<TagOrGenreResponseDto> UpdateTagOrGenreToNovel(List<Long> ids, boolean isTag, NovelEntity novelEntity) {
+        if(ids == null || ids.isEmpty()) return List.of();
 
         if(isTag){
-
-            List<TagEntity> tags = tagRepository.findAllById(uniqueId);
+            // Используем переданные ID напрямую
+            List<TagEntity> tags = tagRepository.findAllById(ids);
             novelEntity.getTags().clear();
             novelEntity.getTags().addAll(tags);
             return tags.stream().map(tag->new TagOrGenreResponseDto(tag.getId(),tag.getName())).toList();
         }
         else {
-            List<GenreEntity> genres = genreRepository.findAllById(uniqueId);
+            // Используем переданные ID напрямую
+            List<GenreEntity> genres = genreRepository.findAllById(ids);
             novelEntity.getGenres().clear();
             novelEntity.getGenres().addAll(genres);
             return genres.stream().map(g->new TagOrGenreResponseDto(g.getId(),g.getName())).toList();

@@ -4,23 +4,26 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import project.interactivenovelplatform.dto.SocialEventType;
 import project.interactivenovelplatform.dto.request.UserRelationRequestDto;
-import project.interactivenovelplatform.dto.response.SocialGraphResponseDto;
-import project.interactivenovelplatform.dto.response.UserRelationResponseDto;
+import project.interactivenovelplatform.dto.response.*;
 import project.interactivenovelplatform.entity.*;
 import project.interactivenovelplatform.repository.UserBlockRepository;
 import project.interactivenovelplatform.repository.UserCloseFriendsRepository;
 import project.interactivenovelplatform.repository.UserFollowerRepository;
 import project.interactivenovelplatform.repository.UserFriendRepository;
+import project.interactivenovelplatform.service.StorageHelper;
 import project.interactivenovelplatform.service.UserService;
 import project.interactivenovelplatform.service.UserSocialService;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,13 +35,16 @@ public class UserSocialServiceImpl implements UserSocialService {
     private final UserFriendRepository friendRepository;
     private final UserCloseFriendsRepository  closeFriendsRepository;
     private final UserService userService;
+    private final StorageHelper storageHelper;
+
+    private final SimpMessagingTemplate messagingTemplate;
 
     private UserRelationResponseDto convertFollowerToDto(UserFollowerEntity relationEntity , AppUserEntity appUserEntity ) {
         return new UserRelationResponseDto(
                 relationEntity.getId(),
                 appUserEntity.getId(),
                 appUserEntity.getUsername(),
-                appUserEntity.getAvatarUrl(),
+                storageHelper.getAvatarOrDefault(appUserEntity.getAvatarUrl()),
                 null,
                 relationEntity.getUpdatedAt()
         );
@@ -49,7 +55,7 @@ public class UserSocialServiceImpl implements UserSocialService {
                 friendEntity.getId(),
                 appUserEntity.getId(),
                 appUserEntity.getUsername(),
-                appUserEntity.getAvatarUrl(),
+                storageHelper.getAvatarOrDefault(appUserEntity.getAvatarUrl()),
                 friendEntity.getStatus(),
                 friendEntity.getUpdatedAt()
         );
@@ -61,7 +67,7 @@ public class UserSocialServiceImpl implements UserSocialService {
                 closeFriendsEntity.getId(),
                 appUserEntity.getId(),
                 appUserEntity.getUsername(),
-                appUserEntity.getAvatarUrl(),
+                storageHelper.getAvatarOrDefault(appUserEntity.getAvatarUrl()),
                 null,
                 closeFriendsEntity.getAddedAt()
         );
@@ -72,7 +78,7 @@ public class UserSocialServiceImpl implements UserSocialService {
                 blockEntity.getId(),
                 appUserEntity.getId(),
                 appUserEntity.getUsername(),
-                appUserEntity.getAvatarUrl(),
+                storageHelper.getAvatarOrDefault(appUserEntity.getAvatarUrl()),
                 null,
                 blockEntity.getCreatedAt()
         );
@@ -100,14 +106,27 @@ public class UserSocialServiceImpl implements UserSocialService {
         relation.setReceiver(receiver);
         relation.setUpdatedAt(OffsetDateTime.now());
         followerRepository.save(relation);
-        return convertFollowerToDto(relation, receiver);
+        var response = convertFollowerToDto(relation, receiver);
+
+        messagingTemplate.convertAndSend(
+                "/topic/user." + receiver.getId() ,
+                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FOLLOW_SUCCESS.name(),
+                        Map.of("userId", currentUserId ,"relationId" ,relation.getId()))
+        );
+        messagingTemplate.convertAndSend(
+                "/topic/user." + currentUserId ,
+                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FOLLOW_SUCCESS.name(),
+                        Map.of("userId", receiver.getId() ,"relationId" ,relation.getId()))
+        );
+        return response;
     }
 
     @Transactional
     @Override
     public void unfollow(Long currentUserId, UserRelationRequestDto dto) {
+        UserFollowerEntity relation =  null;
         if (dto.getRelationId() != null) {
-            UserFollowerEntity relation = followerRepository.findById(dto.getRelationId())
+            relation = followerRepository.findById(dto.getRelationId())
                     .orElseThrow(() -> new EntityNotFoundException("Подписка не найдена"));
             checkAccess(currentUserId, relation);
             followerRepository.delete(relation);
@@ -121,6 +140,21 @@ public class UserSocialServiceImpl implements UserSocialService {
         } else {
             throw new IllegalArgumentException("Необходимо указать ID связи или ID пользователя");
         }
+
+        var receiver = relation.getReceiver();
+        var sender = relation.getSender();
+
+        messagingTemplate.convertAndSend(
+                "/topic/user." + receiver.getId() ,
+                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.UNFOLLOW_SUCCESS.name(),
+                        Map.of("userId", sender.getId() ,"relationId" ,relation.getId()))
+        );
+
+        messagingTemplate.convertAndSend(
+                "/topic/user." + sender.getId() ,
+                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.UNFOLLOW_SUCCESS.name(),
+                        Map.of("userId", receiver.getId() ,"relationId" ,relation.getId()))
+        );
     }
 
     private void checkAccess(Long currentUserId, UserFollowerEntity relation) {
@@ -152,8 +186,20 @@ public class UserSocialServiceImpl implements UserSocialService {
         relation.setReceiver(userService.getEntityIsActiveAndIsLockedFalse(dto.getReceiverId()));
         relation.setStatus(RelationStatus.PENDING); // Новая заявка всегда PENDING
         relation.setUpdatedAt(OffsetDateTime.now());
+        var response = convertFriendToDto(friendRepository.save(relation), relation.getReceiver());
 
-        return convertFriendToDto(friendRepository.save(relation), relation.getReceiver());
+        var receiver = relation.getReceiver();
+        messagingTemplate.convertAndSend(
+                "/topic/user." + receiver.getId() ,
+                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_RECEIVED.name(),
+                        Map.of("userId", currentUserId ,"relationId" ,response.getId()))
+        );
+        messagingTemplate.convertAndSend(
+                "/topic/user." + currentUserId ,
+                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_SENT.name(),
+                        Map.of("userId", response.getUserId() ,"relationId" ,response.getId()))
+        );
+        return response;
     }
     @Transactional
     @Override
@@ -174,8 +220,22 @@ public class UserSocialServiceImpl implements UserSocialService {
 
         relation.setStatus(RelationStatus.FRIEND);
         relation.setUpdatedAt(OffsetDateTime.now());
+        var response = convertFriendToDto(friendRepository.save(relation), relation.getReceiver());
 
-        return convertFriendToDto(friendRepository.save(relation), relation.getSender());
+        var receiver = relation.getReceiver();
+        var sender = relation.getSender();
+        messagingTemplate.convertAndSend(
+                "/topic/user." + sender.getId() ,
+                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_ACCEPTED.name(),
+                        Map.of("userId", receiver.getId() ,"relationId" ,response.getId()))
+        );
+        messagingTemplate.convertAndSend(
+                "/topic/user." + receiver.getId() ,
+                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_ACCEPTED.name(),
+                        Map.of("userId", sender.getId() ,"relationId" ,response.getId()))
+        );
+
+        return response;
     }
 
 
@@ -197,7 +257,24 @@ public class UserSocialServiceImpl implements UserSocialService {
         if(!currentUserIsSender && !currentUserIsReceiver){
             throw new AccessDeniedException("Вы не можете управлять этим отношением");
         }
+        var receiver = relation.getReceiver();
+        var sender = relation.getSender();
         friendRepository.delete(relation);
+        dto.setRelationId(null);
+        dto.setReceiverId(receiver.getId());
+        removeCloseFriend(currentUserId,dto);
+
+        messagingTemplate.convertAndSend(
+                "/topic/user." + sender.getId()  ,
+                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_DECLINED.name(),
+                        Map.of("userId", receiver.getId() ,"relationId" ,relation.getId()))
+        );
+        messagingTemplate.convertAndSend(
+                "/topic/user." + receiver.getId()  ,
+                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_DECLINED.name(),
+                        Map.of("userId", sender.getId() ,"relationId" ,relation.getId()))
+        );
+
     }
     @Transactional
     @Override
@@ -222,8 +299,13 @@ public class UserSocialServiceImpl implements UserSocialService {
         closeFriendRel.setOwner(owner);
         closeFriendRel.setFriend(friend);
         closeFriendRel.setAddedAt(OffsetDateTime.now());
-
-        return convertCloseFriendToDto(closeFriendsRepository.save(closeFriendRel), friend);
+        var response = convertCloseFriendToDto(closeFriendsRepository.save(closeFriendRel), friend);
+        messagingTemplate.convertAndSend(
+                "/topic/user." + currentUserId ,
+                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.CLOSE_FRIEND_ADDED.name(),
+                        Map.of("userId", dto.getReceiverId() ,"relationId" ,closeFriendRel.getId()))
+        );
+        return response;
     }
 
     @Transactional
@@ -244,6 +326,11 @@ public class UserSocialServiceImpl implements UserSocialService {
         } else {
             throw new IllegalArgumentException("Необходимо указать ID связи (relationId) или ID пользователя (receiverId)");
         }
+        messagingTemplate.convertAndSend(
+                "/topic/user." + currentUserId ,
+                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.CLOSE_FRIEND_REMOVED.name(),
+                        Map.of("userId", dto.getReceiverId() ,"relationId" ,closeFriendRel.getId()))
+        );
         closeFriendsRepository.delete(closeFriendRel);
     }
 
@@ -322,7 +409,13 @@ public class UserSocialServiceImpl implements UserSocialService {
         entity.setBlocker(blocker);
         entity.setBlocked(blocked);
         entity.setCreatedAt(OffsetDateTime.now());
-        return convertBlockToDto(blockRepository.save(entity),blocked);
+        var response = convertBlockToDto(blockRepository.save(entity),blocked);
+        messagingTemplate.convertAndSend(
+                "/topic/user." + currentUserId ,
+                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.USER_BLOCKED.name(),
+                        Map.of("userId", dto.getReceiverId() ,"relationId" ,entity.getId()))
+        );
+        return response;
     }
 
     @Transactional
@@ -338,6 +431,13 @@ public class UserSocialServiceImpl implements UserSocialService {
             throw new AccessDeniedException("Вы не можете отменить чужую блокировку");
         }
         blockRepository.delete(blockEntity);
+
+        messagingTemplate.convertAndSend(
+                "/topic/user." + currentUserId ,
+                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.USER_UNBLOCKED.name(),
+                        Map.of("userId", dto.getReceiverId() ,"relationId" ,blockEntity.getId()))
+        );
+
     }
     @Transactional(readOnly = true)
     @Override
@@ -359,6 +459,14 @@ public class UserSocialServiceImpl implements UserSocialService {
     @Override
     public Boolean checkCloseFriends(Long currentUserId , Long friendId){
         return closeFriendsRepository.existsByOwnerIdAndFriendId(friendId,currentUserId);
+    }
+    @Override
+    public Boolean checkBlocked(Long currentUserId, Long friendId){
+        return blockRepository.existsUserBlockEntityByBlockerIdAndBlockedId(currentUserId,friendId);
+    }
+    @Override
+    public List<UserBlockRepository.BlockInfo> getAllBlockInfoBetween(Long myId, Set<Long> opponentIds){
+        return blockRepository.findAllBlockInfoBetween(myId, opponentIds);
     }
 
     private Map<Long, Long> getMap(List<Object[]> map) {

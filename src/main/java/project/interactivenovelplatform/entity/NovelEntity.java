@@ -26,6 +26,8 @@ public class NovelEntity {
     private Novel status = Novel.IN_PROGRESS;
     @Column(name = "description",length = 2000)
     private String description;
+    @Column(name = "created_at")
+    private OffsetDateTime createdAt =  OffsetDateTime.now();
     @Column(name = "publication_date")
     private OffsetDateTime publicationDate = OffsetDateTime.now();
     @Column(name = "chapter_count",nullable = false)

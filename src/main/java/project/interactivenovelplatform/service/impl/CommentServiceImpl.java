@@ -18,17 +18,14 @@ import project.interactivenovelplatform.dto.response.AllRatingResponseDto;
 import project.interactivenovelplatform.dto.response.AllRatingsResponseDto;
 import project.interactivenovelplatform.dto.response.CommentResponseDto;
 import project.interactivenovelplatform.dto.response.RatingResponseDto;
+import project.interactivenovelplatform.entity.AppUserEntity;
 import project.interactivenovelplatform.entity.CommentEntity;
 import project.interactivenovelplatform.entity.Metadata;
 import project.interactivenovelplatform.entity.RatingEntity;
 import project.interactivenovelplatform.repository.CommentRepository;
 import project.interactivenovelplatform.repository.RatingRepository;
 import project.interactivenovelplatform.security.UrlValidator;
-import project.interactivenovelplatform.security.UserPrincipal;
-import project.interactivenovelplatform.service.CommentService;
-import project.interactivenovelplatform.service.NovelService;
-import project.interactivenovelplatform.service.StorageService;
-import project.interactivenovelplatform.service.UserService;
+import project.interactivenovelplatform.service.*;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -46,6 +43,7 @@ public class CommentServiceImpl implements CommentService {
     private final UserService userService;
     private final CommentRepository commentRepository;
     private final StorageService storageService;
+    private final StorageHelper storageHelper;
 
     private final TransactionTemplate transactionTemplate;
 
@@ -140,14 +138,28 @@ public class CommentServiceImpl implements CommentService {
     }
 
     private CommentResponseDto convertToResponse(CommentEntity entity) {
+        Metadata metadata = entity.getMetadata();
+        if (metadata != null && metadata.getImages() != null) {
+            List<String> fullUrls = metadata.getImages().stream()
+                    .map(storageService::getPublicUrl)
+                    .toList();
+            Metadata responseMetadata = new Metadata();
+            responseMetadata.setType(metadata.getType());
+            responseMetadata.setImages(fullUrls);
+            metadata = responseMetadata;
+        }
+
+        String userAvatar = entity.getUser().getAvatarUrl() != null 
+                ? storageService.getPublicUrl(entity.getUser().getAvatarUrl()) : null;
+
         return CommentResponseDto.builder()
                 .id(entity.getId())
                 .content(entity.getContent())
                 .timestamp(entity.getTimestamp())
                 .userId(entity.getUser().getId())
                 .username(entity.getUser().getUsername())
-                .userAvatarUrl(entity.getUser().getAvatarUrl())
-                .metadata(entity.getMetadata())
+                .userAvatarUrl(storageHelper.getAvatarOrDefault(userAvatar))
+                .metadata(metadata)
 
                 .blockId(entity.getBlock() != null ? entity.getBlock().getId() : null)
                 .chapterId(entity.getChapter() != null ? entity.getChapter().getId() : null)
@@ -157,39 +169,38 @@ public class CommentServiceImpl implements CommentService {
     }
 
 
-
-
     @Override
-    public CommentResponseDto createComment(List<MultipartFile> files, CommentRequestDto dto , UserPrincipal principal){
-        CommentEntity commentEntity = transactionTemplate.execute(_ ->
-                saveCommentSkeleton(dto, principal.getId())
-        );
+    public CommentResponseDto createComment(List<MultipartFile> files, CommentRequestDto dto, Long currentId){
+        OffsetDateTime now = OffsetDateTime.now();
+        String datePath = now.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+        Metadata metadata = createMetadata(files, datePath, dto, currentId);
 
         try {
-            String datePath = commentEntity.getTimestamp().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-            Metadata metadata = createMetadata(files, datePath, dto, principal.getId());
-            CommentEntity finalEntity = transactionTemplate.execute(_ -> updateCommentMetadata(metadata, commentEntity.getId()));
-            return convertToResponse(finalEntity);
-        } catch (Exception e) {
-            transactionTemplate.execute(_ -> {
-                commentRepository.delete(commentEntity);
-                return null;
-            });
-            throw e;
+            CommentEntity finalCommentEntity = transactionTemplate.execute(_ ->{
+                        AppUserEntity user = userService.getEntityIsActiveAndIsLockedFalse(currentId);
+                        CommentEntity commentEntity = new CommentEntity();
+                        commentEntity.setContent(dto.getContent());
+                        commentEntity.setTimestamp(OffsetDateTime.now());
+                        commentEntity.setUser(user);
+                        commentEntity.setMetadata(metadata);
+                        setCommentTarget(commentEntity, dto);
+                        return commentRepository.save(commentEntity);
+                    }
+            );
+            return convertToResponse(finalCommentEntity);
+        }
+        catch (Exception e) {
+            if (metadata.getImages() != null) {
+                for (String image : metadata.getImages()) {
+                    storageService.deleteFile(image);
+                }
+
+            }
+            throw new RuntimeException("Ошибка при создании комментария: " + e.getMessage());
         }
 
     }
 
-    private CommentEntity saveCommentSkeleton(CommentRequestDto dto , Long userId){
-        var user = userService.getEntityIsActiveAndIsLockedFalse(userId);
-        CommentEntity commentEntity = new CommentEntity();
-        commentEntity.setContent(dto.getContent());
-        commentEntity.setTimestamp(OffsetDateTime.now());
-        commentEntity.setUser(user);
-        setCommentTarget(commentEntity, dto);
-
-        return commentRepository.saveAndFlush(commentEntity);
-    }
 
     private Metadata createMetadata(List<MultipartFile> files, String datePath , CommentRequestDto dto , Long userId){
         Metadata metadata = new Metadata();
@@ -251,12 +262,7 @@ public class CommentServiceImpl implements CommentService {
         return  metadata;
     }
 
-    private CommentEntity updateCommentMetadata(Metadata metadata, Long commentId ){
-        var commentEntity = commentRepository.findById(commentId)
-                .orElseThrow(()->new EntityNotFoundException("комментарий не найден"));
-        commentEntity.setMetadata(metadata);
-        return commentRepository.save(commentEntity);
-    }
+
 
     public void setCommentTarget(CommentEntity commentEntity, CommentRequestDto dto) {
         if (dto.getParentCommentId() != null){

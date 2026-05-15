@@ -4,6 +4,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
 import org.apache.tika.mime.MimeTypes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -17,14 +19,14 @@ import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.dto.request.*;
 import project.interactivenovelplatform.dto.response.*;
 import project.interactivenovelplatform.entity.*;
+import project.interactivenovelplatform.error.GlobalExceptionHandler;
 import project.interactivenovelplatform.repository.*;
-import project.interactivenovelplatform.service.NovelService;
-import project.interactivenovelplatform.service.StorageService;
-import project.interactivenovelplatform.service.TagAndGenreService;
-import project.interactivenovelplatform.service.UserService;
+import project.interactivenovelplatform.security.UserPrincipal;
+import project.interactivenovelplatform.service.*;
 
 import java.security.Principal;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -43,11 +45,13 @@ public class NovelServiceImpl implements NovelService {
     private final ReadingHistoryRepository readingHistoryRepository;
     private final EntityManager entityManager;
 
+    private final static Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private final TransactionTemplate transactionTemplate;
     private final StringRedisTemplate redisTemplate;
-
+    private final StorageHelper storageHelper;
 
     private NovelResponseDto convertToDto(NovelEntity novel) {
+        String publicCoverUrl = novel.getCoverUrl() != null ? storageService.getPublicUrl(novel.getCoverUrl()) : null;
         return new NovelResponseDto(
                 novel.getId(),
                 novel.getTitle(),
@@ -59,7 +63,7 @@ public class NovelServiceImpl implements NovelService {
                 novel.getRatingCount(),
                 novel.getViewCount(),
                 novel.getAuthor().getUsername(),
-                novel.getCoverUrl(),
+                storageHelper.getCoverOrDefault(publicCoverUrl),
                 novel.getTags().stream().map(tag -> new TagOrGenreResponseDto(
                         tag.getId(),
                         tag.getName()
@@ -81,7 +85,7 @@ public class NovelServiceImpl implements NovelService {
           chapter.getId(),
           chapter.getChapterNumber(),
           chapter.getTitle(),
-          chapter.getBlocks().stream().map(blockEntity -> new ChapterBlockRequestDto(
+          chapter.getBlocks().stream().map(blockEntity -> new ChapterBlockResponseDto(
                   blockEntity.getId(),
                   blockEntity.getSequenceOrder(),
                   blockEntity.getType(),
@@ -99,25 +103,59 @@ public class NovelServiceImpl implements NovelService {
         }
     }
     @Transactional(readOnly = true)
-    public boolean isAuthor(Long novelId, String username) {
-        return novelRepository.findById(novelId)
-                .map(novel ->
-                        novel.getAuthor().getUsername().equals(username)
-                )
-                .orElse(false);
+    public boolean isAuthor(Long novelId, UserPrincipal userPrincipal) {
+        if(userPrincipal == null) return false;
+        return novelRepository.existsByIdAndAuthorId(novelId, userPrincipal.getId());
     }
 
     @Override
-    @Transactional
     public NovelResponseDto create(NovelRequestDto dto, Long currentAuthorId){
-        NovelEntity novelEntity = new NovelEntity();
-        novelEntity.setTitle(dto.getTitle());
-        novelEntity.setDescription(dto.getDescription());
-        novelEntity.setAuthor(userService.getEntityIsActiveAndIsLockedFalse(currentAuthorId));
-        novelEntity.setStatus(Novel.DRAFT);
-        tagAndGenreService.UpdateTagOrGenreToNovel(dto.getTags(),true,novelEntity);
-        tagAndGenreService.UpdateTagOrGenreToNovel(dto.getGenres(),false,novelEntity);
-        return convertToDto(novelRepository.save(novelEntity));
+
+        OffsetDateTime now = OffsetDateTime.now();
+        String datePath = now.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+        String folderPath = String.format("covers/users/%d/%s", currentAuthorId, datePath);
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        String newCoverUrl = null;
+        var file = dto.getCoverImage();
+        if (file != null && !file.isEmpty()) {
+            try {
+                String actualMimeType = storageService.verifyRealImageType(file);
+                String secureExtension = MimeTypes.getDefaultMimeTypes()
+                        .forName(actualMimeType).getExtension();
+
+                String filename = timestamp + secureExtension;
+                newCoverUrl = storageService.uploadFile(file, folderPath, filename);
+            } catch (Exception e) {
+                log.warn("Не удалось загрузить обложку для автора {}: {}", currentAuthorId, e.getMessage());
+            }
+        }
+        final String finalNewCoverUrl = newCoverUrl;
+        try {
+            NovelEntity savedNovel= transactionTemplate.execute(_ ->{
+                        NovelEntity novelEntity = new NovelEntity();
+                        novelEntity.setTitle(dto.getTitle());
+                        novelEntity.setDescription(dto.getDescription());
+                        novelEntity.setAuthor(userService.getEntityIsActiveAndIsLockedFalse(currentAuthorId));
+                        novelEntity.setStatus(Novel.DRAFT);
+                        novelEntity.setCreatedAt(now);
+                        novelRepository.saveAndFlush(novelEntity);
+                        tagAndGenreService.UpdateTagOrGenreToNovel(dto.getTags(),true,novelEntity);
+                        tagAndGenreService.UpdateTagOrGenreToNovel(dto.getGenres(),false,novelEntity);
+                        novelEntity.setCoverUrl(finalNewCoverUrl);
+                        return novelEntity;
+                    }
+            );
+            return convertToDto(savedNovel);
+
+        }
+        catch (Exception e) {
+            if (finalNewCoverUrl != null) {
+                storageService.deleteFile(finalNewCoverUrl);
+            }
+            throw new RuntimeException("Ошибка при создании новеллы: " + e.getMessage());
+        }
+
+
     }
     @Override
     @Transactional(readOnly = true)
@@ -214,30 +252,35 @@ public class NovelServiceImpl implements NovelService {
     public NovelResponseDto updateCoverUrl(Long id, MultipartFile file, Principal principal){
         var novel = novelRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("новелла не найдена"));
-        String oldCoverUrl = novel.getCoverUrl();
-        String newCoverUrl = null;
+        String oldUrl = novel.getCoverUrl();
 
+        // 2. Используем дату создания новеллы для пути (чтобы папка не менялась)
+        String datePath = novel.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+        String folderPath = String.format("covers/users/%d/%s", novel.getAuthor().getId(), datePath);
+        String newUrl = null;
         try {
             if (file != null && !file.isEmpty()) {
                 String actualMimeType = storageService.verifyRealImageType(file);
-                String secureExtension = MimeTypes.getDefaultMimeTypes()
-                        .forName(actualMimeType).getExtension();
+                String extension = MimeTypes.getDefaultMimeTypes().forName(actualMimeType).getExtension();
 
-                String filename = "user_" + novel.getAuthor().getId() + "_" + id + "_" + System.currentTimeMillis() + secureExtension;
-                newCoverUrl = storageService.uploadFile(file, "covers", filename);
+                String filename = "novel_" + novel.getId() + "_rev" + System.currentTimeMillis() + extension;
+
+                newUrl = storageService.uploadFile(file, folderPath, filename);
+                final String finalUrl = newUrl;
+                // 5. Обновляем БД
+                var savedNovel = transactionTemplate.execute(_ ->saveNewCoverUrl(id,finalUrl));
+
+                if (oldUrl != null && newUrl != null) {
+                    storageService.deleteFile(oldUrl);
+                }
+                return convertToDto(savedNovel);
             }
-
-            String finalUrl = newCoverUrl;
-            NovelEntity savedNovel = transactionTemplate.execute(_ -> saveNewCoverUrl(id, finalUrl));
-
-            if (oldCoverUrl != null && finalUrl != null) {
-                storageService.deleteFile(oldCoverUrl);
+            else {
+                throw new EntityNotFoundException("нету файла");
             }
-            return convertToDto(savedNovel);
-
         } catch (Exception e) {
-            if (newCoverUrl != null) {
-                storageService.deleteFile(newCoverUrl);
+            if (newUrl != null) {
+                storageService.deleteFile(newUrl);
             }
             throw new RuntimeException("Ошибка при обновлении обложки: " + e.getMessage(), e);
         }

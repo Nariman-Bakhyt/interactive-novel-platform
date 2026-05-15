@@ -4,14 +4,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.stereotype.Repository;
+import project.interactivenovelplatform.dto.response.RelationshipStateDto;
 import project.interactivenovelplatform.dto.response.ProfileResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
 
+import java.util.List;
 import java.util.Optional;
-
+@Repository
 public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaSpecificationExecutor<AppUserEntity> {
 
+    Optional<AppUserEntity> findById(Long id);
     Optional <AppUserEntity> findByUsernameIgnoreCase(String username);
     Optional<AppUserEntity> findByEmailIgnoreCase(String email);
     @EntityGraph(attributePaths = {"role"}) // "roles" должно совпадать с именем поля в Entity
@@ -24,6 +27,10 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
 
     @Query("SELECT u FROM AppUserEntity u WHERE u.id = :id AND u.isActive = true AND u.isLocked = false ")
     Optional<AppUserEntity> findByIdAndIsActiveTrueAndIsLockedFalse(Long id);
+
+    @Query("SELECT u FROM AppUserEntity u WHERE u.id IN :ids AND u.isActive = true AND u.isLocked = false")
+    List<AppUserEntity> findAllByIdInAndIsActiveTrueAndIsLockedFalse(@Param("ids") List<Long> ids);
+
 
     Page<AppUserEntity> findAll(Pageable pageable);
     @Query("SELECT u FROM AppUserEntity u WHERE UPPER(u.username)= UPPER(:username) OR UPPER(u.email)= UPPER(:email) ")
@@ -69,7 +76,10 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
           AND ((fr2.sender.id = :currentUserId AND fr2.receiver = u)
             OR (fr2.sender = u AND fr2.receiver.id = :currentUserId))) > 0),
         
-        ((SELECT COUNT(cf2) FROM UserCloseFriendsEntity cf2 WHERE cf2.owner.id = :currentUserId AND cf2.friend = u) > 0)
+        ((SELECT COUNT(cf2) FROM UserCloseFriendsEntity cf2 WHERE cf2.owner.id = :currentUserId AND cf2.friend = u) > 0),
+        ((SELECT COUNT(b1) FROM UserBlockEntity b1 WHERE b1.blocker.id = :currentUserId AND b1.blocked = u) > 0),
+        ((SELECT COUNT(b2) FROM UserBlockEntity b2 WHERE b2.blocker = u AND b2.blocked.id = :currentUserId) > 0)
+        
     )
     FROM AppUserEntity u
     WHERE u.id = :targetUserId
@@ -78,6 +88,59 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
             @Param("targetUserId") Long targetUserId,
             @Param("currentUserId") Long currentUserId
     );
+
+    @Query("""
+    SELECT new project.interactivenovelplatform.dto.response.RelationshipStateDto(
+        u.id,
+        ((SELECT COUNT(f1) FROM UserFollowerEntity f1\s
+                  WHERE f1.sender.id = :currentUserId AND f1.receiver.id = :targetUserId) > 0),
+        
+        ((SELECT COUNT(f2) FROM UserFollowerEntity f2\s
+          WHERE f2.sender.id = :targetUserId AND f2.receiver.id = :currentUserId) > 0),
+          
+        ((SELECT COUNT(fr) FROM UserFriendEntity fr
+          WHERE fr.status = project.interactivenovelplatform.entity.RelationStatus.FRIEND
+          AND ((fr.sender.id = :currentUserId AND fr.receiver.id = :targetUserId)
+            OR (fr.sender.id = :targetUserId AND fr.receiver.id = :currentUserId))) > 0),
+            
+        ((SELECT COUNT(cf) FROM UserCloseFriendsEntity cf WHERE cf.owner.id = :currentUserId AND cf.friend.id = :targetUserId) > 0),
+        
+        ((SELECT COUNT(b1) FROM UserBlockEntity b1 WHERE b1.blocker.id = :currentUserId AND b1.blocked.id = :targetUserId) > 0),
+        
+        ((SELECT COUNT(b2) FROM UserBlockEntity b2 WHERE b2.blocker.id = :targetUserId AND b2.blocked.id = :currentUserId) > 0)
+    )
+    FROM AppUserEntity u WHERE u.id = :targetUserId
+""")
+    Optional<RelationshipStateDto> getRelationshipState(
+            @Param("currentUserId") Long currentUserId,
+            @Param("targetUserId") Long targetUserId
+    );
+
+    @Query("""
+    SELECT new project.interactivenovelplatform.dto.response.RelationshipStateDto(
+        u.id,
+        ((SELECT COUNT(f1) FROM UserFollowerEntity f1 
+                  WHERE f1.sender.id = :currentUserId AND f1.receiver.id = u.id) > 0),
+        
+        ((SELECT COUNT(f2) FROM UserFollowerEntity f2 
+          WHERE f2.sender.id = u.id AND f2.receiver.id = :currentUserId) > 0),
+          
+        ((SELECT COUNT(fr) FROM UserFriendEntity fr
+          WHERE fr.status = project.interactivenovelplatform.entity.RelationStatus.FRIEND
+          AND ((fr.sender.id = :currentUserId AND fr.receiver.id = u.id)
+            OR (fr.sender.id = u.id AND fr.receiver.id = :currentUserId))) > 0),
+            
+        ((SELECT COUNT(cf) FROM UserCloseFriendsEntity cf WHERE cf.owner.id = :currentUserId AND cf.friend.id = u.id) > 0),
+        
+        ((SELECT COUNT(b1) FROM UserBlockEntity b1 WHERE b1.blocker.id = :currentUserId AND b1.blocked.id = u.id) > 0),
+        
+        ((SELECT COUNT(b2) FROM UserBlockEntity b2 WHERE b2.blocker.id = u.id AND b2.blocked.id = :currentUserId) > 0)
+    )
+    FROM AppUserEntity u WHERE u.id IN :targetIds
+""")
+    List<RelationshipStateDto> findAllRelationshipStates(@Param("currentUserId") Long currentUserId, @Param("targetIds") List<Long> targetIds);
+
+
     @Modifying(clearAutomatically = true)
     @Query("UPDATE AppUserEntity u SET u.isActive = true WHERE u.id = :userId")
     void activateUser(@Param("userId") Long userId);
@@ -89,5 +152,6 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
     @Modifying(clearAutomatically = true)
     @Query("UPDATE AppUserEntity u SET u.passwordHash = :password WHERE u.id = :userId")
     void updateUserPassword(@Param("userId") Long userId, @Param("password") String password);
+
 
 }
