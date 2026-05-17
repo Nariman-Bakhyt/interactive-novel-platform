@@ -1,8 +1,10 @@
 package project.interactivenovelplatform.service.impl;
 
+import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
+import io.minio.http.Method;
 import org.apache.tika.Tika;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +17,7 @@ import project.interactivenovelplatform.service.StorageService;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class StorageServiceImpl implements StorageService {
@@ -97,6 +100,23 @@ public class StorageServiceImpl implements StorageService {
             return actualMimeType;
         } catch (IOException e) {
             throw new RuntimeException("Ошибка анализа файла", e);
+        }
+    }
+
+    @Override
+    public String getPresignedUrl(String objectPath) {
+        try {
+            return minioClient.getPresignedObjectUrl(
+                    GetPresignedObjectUrlArgs.builder()
+                            .method(Method.GET)
+                            .bucket(bucketName)
+                            .object(objectPath)
+                            .expiry(2, TimeUnit.HOURS)
+                            .build()
+            );
+        } catch (Exception e) {
+            log.error("Ошибка при генерации временной ссылки для файла {}", objectPath, e);
+            return null;
         }
     }
 

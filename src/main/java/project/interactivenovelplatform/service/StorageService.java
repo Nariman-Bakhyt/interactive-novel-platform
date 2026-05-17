@@ -11,4 +11,6 @@ public interface StorageService {
     Set<String> getAllowedExtensions();
     String verifyRealImageType(MultipartFile file);
     String getPublicUrl(String blobName);
+
+    String getPresignedUrl(String objectPath);
 }

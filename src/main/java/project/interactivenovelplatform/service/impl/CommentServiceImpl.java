@@ -152,20 +152,23 @@ public class CommentServiceImpl implements CommentService {
         String userAvatar = entity.getUser().getAvatarUrl() != null 
                 ? storageService.getPublicUrl(entity.getUser().getAvatarUrl()) : null;
 
-        return CommentResponseDto.builder()
-                .id(entity.getId())
-                .content(entity.getContent())
-                .timestamp(entity.getTimestamp())
-                .userId(entity.getUser().getId())
-                .username(entity.getUser().getUsername())
-                .userAvatarUrl(storageHelper.getAvatarOrDefault(userAvatar))
-                .metadata(metadata)
+        return new CommentResponseDto(
+                entity.getId(),
+                entity.getContent(),
+                entity.getTimestamp(),
+                metadata,
 
-                .blockId(entity.getBlock() != null ? entity.getBlock().getId() : null)
-                .chapterId(entity.getChapter() != null ? entity.getChapter().getId() : null)
-                .novelId(entity.getNovel() != null ? entity.getNovel().getId() : null)
-                .parentCommentId(entity.getParentComment() != null ? entity.getParentComment().getId() : null)
-                .build();
+                entity.getUser().getId(),
+                entity.getUser().getUsername(),
+                storageHelper.getAvatarOrDefault(userAvatar),
+
+                entity.getParentComment() != null ? entity.getParentComment().getId() : null,
+                entity.getBlock() != null ? entity.getBlock().getId() : null,
+                entity.getChapter() != null ? entity.getChapter().getId() : null,
+                entity.getNovel() != null ? entity.getNovel().getId() : null,
+                entity.getForumTopic() != null ? entity.getForumTopic().getId() : null,
+                entity.getChannelPost() != null ? entity.getChannelPost().getId() : null
+                );
     }
 
 

@@ -57,9 +57,13 @@ public class ChatServiceImpl implements ChatService {
         // Если в сообщении есть картинки, превращаем их пути в полные URL
         if (metadata != null && metadata.getImages() != null) {
             List<String> fullUrls = metadata.getImages().stream()
-                    .map(storageService::getPublicUrl)
+                    .map(imagePath -> {
+                        if (imagePath.startsWith("chat/")) {
+                            return storageService.getPresignedUrl(imagePath);
+                        }
+                        return storageService.getPublicUrl(imagePath);
+                    })
                     .toList();
-            // Создаем копию метаданных для ответа, чтобы не менять сущность в БД
             Metadata responseMetadata = new Metadata();
             responseMetadata.setType(metadata.getType());
             responseMetadata.setImages(fullUrls);
@@ -74,7 +78,7 @@ public class ChatServiceImpl implements ChatService {
                 entity.getConversation().getId(),
                 entity.getContent(),
                 entity.getTimestamp(),
-                entity.getMetadata(),
+                metadata,
                 entity.getSender().getId(),
                 entity.getSender().getUsername(),
                 storageHelper.getAvatarOrDefault(senderAvatar)
