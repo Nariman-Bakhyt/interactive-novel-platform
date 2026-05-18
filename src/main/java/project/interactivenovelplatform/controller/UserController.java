@@ -73,6 +73,7 @@ public class UserController {
             @RequestParam(required = false) String username,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size){
+        if (size > 50) size = 50;
         Page<UserResponseDto> body = userService.searchUsers(page,size,username);
         return ResponseEntity.ok().body(new PagedModel<>(body));
     }

@@ -1,6 +1,7 @@
 package project.interactivenovelplatform.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -48,6 +49,9 @@ public class UserSocialController {
     public ResponseEntity<PagedModel<UserRelationResponseDto>> getFollowers(
             @AuthenticationPrincipal UserPrincipal principal,
             @PageableDefault(size = 20, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        if (pageable.getPageSize() > 50) {
+            pageable = PageRequest.of(pageable.getPageNumber(), 50, pageable.getSort());
+        }
         return ResponseEntity.ok(userSocialService.getFollowers(principal.getId(), pageable));
     }
     @RateLimited(capacity = 20, minutes = 1)
@@ -56,6 +60,9 @@ public class UserSocialController {
     public ResponseEntity<PagedModel<UserRelationResponseDto>> getFollowing(
             @AuthenticationPrincipal UserPrincipal principal,
             @PageableDefault(size = 20, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        if (pageable.getPageSize() > 50) {
+            pageable = PageRequest.of(pageable.getPageNumber(), 50, pageable.getSort());
+        }
         return ResponseEntity.ok(userSocialService.getFollowingMe(principal.getId(), pageable));
     }
 
@@ -94,6 +101,9 @@ public class UserSocialController {
     public ResponseEntity<PagedModel<UserRelationResponseDto>> getIncomingRequests(
             @AuthenticationPrincipal UserPrincipal principal,
             @PageableDefault(size = 20, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        if (pageable.getPageSize() > 50) {
+            pageable = PageRequest.of(pageable.getPageNumber(), 50, pageable.getSort());
+        }
         return ResponseEntity.ok(userSocialService.getIncomingRequests(principal.getId(), pageable));
     }
     @RateLimited(capacity = 20, minutes = 1)
@@ -102,6 +112,9 @@ public class UserSocialController {
     public ResponseEntity<PagedModel<UserRelationResponseDto>> getOutgoingRequests(
             @AuthenticationPrincipal UserPrincipal principal,
             @PageableDefault(size = 20, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        if (pageable.getPageSize() > 50) {
+            pageable = PageRequest.of(pageable.getPageNumber(), 50, pageable.getSort());
+        }
         return ResponseEntity.ok(userSocialService.getOutgoingRequests(principal.getId(), pageable));
     }
     @RateLimited(capacity = 20, minutes = 1)
@@ -110,6 +123,9 @@ public class UserSocialController {
     public ResponseEntity<PagedModel<UserRelationResponseDto>> getFriends(
             @AuthenticationPrincipal UserPrincipal principal,
             @PageableDefault(size = 20, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        if (pageable.getPageSize() > 50) {
+            pageable = PageRequest.of(pageable.getPageNumber(), 50, pageable.getSort());
+        }
         return ResponseEntity.ok(userSocialService.getFriends(principal.getId(), pageable));
     }
 
@@ -166,6 +182,9 @@ public class UserSocialController {
     public ResponseEntity<PagedModel<UserRelationResponseDto>> getMyBlackList(
             @AuthenticationPrincipal UserPrincipal principal,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        if (pageable.getPageSize() > 50) {
+            pageable = PageRequest.of(pageable.getPageNumber(), 50, pageable.getSort());
+        }
         return ResponseEntity.ok(userSocialService.getMyBlacklist(principal.getId(), pageable));
     }
 

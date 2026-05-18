@@ -30,12 +30,16 @@ public class NovelEntity {
     private OffsetDateTime createdAt =  OffsetDateTime.now();
     @Column(name = "publication_date")
     private OffsetDateTime publicationDate = OffsetDateTime.now();
+    @Column(name = "last_chapter_added_at")
+    private OffsetDateTime lastChapterAddedAt;
     @Column(name = "chapter_count",nullable = false)
     private Integer chapterCount = 0;
     @Column(name = "rating_count", nullable = false)
     private Integer ratingCount = 0;
     @Column(name = "total_score",nullable = false)
     private Long totalScore = 0L;
+    @Column(name = "average_rating",columnDefinition = "numeric(3,2)",nullable = false)
+    private Double averageRating = 0D;
     @Column(name = "view_count",nullable = false)
     private Long viewCount = 0L;
     @Column(name = "cover_url", length = 512)

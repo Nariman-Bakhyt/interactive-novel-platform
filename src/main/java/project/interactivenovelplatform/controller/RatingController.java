@@ -2,6 +2,7 @@ package project.interactivenovelplatform.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -56,6 +57,9 @@ public class RatingController {
     public ResponseEntity<AllRatingsResponseDto> getRatings(@PathVariable Long novelId,
                                                             @PageableDefault(size = 20, sort = "timestamp",
             direction = Sort.Direction.DESC) Pageable pageable) {
+        if (pageable.getPageSize() > 50) {
+            pageable = PageRequest.of(pageable.getPageNumber(), 50, pageable.getSort());
+        }
         return ResponseEntity.ok().body(ratingService.getRatings(novelId, pageable));
     }
 

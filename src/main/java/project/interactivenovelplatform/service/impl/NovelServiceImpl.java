@@ -6,10 +6,7 @@ import lombok.AllArgsConstructor;
 import org.apache.tika.mime.MimeTypes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -169,27 +166,64 @@ public class NovelServiceImpl implements NovelService {
         var chapters =chapterRepository.findAllByNovelIdShort(novel.getId());
         return convertToDtoFull(novel,chapters);
     }
+
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "lastChapterAddedAt",
+            "averageRating",
+            "viewCount",
+            "chapterCount",
+            "publicationDate"
+    );
+
     @Override
     @Transactional(readOnly = true)
     public Page<NovelResponseDto> findAll(NovelSearchRequestDto dto, Pageable pageable) {
 
+        // 1. Базовая спецификация (отсекаем удаленные и скрытые новеллы)
         Specification<NovelEntity> spec = (root, query, cb) -> {
             query.distinct(true);
             return cb.not(root.get("status").in(NON_PUBLIC_STATUSES));
         };
 
+        for (Sort.Order order : pageable.getSort()) {
+            if (!ALLOWED_SORT_FIELDS.contains(order.getProperty())) {
+                throw new IllegalArgumentException("Сортировка по полю '" + order.getProperty() + "' запрещена!");
+            }
+        }
+
+        // 2. Архитектурный переключатель сортировки
+        // По умолчанию используем ту сортировку, которую прислал фронтенд (по дате, рейтингу и т.д.)
+        Pageable effectivePageable = pageable;
+
         if (dto != null) {
-            spec = spec.and(NovelSpecifications.titleLike(dto.getTitle()))
-                    .and(NovelSpecifications.hasAuthor(dto.getAuthorId()))
+
+            // ЕСЛИ ИДЕТ ПОИСК ПО ТЕКСТУ:
+            if (dto.getTitle() != null && !dto.getTitle().isBlank()) {
+                spec = spec.and(NovelSpecifications.titleLike(dto.getTitle()));
+
+                // Убиваем стандартную сортировку из Pageable, заменяя её на Sort.unsorted().
+                // Это позволяет сработать сложной сортировке по релевантности (query.orderBy)
+                // внутри спецификации titleLike без SQL-конфликтов.
+                effectivePageable = PageRequest.of(
+                        pageable.getPageNumber(),
+                        pageable.getPageSize(),
+                        Sort.unsorted()
+                );
+            }
+
+            // Добавляем остальные фильтры (они работают всегда)
+            spec = spec.and(NovelSpecifications.hasAuthor(dto.getAuthorId()))
                     .and(NovelSpecifications.hasStatus(dto.getStatus()))
                     .and(NovelSpecifications.hasRatingInRange(dto.getMinRating(), dto.getMaxRating()))
                     .and(NovelSpecifications.filterByGenres(dto.getIncludedGenreIds(), dto.getExcludedGenreIds()))
                     .and(NovelSpecifications.filterByTags(dto.getIncludedTagIds(), dto.getExcludedTagIds()));
         }
 
-        Page<NovelEntity> thinPage = novelRepository.findAll(spec, pageable);
+        // 3. Шаг "Thin Page": Вытаскиваем и сортируем ТОЛЬКО идентификаторы (id)
+        Page<NovelEntity> thinPage = novelRepository.findAll(spec, effectivePageable);
 
         if (thinPage.isEmpty()) {
+            // Возвращаем пустую страницу с ОРИГИНАЛЬНЫМ pageable, чтобы фронт получил правильные метаданные
             return Page.empty(pageable);
         }
 
@@ -197,9 +231,7 @@ public class NovelServiceImpl implements NovelService {
                 .map(NovelEntity::getId)
                 .toList();
 
-
         List<NovelEntity> richNovels = novelRepository.findAllByIdIn(ids);
-
 
         Map<Long, NovelEntity> novelMap = richNovels.stream()
                 .collect(Collectors.toMap(NovelEntity::getId, n -> n));
@@ -330,6 +362,7 @@ public class NovelServiceImpl implements NovelService {
             throw new IllegalStateException("Глава с таким именем существует");
         }
         novel.setChapterCount(novel.getChapterCount()+1);
+        novel.setLastChapterAddedAt(OffsetDateTime.now());
         novelRepository.save(novel);
         ChapterEntity chapter= new ChapterEntity();
         chapter.setNovel(novel);

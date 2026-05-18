@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,10 +36,12 @@ public class ChapterEntity {
     @Column(name = "is_deleted")
     private Boolean isDeleted = false;
 
+    @Column(name = "created_at",nullable = false)
+    private OffsetDateTime createdAt = OffsetDateTime.now();
+
     @OneToMany(mappedBy = "chapter", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sequenceOrder ASC")
     private List<ChapterBlockEntity> blocks = new ArrayList<>();
-
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "novel_id",nullable = false)

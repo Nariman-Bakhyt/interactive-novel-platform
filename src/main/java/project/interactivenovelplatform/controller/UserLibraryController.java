@@ -1,6 +1,7 @@
 package project.interactivenovelplatform.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -30,6 +31,9 @@ public class UserLibraryController {
     public ResponseEntity<PagedModel<UserLibraryResponseDto>> getUserLibrary(@PathVariable Long userId ,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             @AuthenticationPrincipal UserPrincipal principal) {
+        if (pageable.getPageSize() > 50) {
+            pageable = PageRequest.of(pageable.getPageNumber(), 50, pageable.getSort());
+        }
         Long currentUserId = principal.getId();
         return ResponseEntity.ok().body(userLibraryService.getUserLibrary(currentUserId,userId,pageable));
     }

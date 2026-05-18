@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -35,11 +36,14 @@ public class NovelController {
 
     @RateLimited(capacity = 15, minutes = 1)
     @PostMapping("/public")
-    public ResponseEntity<PagedModel<NovelResponseDto>> findAllNovels(@RequestBody NovelSearchRequestDto dto
-            , @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size
-            ) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<NovelResponseDto> novels = novelService.findAll(dto,pageable);
+    public ResponseEntity<PagedModel<NovelResponseDto>> findAllNovels(
+            @RequestBody NovelSearchRequestDto dto,
+            @PageableDefault(page = 0, size = 20) Pageable pageable
+    ) {
+        if (pageable.getPageSize() > 50) {
+            pageable = PageRequest.of(pageable.getPageNumber(), 50, pageable.getSort());
+        }
+        Page<NovelResponseDto> novels = novelService.findAll(dto, pageable);
         return ResponseEntity.ok(new PagedModel<>(novels));
     }
     @RateLimited(capacity = 15, minutes = 1)
@@ -107,6 +111,7 @@ public class NovelController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ){
+        if (size > 50) size = 50;
         Page<NovelResponseDto>  novels = novelService.findNewNovels(page, size) ;
         return ResponseEntity.ok().body(new PagedModel<>(novels));
     }
@@ -119,6 +124,7 @@ public class NovelController {
             Authentication authentication
             ){
 
+        if (size > 50) size = 50;
         if (authentication.getPrincipal() instanceof UserPrincipal userDetails) {
             var currentAuthorId = userDetails.getId();
             Page<NovelResponseDto>  novels =novelService.findMyNovels(page, size,currentAuthorId);
@@ -180,6 +186,7 @@ public class NovelController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "12") int size) {
 
+        if (size > 50) size = 50;
         Page<NovelResponseDto> body = novelService.searchNovels(page, size, title);
         return ResponseEntity.ok(new PagedModel<>(body));
     }

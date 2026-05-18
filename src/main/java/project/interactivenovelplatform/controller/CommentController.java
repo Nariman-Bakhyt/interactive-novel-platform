@@ -2,6 +2,7 @@ package project.interactivenovelplatform.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -39,6 +40,9 @@ public class CommentController {
                                                                         @PageableDefault(size = 20, sort = "timestamp",
                                                                         direction = Sort.Direction.DESC) Pageable pageable)
     {
+        if (pageable.getPageSize() > 50) {
+            pageable = PageRequest.of(pageable.getPageNumber(), 50, pageable.getSort());
+        }
         Page<CommentResponseDto> page = commentService.getComments(commentRequestDto, pageable);
         return ResponseEntity.ok(new PagedModel<>(page));
     }

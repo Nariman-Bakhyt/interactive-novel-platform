@@ -22,8 +22,7 @@ public interface NovelRepository extends JpaRepository<NovelEntity,Long>, JpaSpe
 
     Page<NovelEntity> findByStatusNotIn(Collection<Novel> status, Pageable pageable);
     @EntityGraph(attributePaths = {"author"})
-    Page<NovelEntity>  findAllByStatusNotInOrderByPublicationDateDesc (Collection<Novel> status, Pageable pageable);
-    Page<NovelEntity> findAllByAuthor_Id(Long id, Pageable pageable);
+    Page<NovelEntity>  findAllByStatusNotInOrderByPublicationDateDesc (Collection<Novel> status, Pageable pageable);    Page<NovelEntity> findAllByAuthor_Id(Long id, Pageable pageable);
     Optional<NovelEntity> findByAuthor_IdAndId(Long authorId, Long id);
     Page<NovelEntity> findAll(Specification<NovelEntity> spec, Pageable pageable);
 

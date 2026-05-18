@@ -13,19 +13,7 @@ public class NovelSpecifications {
     public static Specification<NovelEntity> hasRatingInRange(Double min, Double max) {
         return (root, query, cb) -> {
             if (min == null && max == null) return null;
-            var ratingCount = root.get("ratingCount");
-            var totalScore = root.get("totalScore");
-
-            Expression<Double> divider = cb.selectCase()
-                    .when(cb.equal(ratingCount, 0), 1.0)
-                    .otherwise(ratingCount.as(Double.class))
-                    .as(Double.class);
-
-
-            Expression<Double> avgRating = (Expression<Double>) (Expression<?>) cb.quot(
-                    totalScore.as(Double.class),
-                    divider
-            );
+            Path<Double> avgRating = root.get("averageRating");
 
             if (min != null && max != null) return cb.between(avgRating, min, max);
             if (min != null) return cb.greaterThanOrEqualTo(avgRating, min);
@@ -155,6 +143,5 @@ public class NovelSpecifications {
             return likePredicate;
         } );
     }
-
 
 }

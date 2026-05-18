@@ -47,7 +47,6 @@ public class CommentServiceImpl implements CommentService {
 
     private final TransactionTemplate transactionTemplate;
 
-
     @Transactional
     @Override
     public RatingResponseDto setRating(Long novelId, Long userId, RatingRequestDto dto){
@@ -64,35 +63,37 @@ public class CommentServiceImpl implements CommentService {
                     return newEntity;
                 });
 
-        if (rating.getId() != null) {
-            int oldScore = rating.getScore();
-            int scoreDiff = dto.getScore() - oldScore;
-
-            ratingRepository.updateNovelStats(novelId, scoreDiff, 0);
-        } else {
-            ratingRepository.updateNovelStats(novelId, dto.getScore(), 1);
-        }
+        int oldScore = rating.getId() != null ? rating.getScore() : 0;
+        int scoreDiff = dto.getScore() - oldScore;
+        int countDiff = rating.getId() != null ? 0 : 1;
 
         rating.setScore(dto.getScore());
         rating.setCommentText(dto.getCommentText());
         rating.setTimestamp(timestamp);
         RatingEntity savedRating = ratingRepository.save(rating);
 
+        // Update counts in DB using the repository method
+        ratingRepository.updateNovelStats(novelId, scoreDiff, countDiff);
+
+        // Fetch updated novel entity
+        var updatedNovel = novelService.getNovelEntity(novelId);
+
         return new RatingResponseDto(
                 savedRating.getId(),
-                novel.getTotalScore()+dto.getScore(),
-                novel.getRatingCount()+1,
-                novel.calculateAverage(),
+                updatedNovel.getTotalScore(),
+                updatedNovel.getRatingCount(),
+                updatedNovel.getAverageRating(),
                 dto.getCommentText(),
                 user.getUsername(),
                 timestamp,
                 dto.getScore()
         );
     }
+
     @Override
     @Transactional(readOnly = true)
     public AllRatingsResponseDto getRatings(Long novelId, Pageable pageable){
-        var novel = novelService.getNovelById(novelId);
+        var novel = novelService.getNovelEntity(novelId);
         var ratings =ratingRepository.findByNovelId(novelId, pageable);
         Page<AllRatingResponseDto>  allRatingResponseDtoPage = ratings.map(rating -> new AllRatingResponseDto(
                 rating.getId(),
@@ -102,34 +103,28 @@ public class CommentServiceImpl implements CommentService {
                 rating.getScore()));
 
         return new AllRatingsResponseDto( novel.getTotalScore(),novel.getRatingCount(),
-                calculateAverage(novel.getRatingCount(),novel.getTotalScore()),
+                novel.getAverageRating(),
                 new PagedModel<>(allRatingResponseDtoPage)
         );
-
-    }
-    private double calculateAverage(Integer ratingCount,Long totalScore){
-        if(ratingCount == 0){
-            return 0.0;
-        }
-        double average = (double) totalScore / ratingCount;
-        return Math.round(average * 100.0) / 100.0;
     }
 
     @Transactional
     @Override
     public RatingResponseDto deleteRating(Long novelId,Long ratingId, Long userId){
-        var novel = novelService.getNovelById(novelId);
         RatingEntity rating = ratingRepository.findByUserIdAndNovelId(userId, novelId)
                 .orElseThrow(() -> new EntityNotFoundException("вы не писали рейтинг в новелле с id "+novelId));
         if(!rating.getId().equals(ratingId)) { throw new IllegalArgumentException("неверный id рейтинга "+ratingId); }
+
         ratingRepository.updateNovelStats(novelId, -rating.getScore(), -1);
         ratingRepository.delete(rating);
 
+        var updatedNovel = novelService.getNovelEntity(novelId);
+
         return new RatingResponseDto(
                 rating.getId(),
-                novel.getTotalScore(),
-                novel.getRatingCount(),
-                calculateAverage(novel.getRatingCount(),novel.getTotalScore()),
+                updatedNovel.getTotalScore(),
+                updatedNovel.getRatingCount(),
+                updatedNovel.getAverageRating(),
                 null,
                 null,
                 null,
@@ -171,7 +166,6 @@ public class CommentServiceImpl implements CommentService {
                 );
     }
 
-
     @Override
     public CommentResponseDto createComment(List<MultipartFile> files, CommentRequestDto dto, Long currentId){
         OffsetDateTime now = OffsetDateTime.now();
@@ -203,7 +197,6 @@ public class CommentServiceImpl implements CommentService {
         }
 
     }
-
 
     private Metadata createMetadata(List<MultipartFile> files, String datePath , CommentRequestDto dto , Long userId){
         Metadata metadata = new Metadata();
@@ -265,8 +258,6 @@ public class CommentServiceImpl implements CommentService {
         return  metadata;
     }
 
-
-
     public void setCommentTarget(CommentEntity commentEntity, CommentRequestDto dto) {
         if (dto.getParentCommentId() != null){
             CommentEntity parent =  commentRepository.findById(dto.getParentCommentId())
@@ -289,7 +280,6 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional(readOnly = true)
     public Page<CommentResponseDto> getComments(CommentRequestDto dto, Pageable pageable   ) {
-
         if (dto.getBlockId() != null) {
             return commentRepository.findByBlock_Id(dto.getBlockId(), pageable).map(this::convertToResponse);
         } else if (dto.getChapterId() != null) {
@@ -315,5 +305,4 @@ public class CommentServiceImpl implements CommentService {
         commentRepository.save(comment);
         return convertToResponse(comment);
     }
-
 }

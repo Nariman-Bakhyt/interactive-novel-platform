@@ -2,6 +2,7 @@ package project.interactivenovelplatform.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -32,6 +33,9 @@ public class ChatController {
     public ResponseEntity<PagedModel<ConversationResponseDto>> getMyChats(
             @AuthenticationPrincipal UserPrincipal user,
             @PageableDefault(size = 20) Pageable pageable ){
+        if (pageable.getPageSize() > 50) {
+            pageable = PageRequest.of(pageable.getPageNumber(), 50, pageable.getSort());
+        }
         return ResponseEntity.ok(new PagedModel<> (chatService.getUserChats(user.getId(), pageable)));
     }
 
@@ -42,6 +46,9 @@ public class ChatController {
             @PathVariable Long conversationId,
             @PageableDefault(size = 50, sort = "timestamp",
                     direction = Sort.Direction.DESC) Pageable pageable) {
+        if (pageable.getPageSize() > 100) {
+            pageable = PageRequest.of(pageable.getPageNumber(), 100, pageable.getSort());
+        }
         return ResponseEntity.ok(new PagedModel<>(chatService.getChatMessages(user.getId(), conversationId, pageable)));
     }
 
