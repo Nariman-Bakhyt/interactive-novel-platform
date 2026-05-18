@@ -433,7 +433,9 @@ const handleDelete = async () => {
     </div>
 
     <div v-else-if="novel" class="notion-style-container">
-      <button @click="router.back()" class="btn-minimal">← Назад</button>
+      <button @click="router.back()" class="btn-minimal">
+        <span class="icon">←</span> Назад
+      </button>
 
       <header class="novel-header">
         <div class="cover-section">
@@ -448,9 +450,15 @@ const handleDelete = async () => {
           <h1 class="main-title-input">{{ novel.title }}</h1>
 
           <div class="pop-stats">
-            <span class="stat-item rating">⭐ {{ averageRating }}</span>
-            <span class="stat-item views">👁‍🗨 {{ novel.viewCount || 0 }}</span>
-            <span class="stat-item chapters">📚 {{ novel.chapterCount || 0 }} глав</span>
+            <span class="stat-item rating">
+              <span class="icon">⭐</span> {{ averageRating }}
+            </span>
+            <span class="stat-item views">
+              <span class="icon">👁‍🗨</span> {{ novel.viewCount || 0 }}
+            </span>
+            <span class="stat-item chapters">
+              <span class="icon">📚</span> {{ novel.chapterCount || 0 }} глав
+            </span>
           </div>
 
           <div class="pop-metadata">
@@ -488,7 +496,7 @@ const handleDelete = async () => {
             :class="{ active: activeTab === 'chapters' }"
             @click="handleTabChange('chapters')"
           >
-            📚 Главы ({{ chaptersList.length }})
+            📚 Главы <span class="tab-count">({{ chaptersList.length }})</span>
           </button>
           <button
             class="tab-btn"
@@ -516,8 +524,10 @@ const handleDelete = async () => {
                 class="chapter-item"
                 @click="router.push(`/novels/${novel.id}/chapter/${chapter.id}`)"
               >
-                <span class="ch-number">Глава {{ index + 1 }}</span>
-                <span class="ch-title">{{ chapter.title }}</span>
+                <div class="ch-info">
+                  <span class="ch-number">Глава {{ index + 1 }}</span>
+                  <span class="ch-title">{{ chapter.title }}</span>
+                </div>
                 <span class="ch-icon">→</span>
               </div>
             </div>
@@ -580,7 +590,10 @@ const handleDelete = async () => {
 
                 <div v-if="isRatingModalOpen" class="modal-overlay" @click.self="isRatingModalOpen = false">
                   <div class="modal-content fade-in">
-                    <h3>Оставить отзыв</h3>
+                    <div class="modal-header-rating">
+                      <h3>Оставить отзыв</h3>
+                      <button class="close-btn" @click="isRatingModalOpen = false">&times;</button>
+                    </div>
 
                     <div class="rating-selector">
                       <p>Ваша оценка:</p>
@@ -662,7 +675,6 @@ const handleDelete = async () => {
 </template>
 
 <style scoped>
-
 .novel-page-container,
 .rating-textarea,
 .review-text,
@@ -670,16 +682,19 @@ const handleDelete = async () => {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--text-muted);
-  line-height: 1.8;
-  font-size: 1.05rem;
-  margin-bottom: 35px;
+  line-height: 1.6;
+  font-size: 1rem;
+}
+
+.description-text {
+  margin-bottom: 32px;
   white-space: pre-wrap;
 }
 
 .novel-page-container {
   min-height: 100vh;
-  background-color: var(--bg-editor-page);
-  padding: 60px 20px;
+  background-color: var(--bg-main);
+  padding: 100px 24px 60px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -687,21 +702,21 @@ const handleDelete = async () => {
 
 .notion-style-container {
   width: 100%;
-  max-width: 900px;
-  background-color: var(--bg-editor-sheet);
-  padding: 60px 80px;
+  max-width: 1000px;
+  background-color: var(--bg-dropdown);
+  padding: 48px 64px;
   border-radius: 16px;
-  box-shadow: 0 10px 40px var(--shadow-color);
-  border: 1px solid var(--border-subtle);
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border: 1px solid var(--border-color);
   transition: all 0.3s ease;
 }
 
 .novel-header {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 260px 1fr;
   gap: 40px;
-  margin-top: 20px;
-  margin-bottom: 50px;
+  margin-top: 16px;
+  margin-bottom: 48px;
 }
 
 .main-cover {
@@ -709,84 +724,116 @@ const handleDelete = async () => {
   aspect-ratio: 2/3;
   object-fit: cover;
   border-radius: 12px;
-  box-shadow: 0 10px 30px var(--shadow-color);
-  border: 1px solid var(--border-subtle);
+  box-shadow: 0 8px 24px var(--shadow-color);
+  border: 1px solid var(--border-color);
 }
 
 .main-title-input {
   border: none;
-  font-size: 2.8rem;
-  margin-bottom: 15px;
-  line-height: 1.1;
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 16px;
+  line-height: 1.2;
+  color: var(--text-header);
+  letter-spacing: -0.02em;
 }
 
 .pop-stats {
   display: flex;
-  gap: 20px;
-  margin-bottom: 15px;
+  gap: 24px;
+  margin-bottom: 20px;
   font-weight: 600;
   color: var(--text-header);
+  font-size: 0.95rem;
 }
 
 .stat-item { display: flex; align-items: center; gap: 6px; }
-.rating { color: #f1c40f; }
+.rating .icon { color: #f59e0b; } /* amber-500 */
 
 .pop-metadata {
-  margin-bottom: 25px;
+  margin-bottom: 24px;
 }
 
 .chips-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .pop-chip {
-  padding: 4px 12px;
-  border-radius: 20px;
+  padding: 6px 12px;
+  border-radius: 6px;
   font-size: 0.85rem;
+  font-weight: 500;
+  background: var(--bg-main);
   border: 1px solid var(--border-color);
-  background: var(--border-subtle);
+  color: var(--text-header);
 }
 
-.pop-chip.genre { color: #42b883; border-color: #42b883; }
+.pop-chip.genre {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+.pop-chip.tag {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.2);
+  color: #6366f1;
+}
 
-.actions { display: flex; gap: 15px; }
-
+.actions { display: flex; gap: 16px; }
 
 .chapters-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 20px;
+  gap: 12px;
+  margin-top: 24px;
 }
 
 .chapter-item {
   display: flex;
   align-items: center;
-  padding: 16px 24px;
+  justify-content: space-between;
+  padding: 16px 20px;
   background: var(--bg-main);
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  border: 1px solid var(--border-color);
 }
 
 .chapter-item:hover {
-  background: rgba(66, 184, 131, 0.1);
-  border-color: rgba(66, 184, 131, 0.3);
-  transform: translateX(8px);
+  background: var(--hover-dropdowb);
+  border-color: var(--text-muted);
+}
+
+.ch-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
 .ch-number {
-  font-weight: bold;
-  color: #42b883;
-  margin-right: 20px;
+  font-weight: 600;
+  color: var(--btn-plus);
+  font-size: 0.95rem;
+  min-width: 80px;
 }
 
-.ch-title { flex: 1; color: var(--text-header); }
-.ch-icon { color: var(--text-muted); opacity: 0.5; }
+.ch-title {
+  color: var(--text-header);
+  font-weight: 500;
+}
+.ch-icon {
+  color: var(--text-muted);
+  font-weight: bold;
+  transition: transform 0.2s;
+}
+.chapter-item:hover .ch-icon {
+  transform: translateX(4px);
+  color: var(--text-header);
+}
 
 .loader-container {
   display: flex;
@@ -798,9 +845,9 @@ const handleDelete = async () => {
 }
 
 @media (max-width: 850px) {
-  .notion-style-container { padding: 30px; }
+  .notion-style-container { padding: 32px 24px; }
   .novel-header { grid-template-columns: 1fr; text-align: center; }
-  .main-cover { max-width: 280px; margin: 0 auto; }
+  .main-cover { max-width: 240px; margin: 0 auto; }
   .pop-stats, .chips-row, .actions { justify-content: center; }
 }
 
@@ -808,23 +855,27 @@ const handleDelete = async () => {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 500;
   cursor: pointer;
-  padding: 8px 0;
-  margin-bottom: 20px;
-  transition: color 0.2s ease;
-  display: flex;
+  padding: 8px 12px;
+  margin-bottom: 24px;
+  margin-left: -12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
 .btn-minimal:hover {
-  color: #42b883; /* Твой акцентный зеленый */
+  background: var(--hover-dropdowb);
+  color: var(--text-header);
 }
 
 /* --- Кнопка "Начать читать" (Основная/Акцентная) --- */
 .btn-save-notion {
-  background-color: #42b883;
+  background-color: var(--btn-plus);
   color: white;
   border: none;
   padding: 12px 24px;
@@ -832,23 +883,22 @@ const handleDelete = async () => {
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(66, 184, 131, 0.4);
+  transition: background 0.2s, transform 0.2s;
 }
 
-.btn-save-notion:hover {
-  background-color: #3aa373;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(66, 184, 131, 0.5);
+.btn-save-notion:hover:not(:disabled) {
+  background-color: var(--btn-plus-hover);
+  transform: translateY(-1px);
 }
 
-.btn-save-notion:active {
-  transform: translateY(0);
+.btn-save-notion:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* --- Кнопка "В библиотеку" (Второстепенная) --- */
 .btn-edit-main {
-  background-color: transparent;
+  background-color: var(--bg-main);
   color: var(--text-header);
   border: 1px solid var(--border-color);
   padding: 12px 24px;
@@ -860,9 +910,8 @@ const handleDelete = async () => {
 }
 
 .btn-edit-main:hover {
-  background-color: var(--bg-main);
+  background-color: var(--hover-dropdowb);
   border-color: var(--text-muted);
-  transform: translateY(-2px);
 }
 
 
@@ -870,127 +919,54 @@ const handleDelete = async () => {
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid var(--border-subtle);
-  border-top: 4px solid #42b883;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--btn-plus);
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin-bottom: 15px;
+  margin-bottom: 16px;
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-/* --- Кнопка "Назад" (Minimal) --- */
-.btn-minimal {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  cursor: pointer;
-  padding: 8px 0;
-  margin-bottom: 20px;
-  transition: color 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.btn-minimal:hover {
-  color: #42b883; /* Твой акцентный зеленый */
-}
-
-/* --- Кнопка "Начать читать" (Основная/Акцентная) --- */
-.btn-save-notion {
-  background-color: #42b883;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(66, 184, 131, 0.4);
-}
-
-.btn-save-notion:hover {
-  background-color: #3aa373;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(66, 184, 131, 0.5);
-}
-
-.btn-save-notion:active {
-  transform: translateY(0);
-}
-
-/* --- Кнопка "В библиотеку" (Второстепенная) --- */
-.btn-edit-main {
-  background-color: transparent;
-  color: var(--text-header);
-  border: 1px solid var(--border-color);
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-edit-main:hover {
-  background-color: var(--bg-main);
-  border-color: var(--text-muted);
-  transform: translateY(-2px);
-}
-
-
-/* Спиннер загрузки */
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid var(--border-subtle);
-  border-top: 4px solid #42b883;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 15px;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  to { transform: rotate(360deg); }
 }
 
 .content-section {
-  margin-top: 40px;
-  border-top: 1px solid var(--border-subtle);
-  padding-top: 20px;
+  margin-top: 48px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 32px;
 }
 
 .tabs-nav {
   display: flex;
-  gap: 30px;
-  border-bottom: 1px solid var(--border-subtle);
-  margin-bottom: 30px;
+  gap: 32px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 32px;
 }
 
 .tab-btn {
   background: none;
   border: none;
-  padding: 15px 5px;
-  font-size: 1.1rem;
+  padding: 12px 4px;
+  font-size: 1.05rem;
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
   position: relative;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease;
 }
 
 .tab-btn:hover {
-  color: #42b883;
+  color: var(--text-header);
 }
 
 .tab-btn.active {
-  color: #42b883;
+  color: var(--btn-plus);
+}
+
+.tab-count {
+  font-weight: 500;
+  font-size: 0.9em;
+  opacity: 0.8;
 }
 
 /* Линия под активным табом */
@@ -1000,9 +976,9 @@ const handleDelete = async () => {
   bottom: -1px;
   left: 0;
   width: 100%;
-  height: 3px;
-  background-color: #42b883;
-  border-radius: 10px 10px 0 0;
+  height: 2px;
+  background-color: var(--btn-plus);
+  border-radius: 2px 2px 0 0;
 }
 
 .fade-in {
@@ -1017,52 +993,57 @@ const handleDelete = async () => {
 .rating-header {
   display: flex;
   align-items: center;
-  gap: 30px;
-  padding: 20px;
+  gap: 32px;
+  padding: 32px;
   background: var(--bg-main);
-  border-radius: 12px;
-  margin-bottom: 20px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border-color);
 }
 
 .average-big {
-  font-size: 3.5rem;
+  font-size: 4rem;
   font-weight: 800;
-  color: #f1c40f;
+  color: #f59e0b; /* amber-500 */
+  line-height: 1;
+  letter-spacing: -0.05em;
 }
 
 .rating-info p {
   color: var(--text-muted);
-  margin-bottom: 10px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
 }
 .ratings-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  margin-top: 20px;
+  gap: 16px;
+  margin-top: 24px;
 }
 
 .rating-item {
-  padding: 20px;
+  padding: 24px;
   background: var(--bg-main);
   border-radius: 12px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-color);
 }
 
 .rating-item-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
-.reviewer-name { font-weight: 700; color: var(--text-header); }
-.reviewer-score { color: #f1c40f; font-weight: bold; }
+.reviewer-name { font-weight: 600; color: var(--text-header); }
+.reviewer-score { color: #f59e0b; font-weight: bold; }
 .review-date { color: var(--text-muted); font-size: 0.85rem; margin-left: auto; }
 
 .review-text {
   color: var(--text-header);
-  font-size: 1.05rem;
-  line-height: 1.7;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0;
 }
 
 /* Стили для бесконечной загрузки */
@@ -1077,50 +1058,63 @@ const handleDelete = async () => {
   width: 24px;
   height: 24px;
   border: 3px solid var(--border-subtle);
-  border-top: 3px solid #42b883;
+  border-top-color: var(--btn-plus);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
 .end-message {
   color: var(--text-muted);
-  font-style: italic;
   font-size: 0.9rem;
 }
 /* Модальное окно */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
+  z-index: 2000;
+  backdrop-filter: blur(8px);
 }
 
 .modal-content {
-  background: var(--bg-editor-sheet);
-  padding: 40px;
-  border-radius: 20px;
+  background: var(--bg-dropdown);
+  padding: 32px;
+  border-radius: 16px;
   width: 100%;
   max-width: 500px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-  border: 1px solid var(--border-subtle);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  border: 1px solid var(--border-color);
 }
 
-.modal-content h3 {
-  margin-bottom: 25px;
+.modal-header-rating {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.modal-header-rating h3 {
+  margin: 0;
   font-size: 1.5rem;
+  font-weight: 700;
   color: var(--text-header);
 }
+.close-btn {
+  background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; padding: 4px; border-radius: 4px; line-height: 1; transition: background 0.2s, color 0.2s;
+}
+.close-btn:hover { background: var(--hover-dropdowb); color: var(--text-header); }
 
 /* Выбор звезд */
 .rating-selector {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+}
+
+.rating-selector p {
+  margin: 0 0 8px;
+  font-weight: 500;
+  color: var(--text-header);
 }
 
 .stars {
@@ -1128,95 +1122,108 @@ const handleDelete = async () => {
   gap: 8px;
   font-size: 2rem;
   cursor: pointer;
-  margin-top: 10px;
 }
 
 .star-icon {
   color: var(--border-color);
   transition: transform 0.2s ease, color 0.2s ease;
+  line-height: 1;
 }
 
 .star-icon.active {
-  color: #f1c40f;
-  transform: scale(1.1);
+  color: #f59e0b;
 }
 
 .star-icon:hover {
-  transform: scale(1.2);
+  transform: scale(1.1);
 }
 
 /* Поле ввода */
 .rating-textarea {
   width: 100%;
-  height: 150px;
+  height: 120px;
   background: var(--bg-main);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 15px;
+  border-radius: 8px;
+  padding: 16px;
   color: var(--text-header);
   font-family: inherit;
-  resize: none;
-  margin-bottom: 25px;
+  resize: vertical;
+  margin-bottom: 24px;
   outline: none;
-  font-size: 1rem;
-  line-height: 1.6;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  transition: border-color 0.2s;
 }
 
 .rating-textarea:focus {
-  border-color: #42b883;
+  border-color: var(--btn-plus);
 }
 
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 20px;
+  gap: 16px;
 }
 /* Поле ввода комментария */
 .comment-input-area {
-  margin-bottom: 30px;
+  margin-bottom: 32px;
   background: var(--bg-main);
-  padding: 20px;
+  padding: 16px;
   border-radius: 12px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
 }
 
 .comment-textarea-minimal {
   width: 100%;
-  min-height: 80px;
+  min-height: 60px;
   background: transparent;
   border: none;
-  resize: none;
+  resize: vertical;
   color: var(--text-header);
-  font-size: 1rem;
+  font-size: 0.95rem;
   outline: none;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  font-family: inherit;
+}
+.comment-textarea-minimal::placeholder {
+  color: var(--input-placeholder);
 }
 
 .comment-actions {
   display: flex;
   justify-content: flex-end;
 }
+.comment-actions .btn-save-notion {
+  padding: 8px 20px;
+  font-size: 0.95rem;
+}
 
 /* Элементы списка комментариев */
 .comment-item {
-  padding: 15px 0;
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+.comment-item:last-child {
+  border-bottom: none;
 }
 
 .comment-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .user-badge {
-  font-weight: 700;
-  color: #42b883;
+  font-weight: 600;
+  color: var(--text-header);
 }
 
 .comment-date {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
 }
 
@@ -1224,34 +1231,37 @@ const handleDelete = async () => {
   color: var(--text-header);
   line-height: 1.5;
   white-space: pre-wrap;
+  margin: 0;
+  font-size: 0.95rem;
 }
 
 /* Контекстное меню */
 .context-menu {
   position: fixed;
-  background: var(--bg-editor-sheet);
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px var(--shadow-color);
   border-radius: 8px;
   padding: 4px;
   z-index: 9999;
-  min-width: 150px;
+  min-width: 160px;
 }
 
 .menu-item {
-  padding: 8px 12px;
+  padding: 10px 16px;
   cursor: pointer;
   font-size: 0.9rem;
-  border-radius: 4px;
+  border-radius: 6px;
   transition: background 0.2s;
+  font-weight: 500;
 }
 
 .menu-item.delete {
-  color: #eb5757;
+  color: #ef4444; /* red-500 */
 }
 
 .menu-item:hover {
-  background: var(--bg-main);
+  background: var(--hover-dropdowb);
 }
 
 /* Кнопка для мобильных */
@@ -1260,10 +1270,16 @@ const handleDelete = async () => {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 1.2rem;
-  padding: 0 10px;
+  font-size: 1.25rem;
+  padding: 4px 8px;
+  border-radius: 4px;
   cursor: pointer;
   margin-left: auto;
+  line-height: 1;
+}
+.mobile-action-btn:hover {
+  background: var(--hover-dropdowb);
+  color: var(--text-header);
 }
 
 .action-wrapper {
@@ -1275,5 +1291,14 @@ const handleDelete = async () => {
   .mobile-action-btn {
     display: block; /* Показываем только на мобилках */
   }
+}
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  background: var(--bg-main);
+  border-radius: 12px;
+  border: 1px dashed var(--border-color);
+  margin-top: 20px;
 }
 </style>

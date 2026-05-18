@@ -169,8 +169,12 @@ const handleSubmit = async () => {
       </header>
 
       <div v-if="purpose !== 'ADD_MEMBERS'" class="mode-tabs">
-        <button :class="{ active: mode === 'PRIVATE' }" @click="switchMode('PRIVATE')">👤 Личный</button>
-        <button :class="{ active: mode === 'GROUP' }" @click="switchMode('GROUP')">👥 Группа</button>
+        <button :class="{ active: mode === 'PRIVATE' }" @click="switchMode('PRIVATE')">
+          <span class="icon">👤</span> Личный
+        </button>
+        <button :class="{ active: mode === 'GROUP' }" @click="switchMode('GROUP')">
+          <span class="icon">👥</span> Группа
+        </button>
       </div>
 
       <Transition name="fade">
@@ -225,7 +229,7 @@ const handleSubmit = async () => {
 
       <footer v-if="mode === 'GROUP'" class="modal-footer">
         <button class="submit-btn" :disabled="selectedUserIds.size === 0 || (purpose !== 'ADD_MEMBERS' && !groupName.trim())" @click="handleSubmit">
-          {{ purpose === 'ADD_MEMBERS' ? 'Добавить' : 'Создать группу' }} ({{ selectedUserIds.size }})
+          {{ purpose === 'ADD_MEMBERS' ? 'Добавить' : 'Создать группу' }} <span v-if="selectedUserIds.size > 0">({{ selectedUserIds.size }})</span>
         </button>
       </footer>
     </div>
@@ -234,45 +238,47 @@ const handleSubmit = async () => {
 
 <style scoped>
 .modal-overlay {
-  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
   display: flex; justify-content: center; align-items: center; z-index: 9999;
 }
 .modal-content {
-  background: var(--bg-editor-sheet, #2c2c2c); border-radius: 12px;
-  border: 1px solid var(--border-subtle, #3d3d3d); width: 400px;
+  background: var(--bg-dropdown); border-radius: 16px;
+  border: 1px solid var(--border-color); width: 100%; max-width: 420px;
   max-height: 85vh; display: flex; flex-direction: column;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.5); overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5); overflow: hidden;
 }
 .modal-header {
-  padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;
-  border-bottom: 1px solid var(--border-subtle, #3d3d3d);
+  padding: 20px 24px; display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid var(--border-color);
 }
-.modal-header h3 { margin: 0; color: #fff; }
-.close-btn { background: none; border: none; color: #888; cursor: pointer; font-size: 1.2rem; }
-.close-btn:hover { color: #fff; }
+.modal-header h3 { margin: 0; color: var(--text-header); font-size: 1.25rem; font-weight: 700; }
+.close-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem; transition: color 0.2s; line-height: 1; padding: 4px; border-radius: 4px; }
+.close-btn:hover { color: var(--text-header); background: var(--hover-dropdowb);}
 
-.mode-tabs { display: flex; padding: 10px 15px; gap: 10px; }
+.mode-tabs { display: flex; padding: 16px 24px 8px; gap: 12px; }
 .mode-tabs button {
-  flex: 1; padding: 8px; background: transparent; color: #888;
-  border: 1px solid var(--border-subtle, #3d3d3d); border-radius: 6px; cursor: pointer; transition: all 0.2s;
+  flex: 1; padding: 10px; background: transparent; color: var(--text-muted);
+  border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: all 0.2s;
+  font-weight: 500; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.mode-tabs button.active { background: var(--btn-plus, #3498db); color: white; border-color: var(--btn-plus, #3498db); }
+.mode-tabs button:hover { background: var(--hover-dropdowb); color: var(--text-header); }
+.mode-tabs button.active { background: var(--btn-plus); color: white; border-color: var(--btn-plus); font-weight: 600;}
 
 /* --- НОВЫЕ СТИЛИ ДЛЯ ШАПКИ СОЗДАНИЯ ГРУППЫ --- */
 .group-creation-header {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 10px 15px 5px;
+  gap: 16px;
+  padding: 12px 24px 4px;
 }
 
 .group-avatar-upload {
-  width: 50px;
-  height: 50px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  background: var(--bg-main, #1e1e1e);
-  border: 2px dashed var(--border-subtle, #3d3d3d);
+  background: var(--bg-main);
+  border: 2px dashed var(--border-color);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -283,13 +289,13 @@ const handleSubmit = async () => {
 }
 
 .group-avatar-upload:hover {
-  border-color: var(--btn-plus, #3498db);
-  background: rgba(52, 152, 219, 0.1);
+  border-color: var(--btn-plus);
+  background: rgba(99, 102, 241, 0.1);
 }
 
 .group-avatar-placeholder {
-  font-size: 1.2rem;
-  opacity: 0.6;
+  font-size: 1.25rem;
+  opacity: 0.5;
 }
 
 .group-avatar-preview {
@@ -301,81 +307,96 @@ const handleSubmit = async () => {
 
 .group-name-input-field {
   flex: 1;
-  padding: 12px;
+  padding: 12px 16px;
   border-radius: 8px;
-  border: 1px solid var(--border-subtle, #3d3d3d);
-  background: var(--bg-main, #1e1e1e);
-  color: white;
+  border: 1px solid var(--border-color);
+  background: var(--bg-main);
+  color: var(--text-header);
   outline: none;
   font-size: 1rem;
   transition: border-color 0.2s;
+  font-family: inherit;
 }
 
 .group-name-input-field:focus {
-  border-color: var(--btn-plus, #3498db);
+  border-color: var(--btn-plus);
 }
 
-.search-input-container { padding: 10px 15px 5px; }
+.search-input-container { padding: 12px 24px; }
 .search-input-container input {
-  width: 100%; padding: 10px 12px; border-radius: 6px;
-  border: 1px solid var(--border-subtle, #3d3d3d); background: var(--bg-main, #1e1e1e); color: white; outline: none;
+  width: 100%; padding: 12px 16px; border-radius: 8px;
+  border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-header); outline: none; font-size: 0.95rem; transition: border-color 0.2s;
 }
-.modal-tabs { display: flex; gap: 5px; padding: 5px 15px 10px; overflow-x: auto; scrollbar-width: none; }
+.search-input-container input:focus { border-color: var(--btn-plus); }
+.search-input-container input::placeholder { color: var(--input-placeholder); }
+
+.modal-tabs { display: flex; gap: 8px; padding: 4px 24px 12px; overflow-x: auto; scrollbar-width: none; }
 .modal-tab-btn {
-  background: var(--bg-main); border: 1px solid var(--border-subtle); color: var(--text-muted);
-  padding: 6px 12px; border-radius: 16px; cursor: pointer; font-size: 0.8rem; white-space: nowrap; transition: all 0.2s;
+  background: var(--bg-main); border: 1px solid var(--border-color); color: var(--text-muted);
+  padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; font-weight: 500; white-space: nowrap; transition: all 0.2s;
 }
-.modal-tab-btn.active { background: var(--btn-plus); color: white; border-color: var(--btn-plus); }
+.modal-tab-btn:hover { background: var(--hover-dropdowb); color: var(--text-header); }
+.modal-tab-btn.active { background: var(--btn-plus); color: white; border-color: var(--btn-plus); font-weight: 600;}
 
-.friends-picker-list { flex: 1; overflow-y: auto; padding: 5px 15px 15px; min-height: 200px; display: flex; flex-direction: column; gap: 8px; }
+.friends-picker-list { flex: 1; overflow-y: auto; padding: 8px 24px 24px; min-height: 240px; display: flex; flex-direction: column; gap: 8px; }
 
-.friend-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+.friend-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-color); }
 .user-info { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
-.friend-name { color: #e0e0e0; font-weight: 500; line-height: 1; }
-.status-badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; width: fit-content; }
-.status-badge.friend { background: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.4); }
+.friend-name { color: var(--text-header); font-weight: 600; line-height: 1.2; font-size: 0.95rem; }
+.user-status { font-size: 0.8rem; color: var(--text-muted); }
+.status-badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; width: fit-content; font-weight: 600; }
+.status-badge.friend { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
 
-.modal-footer { padding: 15px; border-top: 1px solid var(--border-subtle, #3d3d3d); }
-.submit-btn { width: 100%; padding: 12px; border-radius: 8px; background: var(--btn-plus, #3498db); color: white; border: none; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
-.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.loader-center, .empty-state { text-align: center; color: #888; padding: 20px; font-size: 0.9rem; display: flex; justify-content: center; }
-.section-label { font-size: 0.8rem; color: var(--btn-plus); text-transform: uppercase; margin: 5px 0 10px 5px; font-weight: bold; }
+.modal-footer { padding: 20px 24px; border-top: 1px solid var(--border-color); background: var(--bg-dropdown); }
+.submit-btn { width: 100%; padding: 14px; border-radius: 8px; background: var(--btn-plus); color: white; border: none; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background 0.2s, transform 0.2s; }
+.submit-btn:hover:not(:disabled) { background: var(--btn-plus-hover); transform: translateY(-1px); }
+.submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.loader-center, .empty-state { text-align: center; color: var(--text-muted); padding: 32px 20px; font-size: 0.95rem; display: flex; justify-content: center; }
+.section-label { font-size: 0.8rem; color: var(--btn-plus); text-transform: uppercase; margin: 8px 0 12px 8px; font-weight: 700; letter-spacing: 0.05em; }
 
 .friend-picker-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px;
-  border-radius: 8px;
+  gap: 16px;
+  padding: 10px 12px;
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
+  border: 1px solid transparent;
 }
 
 .friend-picker-item:hover {
-  background: rgba(255,255,255,0.05);
+  background: var(--hover-dropdowb);
+  border-color: var(--border-color);
 }
 
 .friend-picker-item.is-selected {
-  background: rgba(52, 152, 219, 0.15) !important;
+  background: rgba(99, 102, 241, 0.1) !important;
+  border-color: rgba(99, 102, 241, 0.2);
 }
 
 .checkbox {
-  width: 22px;
-  height: 22px;
-  border: 2px solid #555;
-  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: transparent;
   font-weight: bold;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   transition: all 0.2s ease;
-  background: transparent;
+  background: var(--bg-main);
 }
 
 .friend-picker-item.is-selected .checkbox {
-  background: var(--btn-plus, #3498db);
-  border-color: var(--btn-plus, #3498db);
+  background: var(--btn-plus);
+  border-color: var(--btn-plus);
+  color: white;
 }
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

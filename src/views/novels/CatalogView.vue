@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch, nextTick, onUnmounted } from 'vue';
 import { useRouter } from "vue-router";
 import { findAllNovels, getAllGenres, getAllTags } from "@/api/novelService.ts";
+import { searchUsers } from "@/api/profileService.ts";
 import type { NovelResponseDto, NovelSearchRequestDto, TagOrGenreResponseDto } from "@/types/novel.ts";
 import NovelCard from "@/components/NovelCard.vue";
 
@@ -16,18 +17,94 @@ const isMobile = ref(false);
 
 const filters = ref<NovelSearchRequestDto>({
   title: null,
+  authorId: null,
   includedGenreIds: [],
   excludedGenreIds: [],
   includedTagIds: [],
   excludedTagIds: [],
   status: null,
-  minRating: 0,
-  maxRating: 5
+  minRating: null,
+  maxRating: null
 });
+
+const sort = ref('lastChapterAddedAt,desc');
 
 const isGenreModalOpen = ref(false);
 const isTagModalOpen = ref(false);
 const pagesCache = ref<Record<number, NovelResponseDto[]>>({});
+
+// --- ПОИСК АВТОРА С ПАГИНАЦИЕЙ ---
+const authorSearchQuery = ref('');
+const authorSearchResults = ref<any[]>([]);
+const isAuthorSearching = ref(false);
+const selectedAuthor = ref<any>(null);
+const authorSearchPage = ref(0);
+const authorSearchIsLastPage = ref(false);
+const authorDropdownRef = ref<HTMLElement | null>(null);
+const relativeWrapperRef = ref<HTMLElement | null>(null);
+
+let authorSearchTimeout: number;
+
+const fetchAuthors = async (page: number, append = false) => {
+  if (authorSearchQuery.value.length < 2) return;
+
+  isAuthorSearching.value = true;
+  try {
+    const data = await searchUsers(authorSearchQuery.value, page, 10);
+
+    if (append) {
+      authorSearchResults.value = [...authorSearchResults.value, ...data.content];
+    } else {
+      authorSearchResults.value = data.content;
+    }
+
+    // РЕШЕНИЕ: Вычисляем является ли страница последней вручную
+    const totalPages = data.page?.totalPages || 1;
+    authorSearchIsLastPage.value = page >= totalPages - 1; // Если текущая страница (с 0) >= всего страниц - 1
+
+    authorSearchPage.value = page;
+  } catch (e) {
+    console.error(e);
+  } finally {
+    isAuthorSearching.value = false;
+  }
+};
+
+watch(authorSearchQuery, (newQuery) => {
+  if (selectedAuthor.value && selectedAuthor.value.username === newQuery) {
+    return;
+  }
+
+  clearTimeout(authorSearchTimeout);
+  if (newQuery.length < 2) {
+    authorSearchResults.value = [];
+    if (newQuery.length === 0) {
+       selectedAuthor.value = null;
+       filters.value.authorId = null;
+    }
+    return;
+  }
+
+  authorSearchTimeout = window.setTimeout(() => {
+    fetchAuthors(0);
+  }, 500);
+});
+
+const handleAuthorScroll = async (e: Event) => {
+  const target = e.target as HTMLElement;
+  const bottom = Math.abs(target.scrollHeight - target.scrollTop - target.clientHeight) < 20;
+
+  if (bottom && !isAuthorSearching.value && !authorSearchIsLastPage.value) {
+    await fetchAuthors(authorSearchPage.value + 1, true);
+  }
+};
+
+const selectAuthor = (author: any) => {
+  selectedAuthor.value = author;
+  authorSearchQuery.value = author.username;
+  filters.value.authorId = author.id;
+  authorSearchResults.value = [];
+};
 
 // --- МЕТАДАННЫЕ ---
 const fetchMetadata = async () => {
@@ -52,8 +129,6 @@ const prepareFilters = (rawFilters: NovelSearchRequestDto) => {
   keys.forEach(key => {
     const value = rawFilters[key];
     if (value === null || value === undefined || value === '') return;
-    if (key === 'minRating' && value === 0) return;
-    if (key === 'maxRating' && value === 5) return;
     if (Array.isArray(value)) {
       if (value.length > 0) cleanFilters[key] = value;
       return;
@@ -75,7 +150,7 @@ const fetchFilteredNovels = async (page = 0, isPrefetch = false) => {
   try {
     if (!isPrefetch) isLoading.value = true;
     const cleanedDto = prepareFilters(filters.value);
-    const response = await findAllNovels(cleanedDto, page, 12);
+    const response = await findAllNovels(cleanedDto, page, 12, sort.value);
 
     pagesCache.value[page] = response.content;
 
@@ -101,16 +176,21 @@ const applyFilters = () => {
 const resetFilters = () => {
   filters.value = {
     title: '',
+    authorId: null,
     includedGenreIds: [],
     excludedGenreIds: [],
     includedTagIds: [],
     excludedTagIds: [],
     status: null,
-    minRating: 0,
-    maxRating: 5
+    minRating: null,
+    maxRating: null
   };
+  sort.value = 'lastChapterAddedAt,desc';
   genreSearchQuery.value = '';
   tagSearchQuery.value = '';
+  authorSearchQuery.value = '';
+  selectedAuthor.value = null;
+  authorSearchResults.value = [];
   applyFilters();
 };
 
@@ -145,10 +225,29 @@ const goToNovelDetail = (id: number) => {
   router.push({ name: 'NovelDetail', params: { id: id.toString() } });
 };
 
+const handleClickOutsideAuthor = (event: MouseEvent) => {
+  if (authorSearchResults.value.length > 0 && relativeWrapperRef.value && !relativeWrapperRef.value.contains(event.target as Node)) {
+    authorSearchResults.value = [];
+  }
+};
+
+const handleEscKeyAuthor = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && authorSearchResults.value.length > 0) {
+    authorSearchResults.value = [];
+  }
+};
+
 onMounted(() => {
   fetchMetadata();
   fetchFilteredNovels();
   isMobile.value = window.innerWidth <= 768;
+  document.addEventListener('click', handleClickOutsideAuthor);
+  document.addEventListener('keydown', handleEscKeyAuthor);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutsideAuthor);
+    document.removeEventListener('keydown', handleEscKeyAuthor);
 });
 </script>
 
@@ -168,17 +267,60 @@ onMounted(() => {
             </div>
             <div class="filter-body">
               <div class="filter-item">
-                <label>Поиск</label>
+                <label>Поиск по названию</label>
                 <input v-model="filters.title" type="text" placeholder="Название..." class="input-field" @keyup.enter="applyFilters"/>
+              </div>
+
+              <div class="filter-item relative-wrapper" ref="relativeWrapperRef">
+                <label>Поиск по автору</label>
+                <input
+                  v-model="authorSearchQuery"
+                  type="text"
+                  placeholder="Имя автора..."
+                  class="input-field"
+                  @focus="authorSearchResults.length > 0 ? null : (authorSearchQuery.length >= 2 ? fetchAuthors(0) : null)"
+                />
+                <div v-if="authorSearchResults.length > 0" class="autocomplete-dropdown scrollbar" ref="authorDropdownRef" @scroll="handleAuthorScroll">
+                  <div
+                    v-for="author in authorSearchResults"
+                    :key="author.id"
+                    class="autocomplete-item"
+                    @click="selectAuthor(author)"
+                  >
+                    <img :src="author.avatarUrl || 'http://127.0.0.1:9000/interactive-novel-assets/avatars/default-avatar.png'" class="author-avatar-sm" />
+                    <span>{{ author.username }}</span>
+                  </div>
+                  <div v-if="isAuthorSearching" class="autocomplete-loading">Загрузка...</div>
+                </div>
               </div>
 
               <div class="filter-item">
                 <label>Статус</label>
-                <select v-model="filters.status" class="input-field">
+                <select v-model="filters.status" class="input-field custom-select">
                   <option :value="null">Любой</option>
                   <option value="IN_PROGRESS">📖 В процессе</option>
                   <option value="COMPLETED">✅ Завершено</option>
                   <option value="HIATUS">☕ Перерыв</option>
+                </select>
+              </div>
+
+              <div class="filter-item">
+                <label>Рейтинг</label>
+                <div class="rating-range">
+                  <input v-model.number="filters.minRating" type="number" min="0" max="5" step="0.1" placeholder="От" class="input-field small-input"/>
+                  <span>-</span>
+                  <input v-model.number="filters.maxRating" type="number" min="0" max="5" step="0.1" placeholder="До" class="input-field small-input"/>
+                </div>
+              </div>
+
+              <div class="filter-item">
+                <label>Сортировка</label>
+                <select v-model="sort" class="input-field custom-select" @change="applyFilters">
+                  <option value="lastChapterAddedAt,desc">По дате обновления (сначала новые)</option>
+                  <option value="averageRating,desc">По рейтингу (сначала высокие)</option>
+                  <option value="viewCount,desc">По просмотрам (сначала популярные)</option>
+                  <option value="chapterCount,desc">По количеству глав (сначала больше)</option>
+                  <option value="publicationDate,desc">По дате публикации (сначала новые)</option>
                 </select>
               </div>
 
@@ -231,6 +373,7 @@ onMounted(() => {
           </div>
 
           <div v-else class="empty">
+            <div class="empty-icon">🔍</div>
             <p>Ничего не найдено. Попробуйте изменить фильтры.</p>
           </div>
         </main>
@@ -305,24 +448,37 @@ onMounted(() => {
 .catalog-page {
   min-height: 100vh;
   background: var(--bg-main);
-  padding: 40px 0;
+  padding: 100px 0 60px;
   color: var(--text-header);
 }
 
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 24px;
+}
+
+.catalog-header {
+  margin-bottom: 40px;
+}
+.catalog-header h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+.accent {
+  color: var(--btn-plus);
 }
 
 .catalog-layout {
   display: flex;
-  gap: 30px;
+  gap: 40px;
   align-items: flex-start;
 }
 
 .sidebar {
-  width: 300px;
+  width: 320px;
   flex-shrink: 0;
   position: sticky;
   top: 90px;
@@ -336,18 +492,24 @@ onMounted(() => {
 .filter-card {
   background: var(--bg-dropdown);
   border-radius: 16px;
-  padding: 20px;
-  border: 1px solid var(--border-subtle);
+  padding: 24px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px var(--shadow-color);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   align-items: center;
 }
+.card-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
 
-.filter-item { margin-bottom: 20px; }
+.filter-item { margin-bottom: 24px; }
 
 .filter-item label {
   display: block;
@@ -355,33 +517,112 @@ onMounted(() => {
   color: var(--text-muted);
   font-weight: 600;
   margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .input-field {
-  width: 100%;
-  padding: 10px;
+  width: 90%;
+  padding: 12px 16px;
   border-radius: 8px;
   border: 1px solid var(--border-color);
   background: var(--bg-main);
   color: var(--text-header);
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
 }
+.input-field:focus {
+  outline: none;
+  border-color: var(--btn-plus);
+}
+.input-field::placeholder {
+  color: var(--input-placeholder);
+}
+
+.rating-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 90%;
+}
+
+.small-input {
+  width: 100%;
+}
+
+.custom-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23a1a1aa%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px top 50%;
+  background-size: 10px auto;
+  cursor: pointer;
+}
+
+/* Автокомплит для автора */
+.relative-wrapper {
+  position: relative;
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 90%;
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.autocomplete-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.autocomplete-item:hover {
+  background: var(--hover-dropdowb);
+}
+
+.author-avatar-sm {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.autocomplete-loading {
+  padding: 8px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 
 /* Кнопки вызова модалок в сайдбаре */
 .modal-trigger-btn {
   width: 100%;
-  padding: 12px;
-  margin-bottom: 10px;
-  background: var(--bg-app);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  background: var(--bg-main);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  color: white;
+  color: var(--text-header);
   text-align: left;
   cursor: pointer;
-  transition: 0.2s;
+  transition: all 0.2s;
+  font-weight: 500;
 }
 
 .modal-trigger-btn:hover {
-  border-color: #6366f1;
+  border-color: var(--btn-plus);
   background: var(--hover-dropdowb);
 }
 
@@ -389,8 +630,8 @@ onMounted(() => {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(5px);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -401,95 +642,175 @@ onMounted(() => {
   background: var(--bg-dropdown);
   width: 95%;
   max-width: 600px;
-  border-radius: 20px;
-  padding: 30px;
+  border-radius: 16px;
+  padding: 32px;
   border: 1px solid var(--border-color);
   box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
 }
 
-.modal-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+.modal-header { display: flex; justify-content: space-between; margin-bottom: 24px; align-items: center;}
+.modal-header h3 { margin: 0; font-size: 1.5rem; }
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 2rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 8px;
+  border-radius: 8px;
+  transition: background 0.2s, color 0.2s;
+}
+.close-btn:hover {
+  background: var(--hover-dropdowb);
+  color: var(--text-header);
+}
 
 .modal-search {
   width: 100%;
-  padding: 12px;
+  padding: 12px 16px;
   background: var(--bg-main);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
-  color: white;
-  margin-bottom: 20px;
+  border-radius: 8px;
+  color: var(--text-header);
+  margin-bottom: 24px;
+  font-size: 0.95rem;
 }
+.modal-search:focus { outline: none; border-color: var(--btn-plus); }
 
 .modal-scroll-area {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  max-height: 400px;
+  gap: 12px;
   overflow-y: auto;
-  padding: 10px;
+  padding: 4px;
+  margin-bottom: 24px;
+  flex-grow: 1;
 }
 
 /* --- 4. ТРОЙНЫЕ ЧИПЫ (Внутри модалки) --- */
 .triple-chip {
   padding: 8px 16px;
-  border-radius: 8px;
+  border-radius: 20px;
   font-size: 0.9rem;
   background: var(--bg-main);
   border: 1px solid var(--border-color);
   color: var(--text-header);
   cursor: pointer;
   transition: all 0.2s;
+  font-weight: 500;
+}
+.triple-chip:hover {
+  border-color: var(--text-muted);
 }
 
 .triple-chip.included {
-  background: rgba(66, 184, 131, 0.2);
-  border-color: #42b883;
-  color: #42b883;
+  background: rgba(16, 185, 129, 0.15); /* emerald */
+  border-color: #10b981;
+  color: #10b981;
 }
 
 .triple-chip.excluded {
-  background: rgba(231, 76, 60, 0.2);
-  border-color: #e74c3c;
-  color: #e74c3c;
+  background: rgba(239, 68, 68, 0.15); /* red */
+  border-color: #ef4444;
+  color: #ef4444;
 }
 
 /* --- 5. КНОПКИ И УТИЛИТЫ --- */
 .btn-apply {
   width: 100%;
   padding: 14px;
-  background: #6366f1;
+  background: var(--btn-plus);
   color: white;
   border: none;
-  border-radius: 10px;
-  font-weight: bold;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
   cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+.btn-apply:hover {
+  background: var(--btn-plus-hover);
+  transform: translateY(-1px);
+}
+
+.btn-apply-modal {
+  width: 100%;
+  padding: 14px;
+  background: var(--btn-plus);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-apply-modal:hover {
+  background: var(--btn-plus-hover);
 }
 
 .btn-text {
-  background: none; border: none; color: #6366f1;
-  cursor: pointer; text-decoration: underline; font-weight: bold;
+  background: none; border: none; color: var(--btn-plus);
+  cursor: pointer; font-weight: 500; font-size: 0.95rem;
+  padding: 4px 8px; border-radius: 4px; transition: background 0.2s;
 }
+.btn-text:hover { background: var(--hover-dropdowb); }
 
 /* --- 6. СЕТКА НОВЕЛЛ И ПАГИНАЦИЯ --- */
 .novels-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 40px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 32px;
 }
 
 .pagination {
   display: flex; justify-content: center; align-items: center;
-  gap: 10px; margin-top: 40px;
+  gap: 12px; margin-top: 60px;
 }
 
 .pagination button {
-  padding: 8px 16px; border-radius: 8px;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
   background: var(--bg-dropdown); border: 1px solid var(--border-color);
   color: var(--text-header); cursor: pointer;
+  font-weight: 600; transition: all 0.2s;
+}
+.pagination button:hover:not(:disabled) {
+  border-color: var(--text-muted);
+}
+.pagination button:disabled {
+  opacity: 0.5; cursor: not-allowed;
 }
 
 .pagination button.active {
-  background: #6366f1; color: white; border-color: #6366f1;
+  background: var(--btn-plus); color: white; border-color: var(--btn-plus);
 }
+
+.empty {
+  text-align: center;
+  padding: 80px 20px;
+  background: var(--bg-dropdown);
+  border-radius: 16px;
+  border: 1px dashed var(--border-color);
+}
+.empty-icon {
+  font-size: 3rem; margin-bottom: 16px; opacity: 0.5;
+}
+.empty p { color: var(--text-muted); font-size: 1.1rem; }
+
+.loader { text-align: center; padding: 100px 20px; color: var(--text-muted); }
+.spinner {
+  width: 40px; height: 40px; border: 3px solid var(--border-subtle);
+  border-top-color: var(--btn-plus); border-radius: 50%;
+  animation: spin 1s linear infinite; margin: 0 auto 20px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* --- 7. АДАПТИВ --- */
 @media (max-width: 900px) {
@@ -497,6 +818,10 @@ onMounted(() => {
   .sidebar { width: 100%; position: static; }
 }
 
-.fade-enter-active, .fade-slide-enter-active { transition: all 0.3s ease; }
-.fade-enter-from, .fade-slide-enter-from { opacity: 0; }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+.scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
 </style>

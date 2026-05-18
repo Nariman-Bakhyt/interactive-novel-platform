@@ -147,7 +147,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
         <template v-if="currentStatus">
           <div class="divider"></div>
           <button class="dropdown-item remove-btn" @click="removeStatus">
-            🗑️ Удалить из списка
+            <span class="icon">🗑️</span> Удалить из списка
           </button>
         </template>
 
@@ -164,15 +164,16 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
 }
 
 .main-btn {
-  padding: 8px 16px;
+  padding: 8px 20px;
   background-color: var(--btn-plus);
   color: #ffffff;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  min-width: 150px;
+  transition: background 0.2s, transform 0.2s;
+  min-width: 160px;
+  font-size: 0.95rem;
 }
 
 .main-btn:disabled {
@@ -187,50 +188,58 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
 }
 
 .main-btn:hover:not(:disabled) {
-  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+.main-btn:not(.is-active):hover:not(:disabled) {
+  background-color: var(--btn-plus-hover);
+}
+.main-btn.is-active:hover:not(:disabled) {
+  background-color: var(--hover-dropdowb);
+  border-color: var(--text-muted);
 }
 
 .dropdown {
   position: absolute;
-  top: calc(100% + 5px);
+  top: calc(100% + 8px);
   left: 0;
   background-color: var(--bg-dropdown);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  min-width: 200px; /* Сделал чуть шире для селекта */
-  box-shadow: 0 4px 15px var(--shadow-color);
+  border-radius: 12px;
+  min-width: 220px;
+  box-shadow: 0 10px 30px var(--shadow-color);
   z-index: 50;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 5px 0; /* Отступы сверху и снизу для красоты */
+  padding: 8px 0;
 }
 
 /* Стили для секций внутри меню */
 .dropdown-section {
   display: flex;
   flex-direction: column;
-  padding: 5px 0;
+  padding: 4px 0;
 }
 
 .section-title {
   font-size: 0.75rem;
   text-transform: uppercase;
   color: var(--text-muted);
-  padding: 4px 15px;
-  letter-spacing: 0.5px;
-  font-weight: bold;
+  padding: 4px 16px;
+  letter-spacing: 0.05em;
+  font-weight: 700;
 }
 
 .dropdown-item {
   background: none;
   border: none;
-  padding: 8px 15px;
+  padding: 10px 16px;
   color: var(--text-header);
   text-align: left;
   cursor: pointer;
   font-size: 0.95rem;
-  transition: background-color 0.2s;
+  transition: background 0.2s;
+  font-weight: 500;
 }
 
 .dropdown-item:hover {
@@ -238,23 +247,24 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
 }
 
 .dropdown-item.selected {
-  background-color: var(--border-subtle);
+  background-color: rgba(99, 102, 241, 0.1);
   color: var(--btn-plus);
-  font-weight: bold;
+  font-weight: 600;
 }
 
 /* Стили для селекта приватности */
 .privacy-select {
-  margin: 5px 15px;
-  padding: 8px;
+  margin: 4px 16px 8px;
+  padding: 8px 12px;
   background-color: var(--bg-main);
   color: var(--text-header);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 8px;
   font-family: inherit;
   font-size: 0.9rem;
   cursor: pointer;
   outline: none;
+  transition: border-color 0.2s;
 }
 .privacy-select:focus {
   border-color: var(--btn-plus);
@@ -267,19 +277,21 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
 }
 
 .remove-btn {
-  color: #e74c3c;
-  padding: 10px 15px;
+  color: #ef4444; /* red-500 */
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .remove-btn:hover {
-  background-color: rgba(231, 76, 60, 0.1);
-  color: #ff6b6b;
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
 .main-btn.is-compact {
-  padding: 6px 10px;
-  min-width: auto; /* Убираем жесткую ширину */
-  font-size: 0.85rem;
+  padding: 8px 12px;
+  min-width: auto;
+  font-size: 0.9rem;
 }
 
 .fade-slide-enter-active,
@@ -289,6 +301,6 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
 .fade-slide-enter-from,
 .fade-slide-leave-to {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(-5px);
 }
 </style>

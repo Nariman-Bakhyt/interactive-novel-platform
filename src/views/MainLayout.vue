@@ -58,13 +58,15 @@ watch(
   flex-direction: column;
   height: 100vh; /* Ровно высота окна */
   overflow: hidden; /* Запрещаем общий скролл страницы */
+  background-color: var(--bg-main);
 }
 
 .app-header {
   height: 60px;
   flex-shrink: 0; /* Шапка не сжимается */
-  background: var(--bg-main);
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 100; /* Чтобы тень падала поверх контента */
 }
 
 .main-container {
@@ -77,5 +79,7 @@ watch(
   flex: 1; /* Основной контент (новелла) занимает максимум места */
   overflow-y: auto; /* Скролл только здесь */
   position: relative;
+  /* Плавный скролл */
+  scroll-behavior: smooth;
 }
 </style>

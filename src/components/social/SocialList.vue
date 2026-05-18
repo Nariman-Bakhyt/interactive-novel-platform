@@ -75,19 +75,14 @@ onUnmounted(() => observer?.disconnect());
     </div>
 
     <div ref="observerTarget" class="scroll-trigger">
-      <p v-if="isLoading">Загрузка...</p>
-      <p v-if="isLast && users.length === 0">Список пуст</p>
+      <div v-if="isLoading" class="spinner-small"></div>
+      <p v-if="isLast && users.length === 0" class="empty-state">Список пуст</p>
     </div>
   </div>
 </template>
 
 <style scoped>
 
-
-.user-item:hover {
-  background: var(--hover-dropdowb); /* Подсвечиваем при наведении */
-}
-/* Сюда вставь те самые стили "50% и сдвиг вправо", которые мы сделали в прошлом шаге */
 .list-container {
   display: flex;
   flex-direction: column;
@@ -96,16 +91,26 @@ onUnmounted(() => observer?.disconnect());
 .user-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0; /* Убрал боковые отступы, чтобы на странице смотрелось лучше */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.user-item:hover {
+  background: var(--hover-dropdowb); /* Подсвечиваем при наведении */
+  border-color: var(--border-color);
 }
 
 .mini-avatar {
-  width: 45px;
-  height: 45px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   object-fit: cover;
+  border: 1px solid var(--border-color);
 }
 
 .user-content {
@@ -118,48 +123,72 @@ onUnmounted(() => observer?.disconnect());
 
 .username {
   flex: 1;
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 600;
-  color: #e0e0e0;
+  color: var(--text-header);
 }
 
 .actions-wrapper {
-  width: 55%;
+  width: 200px;
   display: flex;
   justify-content: flex-end;
 }
 
 .scroll-trigger {
-  padding: 20px;
-  text-align: center;
-  color: #888;
+  padding: 24px;
+  display: flex;
+  justify-content: center;
+  color: var(--text-muted);
 }
 
-/* Настройки RelationshipButton для 3-х линий внутри списка */
+.empty-state {
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
+.spinner-small {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--btn-plus);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Настройки RelationshipButton для списка */
 :deep(.relationship-actions) {
   display: flex !important;
   flex-direction: column !important;
-  gap: 4px !important;
+  gap: 8px !important;
   width: 100% !important;
 }
 
 :deep(.relationship-actions button) {
   width: 100% !important;
-  height: 28px !important;
-  font-size: 0.75rem !important;
-  padding: 0 8px !important;
+  height: 32px !important;
+  font-size: 0.85rem !important;
+  padding: 0 12px !important;
   justify-content: center !important;
+  border-radius: 6px !important;
+  font-weight: 600 !important;
 }
 
 :deep(.action-row) {
   display: flex !important;
-  gap: 4px !important;
+  gap: 8px !important;
   width: 100% !important;
 }
 
 :deep(.btn-block-action) {
-  height: 24px !important;
+  height: 32px !important;
   background: transparent !important;
-  border: 1px solid rgba(231, 76, 60, 0.2) !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  color: #ef4444 !important;
+}
+:deep(.btn-block-action:hover) {
+  background: rgba(239, 68, 68, 0.1) !important;
 }
 </style>

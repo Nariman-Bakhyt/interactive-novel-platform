@@ -3,10 +3,10 @@ import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch } from '
 import { useCommentStore } from "@/components/chat/commentStore.ts";
 import router from "@/router";
 import { useMessengerStore } from "@/components/chat/messengerStore.ts";
-import { type ConversationResponseDto, ConversationType, ConversationMembersRole } from "@/types/chat.ts";
+import { type ConversationResponseDto, ConversationType } from "@/types/chat.ts";
 import { useAuthStore } from "@/api/auth.ts";
 import ChatCreationModal from './ChatCreationModal.vue';
-import { useToastStore } from "@/components/toast/toastStore.ts"; // Для уведомлений
+import { useToastStore } from "@/components/toast/toastStore.ts";
 
 const commentStore = useCommentStore();
 const messengerStore = useMessengerStore();
@@ -16,13 +16,23 @@ const toastStore = useToastStore();
 const miniTab = ref<'CHATS' | 'COMMENTS'>('CHATS');
 const openUserMenu = inject('openUserMenu') as (event: MouseEvent, userId: number, username: string) => void;
 
-// === НОВЫЕ СОСТОЯНИЯ ===
-const isSidebarExpanded = ref(false); // Выдвинут ли левый сайдбар
-const searchQuery = ref(''); // Поиск по чатам
-const showChatInfo = ref(false); // Открыта ли инфа о чате
-const newMemberId = ref<number | null>(null); // ID для добавления нового юзера
+const isSidebarExpanded = ref(false);
+const searchQuery = ref('');
+const showChatInfo = ref(false);
 
-// === ФИЛЬТРАЦИЯ ЧАТОВ ===
+const isMessengerVisible = ref(false);
+
+onMounted(() => {
+  window.addEventListener('open-messenger', () => {
+    isMessengerVisible.value = true;
+  });
+});
+onUnmounted(() => {
+  window.removeEventListener('open-messenger', () => {
+    isMessengerVisible.value = true;
+  });
+});
+
 const filteredConversations = computed(() => {
   let list = messengerStore.conversations;
   if (searchQuery.value.trim()) {
@@ -37,30 +47,9 @@ onMounted(() => {
   window.addEventListener('keydown', closeActivePanels);
 });
 
-const lastScrollTop = ref(0);
-const isHeaderVisible = ref(true);
-
-const handleSidebarScroll = (e: Event) => {
-  const target = e.target as HTMLElement;
-  const currentScroll = target.scrollTop;
-
-  // Вызываем твою старую логику (для бейджиков даты и т.д.)
-  handleScroll();
-
-  // Логика скрытия шапки:
-  // Если скроллим вниз больше чем на 10px и ушли от верха чата
-  if (currentScroll > lastScrollTop.value && currentScroll > 60) {
-    isHeaderVisible.value = false;
-  } else {
-    isHeaderVisible.value = true;
-  }
-
-  lastScrollTop.value = currentScroll;
-};
-
 const handleChatClick = (conversationId: number) => {
   messengerStore.openChat(conversationId);
-  showChatInfo.value = false; // Закрываем инфу при смене чата
+  showChatInfo.value = false;
   const chat = messengerStore.conversations.find(c => c.id === conversationId);
   if (chat && hasUnread(chat)) {
     messengerStore.markAsRead(conversationId);
@@ -84,12 +73,10 @@ const activeContext = computed(() => {
       isLoadingMore: commentStore.isLoadingMore,
       isLastPage: commentStore.isLastPage,
       isSending: commentStore.isSending,
-      pendingQuote: commentStore.pendingQuote,
       close: commentStore.closeChat,
       loadMore: commentStore.loadMoreComments,
       send: commentStore.send,
       remove: commentStore.removeComment,
-      clearQuote: commentStore.clearQuote,
       items: commentStore.groupedComments.value,
     };
   } else if (messengerStore.activeConversationId) {
@@ -102,13 +89,11 @@ const activeContext = computed(() => {
       isLoadingMore: messengerStore.isLoadingMore,
       isLastPage: messengerStore.isLastPage,
       isSending: messengerStore.isSending,
-      pendingQuote: null,
       close: messengerStore.closeChat,
       loadMore: messengerStore.loadMoreMessages,
       send: (payload: { content: string, file?: File | null }) =>
         messengerStore.send(payload.content, payload.file ? [payload.file] : []),
       remove: messengerStore.removeMsg,
-      clearQuote: () => {},
       items: messengerStore.groupedMessages.value,
     };
   }
@@ -124,17 +109,16 @@ const newCommentText = ref('');
 const selectedFile = ref<File | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const zoomedImageUrl = ref<string | null>(null);
+const zoomLevel = ref(1);
+
 const isScrolling = ref(false);
 let scrollTimeout: number | null = null;
-const contextMenu = ref({ show: false, x: 0, y: 0, targetId: null as number | null });
 const topObserverTarget = ref<HTMLElement | null>(null);
 let topObserver: IntersectionObserver | null = null;
 const showChatOptions = ref(false);
 
-
 const showNewChatModal = ref(false);
 const modalPurpose = ref<'CREATE' | 'ADD_MEMBERS'>('CREATE');
-const isMessengerVisible = ref(false); // По умолчанию скрыто, чтобы не мешать чтению
 
 watch(() => commentStore.isOpen, (isOpen) => {
   if (isOpen) { messengerStore.closeChat(); miniTab.value = 'COMMENTS'; }
@@ -156,8 +140,6 @@ watch(() => messengerStore.groupedMessages.value, (newItems) => {
   const activeId = messengerStore.activeConversationId;
   if (activeId && newItems && newItems.length > 0) {
     const chat = messengerStore.conversations.find(c => c.id === activeId);
-
-    // Помечаем прочитанным, только если есть новые сообщения
     if (chat && hasUnread(chat)) {
       messengerStore.markAsRead(activeId);
     }
@@ -214,26 +196,16 @@ const handleScroll = () => {
   scrollTimeout = window.setTimeout(() => { isScrolling.value = false; }, 1500);
 };
 
-const openContextMenu = (e: MouseEvent, id: number) => {
-  e.preventDefault();
-  contextMenu.value = { show: true, x: e.clientX, y: e.clientY, targetId: id };
-  const close = () => { contextMenu.value.show = false; document.removeEventListener('click', close); };
-  setTimeout(() => document.addEventListener('click', close), 50);
+const zoomImage = (url: string) => {
+  zoomedImageUrl.value = url;
+  zoomLevel.value = 1;
 };
-
-const handleDelete = async () => {
-  if (!contextMenu.value.targetId || !activeContext.value) return;
-  await activeContext.value.remove(contextMenu.value.targetId);
-  contextMenu.value.show = false;
+const closeZoom = () => {
+  zoomedImageUrl.value = null;
+  zoomLevel.value = 1;
 };
-
-const handleQuoteClick = (url: string) => {
-  if (!url) return;
-  router.push(url);
-  if (window.innerWidth < 1000 && activeContext.value) activeContext.value.close();
-};
-
-const zoomImage = (url: string) => { zoomedImageUrl.value = url; };
+const zoomIn = () => { zoomLevel.value += 0.25; };
+const zoomOut = () => { if (zoomLevel.value > 0.5) zoomLevel.value -= 0.25; };
 
 const onTyping = () => { if (activeContext.value?.type === 'CHAT') messengerStore.notifyTyping(); };
 
@@ -269,8 +241,6 @@ const openAddMembersModal = () => {
 };
 const handleMembersAdded = async (userIds: number[]) => {
   if (!messengerStore.activeConversationId) return;
-  // Так как в твоем сторе метод принимает по одному, делаем цикл.
-  // Идеально было бы сделать бэкенд на List<Long>, но и так сойдет:
   await messengerStore.addMemberToGroup(messengerStore.activeConversationId, userIds);
   toastStore.success("Участники добавлены!");
 };
@@ -278,8 +248,8 @@ const handleMembersAdded = async (userIds: number[]) => {
 const closeActivePanels = (e: KeyboardEvent) => {
   if (e.key === 'Escape') {
     if (showNewChatModal.value) { showNewChatModal.value = false; return; }
-    if (zoomedImageUrl.value) { zoomedImageUrl.value = null; return; }
-    if (showChatInfo.value) { showChatInfo.value = false; return; } // Закрываем инфу
+    if (zoomedImageUrl.value) { closeZoom(); return; }
+    if (showChatInfo.value) { showChatInfo.value = false; return; }
     if (commentStore.isOpen) { commentStore.closeChat(); }
     else if (messengerStore.activeConversationId) { messengerStore.closeChat(); }
   }
@@ -298,13 +268,11 @@ const getGlowStyle = (id: number, hasAvatar: boolean) => {
   };
 };
 
-// === НОВЫЕ ФУНКЦИИ УПРАВЛЕНИЯ ГРУППОЙ ===
 const handleLeaveGroup = async () => {
   if(confirm("Вы уверены, что хотите покинуть группу?")) {
     await messengerStore.leaveGroupChat(messengerStore.activeConversationId!);
   }
 }
-
 
 const handleKickMember = async (userId: number) => {
   if(confirm("Исключить пользователя?")) {
@@ -317,6 +285,11 @@ const hasAnyUnread = computed(() => {
   return messengerStore.conversations.some(chat => hasUnread(chat));
 });
 
+const isMyMessage = (item: any) => {
+  const senderId = item.senderId !== undefined ? item.senderId : item.userId;
+  return authStore.userDetails?.id === senderId;
+};
+
 onUnmounted(() => {
   window.removeEventListener('keydown', closeActivePanels);
   if (topObserver) topObserver.disconnect();
@@ -324,7 +297,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="omnichannel-wrapper">
+  <div class="omnichannel-wrapper" :class="{ 'is-active': isMessengerVisible }">
     <Transition name="fade">
       <button
         v-if="!isMessengerVisible"
@@ -332,7 +305,7 @@ onUnmounted(() => {
         @click="isMessengerVisible = true"
         title="Открыть чаты"
       >
-        💬
+        <span class="icon">💬</span>
         <span v-if="hasAnyUnread" class="global-unread-dot"></span>
       </button>
     </Transition>
@@ -345,7 +318,6 @@ onUnmounted(() => {
           >
             <header
               class="sidebar-header"
-              :class="{ 'header-hidden': !isHeaderVisible }"
             >
               <div
                 class="header-info"
@@ -380,8 +352,7 @@ onUnmounted(() => {
 
             <div v-if="showChatInfo && currentChat" class="chat-info-panel">
               <div class="info-hero-row">
-                <div class="chat-avatar-wrapper"
-                     style="width: 60px; height: 60px;"
+                <div class="chat-avatar-wrapper avatar-hero"
                      :style="getGlowStyle(currentChat.id, !!currentChat.avatarUrl)">
                   <img v-if="currentChat.avatarUrl" :src="currentChat.avatarUrl" class="chat-avatar" />
                   <div v-else class="chat-avatar-placeholder">{{ currentChat.title.charAt(0).toUpperCase() }}</div>
@@ -418,7 +389,7 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div v-show="!showChatInfo" class="comments-list" :ref="setListRef" @scroll="handleSidebarScroll">
+            <div v-show="!showChatInfo" class="comments-list" :ref="setListRef" @scroll="handleScroll">
               <div ref="topObserverTarget" class="chat-history-trigger">
                 <span v-if="activeContext.isLoadingMore" class="spinner-small history-spinner"></span>
               </div>
@@ -429,13 +400,15 @@ onUnmounted(() => {
                   <span class="date-badge">{{ date }}</span>
                 </div>
 
-                <div v-for="item in group" :key="item.id" class="comment-item" @contextmenu="openContextMenu($event, item.id)">
-                  <div class="comment-bubble">
-                    <span class="user-badge">{{ ('username' in item) ? item.username : item.senderUsername }}</span>
-                    <p class="comment-body">{{ item.content }}</p>
+                <div v-for="item in group" :key="item.id"
+                     class="comment-item-wrapper"
+                     :class="{ 'is-mine': isMyMessage(item), 'is-others': !isMyMessage(item) }">
+                  <div class="comment-bubble" :class="{ 'bubble-mine': isMyMessage(item), 'bubble-others': !isMyMessage(item) }">
+                    <span v-if="!isMyMessage(item)" class="user-badge">{{ ('username' in item) ? item.username : item.senderUsername }}</span>
                     <div v-if="item.metadata?.images?.length" class="comment-images">
-                      <img v-for="url in item.metadata.images" :key="url" :src="url" class="comment-img" @click="zoomImage(url)">
+                      <img v-for="url in item.metadata.images" :key="url" :src="url" class="comment-img" @click.stop="zoomImage(url)">
                     </div>
+                    <p class="comment-body">{{ item.content }}</p>
                     <div class="comment-footer"><span class="comment-date">{{ formatTime(item.timestamp) }}</span></div>
                   </div>
                 </div>
@@ -494,11 +467,10 @@ onUnmounted(() => {
 
           <div v-if="miniTab === 'CHATS'" class="avatar-list">
             <button class="action-btn-circle" :class="{ 'expanded-btn': isSidebarExpanded }" title="Новый чат" @click="openNewChatModal">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="icon" style="font-size: 1.25rem;">+</span>
               <span v-if="isSidebarExpanded" class="btn-label">Создать чат</span>
             </button>
 
-            <!-- ОБНОВЛЕННАЯ СТРУКТУРА КНОПКИ ЧАТА -->
             <div
               v-for="chat in filteredConversations"
               :key="chat.id"
@@ -507,7 +479,6 @@ onUnmounted(() => {
               @contextmenu.prevent="menu($event, chat)"
               @click="handleChatClick(chat.id)"
             >
-              <!-- КРУГ: Фото/Буква + Непрочитанные. Свечение применяется сюда! -->
               <div class="avatar-circle-container" :style="getGlowStyle(chat.id, !!chat.avatarUrl)">
                 <img v-if="chat.avatarUrl" :src="chat.avatarUrl" class="chat-avatar" />
                 <div v-else class="chat-avatar-placeholder">
@@ -516,7 +487,6 @@ onUnmounted(() => {
                 <span v-if="hasUnread(chat)" class="unread-badge"></span>
               </div>
 
-              <!-- ТЕКСТ: Имя + Пин. Видно только при расширении -->
               <div v-if="isSidebarExpanded" class="chat-info-text">
                 <span class="chat-list-title">{{ chat.title }}</span>
                 <span v-if="chat.isPinned" class="pin-indicator">📌</span>
@@ -528,92 +498,132 @@ onUnmounted(() => {
     </Transition>
   </div>
 
+  <Teleport to="body">
+    <div v-if="zoomedImageUrl" class="image-lightbox" @click="closeZoom">
+      <div class="zoom-controls" @click.stop>
+        <button class="zoom-btn" @click.stop="zoomOut" title="Уменьшить">−</button>
+        <span class="zoom-level">{{ Math.round(zoomLevel * 100) }}%</span>
+        <button class="zoom-btn" @click.stop="zoomIn" title="Увеличить">+</button>
+      </div>
+      <button class="close-lightbox" @click.stop="closeZoom">✕</button>
+
+      <div class="image-container" @click.stop>
+        <img :src="zoomedImageUrl" class="full-image" :style="{ transform: `scale(${zoomLevel})` }" />
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
 .omnichannel-wrapper {
+  position: absolute;
+  top: 60px;
+  right: 0;
+  height: calc(100vh - 60px);
+  z-index: 1000;
+  pointer-events: none;
+}
+.omnichannel-wrapper.is-active {
   position: relative;
+  top: 0;
+  height: 100%;
+}
+.messenger-container, .floating-messenger-btn {
+  pointer-events: auto;
+}
+.messenger-container {
   display: flex;
-  flex-direction: row;
   height: 100%;
 }
 
-.header-actions {
+/* MINIBAR STYLES */
+.mini-sidebar {
+  width: 76px;
+  background-color: var(--bg-dropdown);
+  border-left: 1px solid var(--border-color);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 15px;
+  padding: 16px 0;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 20;
 }
-
-.chat-options-wrapper {
-  position: relative;
+.mini-sidebar.is-expanded {
+  width: 260px;
+  align-items: stretch;
+  padding: 16px;
 }
-
-.options-btn {
+.sidebar-top-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+  align-items: center;
+}
+.mini-sidebar.is-expanded .sidebar-top-actions {
+  flex-direction: row;
+  justify-content: space-between;
+}
+.hide-messenger-btn, .toggle-expand-btn {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 1.5rem;
-  font-weight: bold;
   cursor: pointer;
-  padding: 0 5px;
+  font-size: 1.2rem;
+  transition: color 0.2s;
 }
-.options-btn:hover { color: var(--text-header); }
-
-.chat-options-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background: var(--bg-main);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  display: flex;
-  flex-direction: column;
-  min-width: 150px;
-  overflow: hidden;
-  z-index: 100;
-}
-
-.chat-options-menu button {
-  background: none;
-  border: none;
-  padding: 10px 15px;
-  text-align: left;
+.hide-messenger-btn:hover, .toggle-expand-btn:hover {
   color: var(--text-header);
-  cursor: pointer;
-  font-size: 0.9rem;
 }
-.chat-options-menu button:hover { background: var(--bg-editor-sheet); }
-.chat-options-menu button.danger { color: #ff4d4f; }
-
-
 .mini-tabs {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 15px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid var(--text-muted);
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
   width: 100%;
   align-items: center;
 }
-
+.mini-tabs.row-mode {
+  flex-direction: row;
+  justify-content: center;
+  gap: 24px;
+}
 .tab-btn {
   background: none;
   border: none;
-  font-size: 1.5rem;
-  color: var(--text-header);
-  opacity: 0.4;
+  font-size: 1.35rem;
+  color: var(--text-muted);
   cursor: pointer;
   transition: opacity 0.2s, transform 0.2s;
+  opacity: 0.5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-
-.tab-btn:hover { opacity: 0.8; }
+.tab-btn:hover { opacity: 1; color: var(--text-header); }
 .tab-btn.active {
   opacity: 1;
   transform: scale(1.1);
+  color: var(--btn-plus);
 }
-
+.tab-label { font-size: 0.95rem; font-weight: 500; }
+.search-box {
+  margin-bottom: 16px;
+  width: 100%;
+}
+.search-box input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-main);
+  color: var(--text-header);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.search-box input:focus { border-color: var(--btn-plus); }
 .avatar-list {
   flex: 1;
   width: 100%;
@@ -625,682 +635,390 @@ onUnmounted(() => {
   scrollbar-width: none;
 }
 .avatar-list::-webkit-scrollbar { display: none; }
-
 .action-btn-circle {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  background-color: #3b4b5e;
-  border: none;
-  color: white;
+  background-color: var(--bg-main);
+  border: 1px dashed var(--border-color);
+  color: var(--text-header);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  flex-shrink: 0;
 }
-.action-btn-circle:hover { background-color: #4a5c73; }
+.action-btn-circle:hover {
+  background: var(--hover-dropdowb);
+  border-style: solid;
+  border-color: var(--text-muted);
+}
+.action-btn-circle.expanded-btn {
+  width: 100%;
+  border-radius: 12px;
+  height: 48px;
+}
+.btn-label { font-size: 0.95rem; font-weight: 500; }
 
+.chat-avatar-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+  width: calc(100% - 12px);
+  justify-content: center;
+}
+.chat-avatar-wrapper.expanded { justify-content: flex-start; padding: 8px 12px; width: 100%; }
+.chat-avatar-wrapper:hover, .chat-avatar-wrapper.is-active { background: var(--hover-dropdowb); }
+.chat-avatar-wrapper.avatar-hero { width: 64px; height: 64px; border-radius: 50%; cursor: default; background: transparent !important; border: 2px solid var(--chat-accent); }
+.chat-avatar-wrapper.avatar-hero:hover { background: transparent; }
 
-.empty-mini-tab {
-  height: 50px;
+.avatar-circle-container {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+.chat-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.chat-avatar-placeholder { font-size: 1.3rem; font-weight: bold; color: white; }
+.unread-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  border: 2px solid var(--bg-dropdown);
 }
 
+.chat-info-text { display: flex; flex-direction: column; overflow: hidden; white-space: nowrap; flex: 1; }
+.chat-list-title { font-size: 0.95rem; color: var(--text-header); font-weight: 600; text-overflow: ellipsis; overflow: hidden; }
+.pin-indicator { font-size: 0.8rem; margin-top: 2px; }
+
+/* GLOBAL SIDEBAR STYLES */
 .global-sidebar {
-  position: absolute;
-  right: 70px;
-  top: 0;
-  z-index: 20;
-  width: 350px;
+  width: 360px;
   height: 100%;
   background-color: var(--bg-editor-sheet);
-  border-left: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  box-shadow: -10px 0 30px rgba(0,0,0,0.1);
-  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s;
+  box-shadow: -4px 0 16px var(--shadow-color);
+  transition: width 0.3s;
+  border-right: 1px solid var(--border-color);
 }
-
-.global-sidebar.is-shifted {
-  right: 250px; /* Отступ, когда меню расширено */
-}
-
 .sidebar-header {
   padding: 16px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--border-subtle);
-  transition: transform 0.3s ease;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-dropdown);
+  z-index: 10;
+  position: sticky;
+  top: 0;
 }
-.header-hidden {
-  transform: translateY(-100%);
+.header-info h3 { margin: 0; font-size: 1.15rem; color: var(--text-header); font-weight: 600; display: flex; align-items: center; gap: 8px;}
+.header-info.clickable { cursor: pointer; }
+.dropdown-icon { font-size: 0.75rem; color: var(--text-muted); }
+.target-badge { font-size: 0.75rem; color: var(--btn-plus); text-transform: uppercase; font-weight: bold; margin-top: 4px; display: inline-block; }
+.header-actions { display: flex; align-items: center; gap: 12px; }
+.options-btn { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; font-weight: bold; cursor: pointer; padding: 4px 8px; border-radius: 6px;}
+.options-btn:hover { background: var(--hover-dropdowb); color: var(--text-header); }
+.close-btn { background: none; border: none; color: var(--text-muted); font-size: 1.25rem; cursor: pointer; line-height: 1; padding: 4px;}
+.close-btn:hover { color: var(--text-header); }
+
+.chat-options-wrapper { position: relative; }
+.chat-options-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px var(--shadow-color);
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  overflow: hidden;
+  z-index: 100;
 }
+.chat-options-menu button {
+  background: none;
+  border: none;
+  padding: 12px 16px;
+  text-align: left;
+  color: var(--text-header);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+.chat-options-menu button:hover { background: var(--hover-dropdowb); }
+.chat-options-menu button.danger { color: #ef4444; }
 
-.header-info h3 { margin: 0; font-size: 1.1rem; color: var(--text-header); }
-.target-badge { font-size: 0.7rem; color: var(--btn-plus); text-transform: uppercase; font-weight: bold; }
-.close-btn { background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
+.chat-info-panel {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.info-hero-row { display: flex; align-items: center; gap: 20px; }
+.hero-text h2 { margin: 0 0 4px; font-size: 1.4rem; color: var(--text-header); font-weight: 700; }
+.members-count { margin: 0; font-size: 0.9rem; color: var(--text-muted); font-weight: 500; }
 
+.group-management { display: flex; flex-direction: column; gap: 24px; flex: 1; }
+.add-btn-full {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-weight: 600;
+  background: var(--btn-plus);
+  color: white;
+  border: none;
+  transition: all 0.2s;
+}
+.add-btn-full:hover { background: var(--btn-plus-hover); transform: translateY(-1px); }
+.members-list-section h4 { margin: 0 0 16px; color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
+.member-card { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+.member-card:last-child { border-bottom: none; }
+.member-info-main { display: flex; align-items: center; gap: 10px; }
+.member-name-text { color: var(--text-header); font-size: 1rem; font-weight: 500; }
+.admin-badge-mini { background: var(--btn-plus); color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 6px; font-weight: bold; }
+.member-kick-icon { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; padding: 4px; }
+.member-kick-icon:hover { color: #ef4444; }
+
+.leave-btn-outline {
+  background: none;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  margin-top: auto;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.leave-btn-outline:hover { background: #ef4444; color: white; }
+
+/* MESSAGES LIST */
 .comments-list {
   flex: 1;
   overflow-y: auto;
-  padding: 15px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  background-color: var(--bg-editor-sheet);
   scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
 }
+.comment-item-wrapper { display: flex; width: 100%; margin-bottom: 16px; }
+.comment-item-wrapper.is-mine { justify-content: flex-end; }
+.comment-item-wrapper.is-others { justify-content: flex-start; }
+.comment-bubble { max-width: 80%; padding: 12px 16px; box-shadow: 0 2px 8px var(--shadow-color); word-break: break-word; overflow-wrap: anywhere; }
+.bubble-mine { background: var(--btn-plus); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 18px 18px 4px 18px; }
+.bubble-mine .comment-body { color: white; }
+.bubble-mine .comment-date { color: rgba(255,255,255,0.7); }
+.bubble-others { background: var(--bg-dropdown); border: 1px solid var(--border-color); border-radius: 18px 18px 18px 4px; }
+.comment-body { margin: 0; font-size: 0.95rem; line-height: 1.5; color: var(--text-header); }
+.user-badge { font-weight: 700; color: var(--btn-plus); font-size: 0.85rem; margin-bottom: 6px; display: block; }
+.comment-images { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+.comment-img { max-width: 100%; max-height: 200px; border-radius: 12px; cursor: zoom-in; object-fit: cover; border: 1px solid var(--border-color); }
+.comment-footer { display: flex; justify-content: flex-end; margin-top: 6px; }
+.comment-date { font-size: 0.75rem; color: var(--text-muted); }
 
-.comment-item {
-  display: flex;
-  flex-direction: column;
-  max-width: 95%;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-}
-
-.comment-bubble {
-  background: var(--bg-main);
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px 14px 14px 4px;
-  padding: 10px 12px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  transition: background 0.2s ease;
-}
-
-.comment-body {
-  margin: 0;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  color: var(--text-header);
-}
-
-.user-badge { font-weight: 700; color: var(--btn-plus); font-size: 0.85rem; margin-bottom: 4px; display: block; }
-.comment-images { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
-.comment-img {
-  max-width: 100%;
-  max-height: 200px;
-  border-radius: 8px;
-  cursor: zoom-in;
-  object-fit: cover;
-}
-
-.date-sticky-header {
-  position: sticky;
-  top: -1px;
-  z-index: 20;
-  display: flex;
-  justify-content: center;
-  padding: 8px 0;
-}
+.date-sticky-header { position: sticky; top: -1px; z-index: 20; display: flex; justify-content: center; padding: 12px 0; }
 .date-badge {
   background: var(--bg-main);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-color);
   color: var(--text-muted);
   font-size: 0.75rem;
-  padding: 4px 12px;
-  border-radius: 12px;
+  padding: 4px 14px;
+  border-radius: 16px;
+  font-weight: 600;
   opacity: 0;
   transition: opacity 0.3s;
+  box-shadow: 0 2px 8px var(--shadow-color);
 }
 .date-badge[data-in-text], .is-scrolling-active .date-badge { opacity: 1; }
 
 .sidebar-input-area {
-  padding: 12px 16px 24px;
-  border-top: 1px solid var(--border-subtle);
+  padding: 16px 20px 24px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-dropdown);
 }
-.input-row { display: flex; align-items: flex-end; gap: 10px; }
+.input-row { display: flex; align-items: flex-end; gap: 12px; }
 .input-wrapper textarea {
   flex: 1;
   background: var(--bg-main);
-  border: 1px solid var(--border-subtle);
-  border-radius: 18px;
-  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 12px 16px;
   color: var(--text-header);
   resize: none;
   font-size: 0.95rem;
   outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  max-height: 120px;
 }
-.attach-btn { background: none; border: none; font-size: 1.3rem; cursor: pointer; opacity: 0.5; }
-.attach-btn.has-file { opacity: 1; color: var(--btn-plus); }
+.input-wrapper textarea:focus { border-color: var(--btn-plus); box-shadow: 0 0 0 2px rgba(var(--btn-plus-rgb, 100, 100, 255), 0.2); }
+.attach-btn { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted); transition: color 0.2s; padding: 8px;}
+.attach-btn:hover { color: var(--text-header); }
+.attach-btn.has-file { color: var(--btn-plus); }
 .send-btn {
   background: var(--btn-plus);
   color: white;
   border: none;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s, transform 0.2s;
+}
+.send-btn:hover:not(:disabled) { background: var(--btn-plus-hover); transform: translateY(-2px); }
+.send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.floating-messenger-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: var(--btn-plus);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 16px var(--shadow-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  cursor: pointer;
+  z-index: 1000;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.floating-messenger-btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px var(--shadow-color); }
+.global-unread-dot {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 12px;
+  height: 12px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  border: 2px solid var(--btn-plus);
 }
 
+.slide-enter-active, .slide-leave-active, .slide-right-enter-active, .slide-right-leave-active { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.slide-enter-from, .slide-leave-to, .slide-right-enter-from, .slide-right-leave-to { transform: translateX(100%); }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* LIGHTBOX STYLES */
 .image-lightbox {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.9);
-  z-index: 9999;
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: zoom-out;
+  backdrop-filter: blur(4px);
+  z-index: 99999;
+  pointer-events: auto;
 }
-.full-image { max-width: 90%; max-height: 90%; border-radius: 4px; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
-.close-lightbox {
+.image-container {
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+.full-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+  transform-origin: center center;
+}
+.zoom-controls {
   position: absolute;
-  top: 20px;
-  right: 20px;
-  background: none;
-  border: none;
-  color: white;
-  font-size: 2rem;
-  cursor: pointer;
-}
-
-.context-menu {
-  position: fixed;
-  background: var(--bg-editor-sheet);
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 5px 15px var(--shadow-color);
-  border-radius: 8px;
-  z-index: 10000;
-  min-width: 140px;
-  padding: 4px;
-}
-.menu-item { padding: 8px 12px; cursor: pointer; border-radius: 6px; font-size: 0.9rem; }
-.menu-item.delete { color: #ff4d4f; }
-.menu-item:hover { background: var(--bg-main); }
-
-.slide-enter-active, .slide-leave-active { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.slide-enter-from, .slide-leave-to { transform: translateX(100%); }
-.fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-
-.spinner-small {
-  width: 18px; height: 18px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.quote-container {
-  display: flex;
-  gap: 10px;
-  background: var(--bg-editor-page);
-  padding: 8px 12px;
-  border-radius: 6px;
-  margin-bottom: 10px;
-  cursor: pointer;
-  transition: background 0.2s;
-  border: 1px solid var(--border-subtle);
-}
-.quote-container:hover { background: var(--hover-dropdowb); }
-.quote-line { width: 3px; background: var(--btn-plus); border-radius: 2px; }
-.quote-text {
-  margin: 0; font-size: 0.85rem; color: var(--text-muted); font-style: italic;
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-}
-
-.quote-preview-box {
-  background: var(--bg-main); border-left: 3px solid var(--btn-plus);
-  padding: 8px 12px; margin-bottom: 10px; border-radius: 4px; display: flex;
-  justify-content: space-between; align-items: flex-start; animation: slideUp 0.2s ease-out;
-}
-.quote-preview-content { display: flex; gap: 8px; }
-.quote-mark { font-size: 1.5rem; line-height: 1; color: var(--btn-plus); font-family: serif; }
-.quote-preview-content p {
-  margin: 0; font-size: 0.85rem; color: var(--text-muted); font-style: italic;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-
-.chat-history-trigger {
-  width: 100%; min-height: 20px; display: flex; justify-content: center; align-items: center; padding: 10px 0;
-}
-.history-spinner { border-color: rgba(100, 100, 100, 0.3); border-top-color: var(--text-muted); }
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-
-/* === РАСШИРЯЕМЫЙ САЙДБАР === */
-
-
-.sidebar-top-actions {
-  width: 100%;
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 15px;
-}
-
-
-.hide-messenger-btn,
-.toggle-expand-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-
-  /* Создаем одинаковый квадратный контейнер для иконок */
-  width: 32px;
-  height: 32px;
-
-  /* Центрируем символ внутри кнопки */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  /* Сбрасываем лишние отступы и выравниваем шрифт */
-  padding: 0;
-  font-size: 1.2rem;
-  line-height: 1;
-  transition: color 0.2s, transform 0.1s;
-}
-
-.toggle-expand-btn {
-  /* Если ▶ кажется выше/ниже, можно точечно поправить: */
-  padding-bottom: 2px;
-}
-
-.hide-messenger-btn:hover { color: #ff4757; }
-.toggle-expand-btn:hover { color: var(--btn-plus); }
-
-.search-box {
-  width: 100%; padding: 0 5px; margin-bottom: 15px;
-}
-.search-box input {
-  width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-subtle);
-  background: var(--bg-main); color: var(--text-header); outline: none;
-}
-
-.mini-tabs.row-mode { flex-direction: row; justify-content: space-around; }
-.tab-label { font-size: 0.9rem; font-weight: bold; margin-left: 8px; }
-
-
-.expanded-btn { width: 100%; border-radius: 8px; justify-content: flex-start; padding-left: 12px; }
-.btn-label { margin-left: 15px; font-weight: bold; }
-
-/* === ИНФО О ЧАТЕ (Кликабельный хедер) === */
-.header-info.clickable {
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
-  transition: background 0.2s;
-}
-.header-info.clickable:hover { background: var(--bg-main); }
-.dropdown-icon { font-size: 0.8rem; color: var(--text-muted); margin-left: 5px; }
-
-.chat-info-panel {
-  flex: 1;
-  background: var(--bg-editor-sheet);
-  padding: 20px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  animation: slideUp 0.3s ease-out;
-}
-.info-hero { text-align: center; display: flex; flex-direction: column; align-items: center; }
-
-.members-count { color: var(--text-muted); font-size: 0.9rem; }
-
-.group-management {
-  background: var(--bg-main);
-  border-radius: 12px;
-  padding: 15px;
-  border: 1px solid var(--border-subtle);
-}
-.add-member-box { display: flex; gap: 10px; margin-bottom: 20px; }
-.member-input {
-  flex: 1; background: var(--bg-editor-sheet); border: 1px solid var(--border-subtle);
-  padding: 8px 12px; border-radius: 6px; color: var(--text-header); outline: none;
-}
-.add-btn { background: var(--btn-plus); color: white; border: none; padding: 0 15px; border-radius: 6px; cursor: pointer; }
-.add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.members-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-.member-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border-subtle); }
-.admin-badge { background: #f1c40f; color: #000; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; margin-left: 10px; font-weight: bold; }
-.kick-btn { background: none; border: none; color: #ff4d4f; cursor: pointer; font-weight: bold; }
-
-.danger-btn.outline {
-  width: 100%; background: transparent; border: 1px solid #ff4d4f; color: #ff4d4f;
-  padding: 10px; border-radius: 8px; cursor: pointer; transition: all 0.2s;
-}
-.danger-btn.outline:hover { background: #ff4d4f; color: white; }
-
-/* Основной контейнер инфо-панели */
-.chat-info-panel {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  background-color: var(--bg-editor-sheet);
-  height: 100%;
-  overflow-y: auto;
-}
-
-/* ГЕРОЙ-СЕКЦИЯ (Ряд: Фото | Текст) */
-.info-hero-row {
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 16px;
-  background: var(--bg-main);
-  padding: 16px;
-  border-radius: 12px;
-  border: 1px solid var(--border-subtle);
-}
-
-.hero-text h2 {
-  margin: 0;
-  font-size: 1.2rem;
-  color: var(--text-header);
-}
-
-.members-count {
-  margin: 4px 0 0;
-  font-size: 0.85rem;
-  color: var(--btn-plus);
-  font-weight: 700;
-}
-
-/* УПРАВЛЕНИЕ */
-.add-btn-full {
-  width: 100%;
-  padding: 12px;
-  background: var(--btn-plus);
+  background: rgba(0, 0, 0, 0.6);
+  padding: 8px 16px;
+  border-radius: 24px;
   color: white;
+  z-index: 100000;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.zoom-btn {
+  background: rgba(255, 255, 255, 0.1);
   border: none;
-  border-radius: 8px;
-  font-weight: bold;
+  color: white;
+  font-size: 1.5rem;
   cursor: pointer;
-  margin-bottom: 20px;
-  transition: opacity 0.2s;
-}
-.add-btn-full:hover { opacity: 0.9; }
-
-.members-list-section h4 {
-  margin-bottom: 12px;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.member-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.member-info-main { display: flex; align-items: center; gap: 8px; }
-.member-name-text { color: var(--text-header); font-size: 0.95rem; }
-
-.admin-badge-mini {
-  background: rgba(241, 196, 15, 0.2);
-  color: #f1c40f;
-  font-size: 0.65rem;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 800;
-}
-
-.member-kick-icon {
-  background: none;
-  border: none;
-  color: #ff4757;
-  cursor: pointer;
-  font-size: 1.1rem;
-  transition: transform 0.2s;
-}
-.member-kick-icon:hover { transform: scale(1.2); }
-
-.leave-btn-outline {
-  margin-top: auto;
-  width: 100%;
-  padding: 12px;
-  background: transparent;
-  border: 1px solid #ff4757;
-  color: #ff4757;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.leave-btn-outline:hover { background: #ff4757; color: white; }
-
-/* === САЙДБАР (С учетом мобилок) === */
-.mini-sidebar {
-  width: 70px;
-  height: 100%;
-  background-color: var(--bg-editor-sheet);
-  border-left: 1px solid var(--border-subtle);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-top: 10px;
-  flex-shrink: 0;
-  z-index: 21;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-}
-
-.mini-sidebar.is-expanded {
-  width: 250px;
-  align-items: stretch;
-  padding-left: 8px;
-  padding-right: 8px;
-}
-
-@media (max-width: 768px) {
-  /* Окно самой переписки */
-  .global-sidebar,
-  .global-sidebar.is-shifted {
-    position: fixed !important; /* Отвязываем от родителя */
-    top: 0 !important;
-    right: 0 !important;        /* Прижимаем к правому краю */
-    width: 100vw !important;    /* Ширина на весь экран */
-    height: 100vh !important;   /* Высота на весь экран */
-    z-index: 10000 !important;  /* Выносим поверх всего сайта */
-    border-left: none;
-  }
-
-  /* Если открыт сам чат (переписка), прячем список чатов под него */
-  .global-sidebar ~ .mini-sidebar {
-    /* На мобилке нет смысла показывать список, если открыт чат */
-    opacity: 0;
-    pointer-events: none;
-  }
-}
-
-/* === ОБЩАЯ КНОПКА ЧАТА === */
-.chat-avatar-wrapper {
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
-  border-radius: 50%; /* В свернутом виде круглая */
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  width: 56px;
-  margin: 0 auto;
-}
-
-.chat-avatar-wrapper:not(.expanded):hover {
-  transform: scale(1.08); /* Увеличиваем только в свернутом виде */
-}
-
-/* === КНОПКА ЧАТА В РАСШИРЕННОМ ВИДЕ === */
-.chat-avatar-wrapper.expanded {
-  width: 100%;
-  height: 56px;
-  border-radius: 10px; /* Смягченные углы, как в ТГ */
-  justify-content: flex-start;
-  padding: 0 10px;
-  background: transparent;
-  gap: 12px;
-  margin: 0; /* Убираем центровку auto */
-}
-
-.chat-avatar-wrapper.expanded:hover {
-  background: rgba(255, 255, 255, 0.05); /* Легкий фон при наведении, без прыжков */
-}
-
-/* === КОНТЕЙНЕР АВАТАРА (Здесь теперь свечение!) === */
-.avatar-circle-container {
-  width: 42px;
-  height: 42px;
   border-radius: 50%;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative; /* Для точки непрочитанных */
-  transition: transform 0.2s, box-shadow 0.3s;
+  transition: background 0.2s;
+  line-height: 1;
 }
-
-/* Применяем свечение только к кругу, если чат активен */
-.chat-avatar-wrapper.is-active .avatar-circle-container {
-  /* Формат: var(--свойство, дефолтный_цвет) */
-  box-shadow: 0 0 calc(var(--aura-blur, 8px) * 1.5) var(--chat-accent, #2980b9) !important;
-  border: 2px solid var(--chat-accent, #2980b9);
-  transform: scale(1.05);
-}
-
-/* === САМ АВАТАР И ЗАГЛУШКА === */
-.chat-avatar {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  display: block;
-}
-
-.chat-avatar-placeholder {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center; /* Центрируем букву идеально */
-  color: white;
-  font-weight: 800;
-  font-size: 1.2rem;
-  line-height: 1; /* Убирает смещение по вертикали */
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+.zoom-btn:hover { background: rgba(255, 255, 255, 0.3); }
+.zoom-level {
+  font-size: 0.95rem;
+  font-weight: 500;
+  min-width: 48px;
+  text-align: center;
   user-select: none;
 }
-
-/* === ИНФО-БЛОК (Текст и Пин) === */
-.chat-info-text {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: space-between;
-  min-width: 0; /* ВАЖНО: без этого многоточие (ellipsis) не работает во флексах */
-}
-
-.chat-list-title {
-  color: var(--text-header);
-  font-weight: 500;
-  font-size: 0.95rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis; /* Длинные имена обрезаются ... */
-}
-
-/* === ИНДИКАТОРЫ === */
-.unread-badge {
+.close-lightbox {
   position: absolute;
-  top: -2px; /* Привязана к краю круглого контейнера */
-  right: -2px;
-  width: 12px;
-  height: 12px;
-  background-color: var(--unread-dot, #ff4757);
-  border: 2px solid var(--bg-main, #1a1a1a);
-  border-radius: 50%;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.pin-indicator {
-  font-size: 0.9rem;
-  opacity: 0.7;
-  flex-shrink: 0;
-  margin-left: 8px; /* Отступ от текста */
-}
-/* === ПЛАВАЮЩАЯ КНОПКА === */
-.floating-messenger-btn {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--btn-plus, #2980b9);
+  top: 24px;
+  right: 24px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: white;
-  border: none;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  font-size: 1.5rem;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
   cursor: pointer;
-  z-index: 10000;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  z-index: 100000;
+  transition: background 0.2s;
 }
-
-.floating-messenger-btn:hover {
-  transform: scale(1.1) translateY(-5px);
-}
-
-.global-unread-dot {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 14px;
-  height: 14px;
-  background: #ff4757;
-  border: 2px solid var(--btn-plus, #2980b9);
-  border-radius: 50%;
-}
-
-/* === ОБЕРТКА ВСЕГО МЕССЕНДЖЕРА === */
-.messenger-container {
-
-}
-
-/* Кнопка закрытия внутри сайдбара */
-
-
-/* Раскидываем кнопки управления в шапке сайдбара */
-.sidebar-top-actions {
-  width: 100%;
-  display: flex;
-  justify-content: space-between; /* Крестик слева, стрелка справа */
-  align-items: center;
-  padding: 10px 10px 0 10px;
-  margin-bottom: 15px;
-}
-
-/* === АНИМАЦИЯ СКРЫТИЯ/ПОЯВЛЕНИЯ ВСЕГО БЛОКА === */
-.slide-right-enter-active,
-.slide-right-leave-active {
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.slide-right-enter-from,
-.slide-right-leave-to {
-  transform: translateX(100%); /* Увозит весь мессенджер вправо за пределы экрана */
-}
+.close-lightbox:hover { background: rgba(255, 255, 255, 0.3); }
 </style>

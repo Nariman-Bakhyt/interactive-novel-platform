@@ -31,6 +31,8 @@ const isProfileError = ref(false);
 const passwordMessage = ref('');
 const isPasswordError = ref(false);
 const authStore = useAuthStore();
+const isSavingProfile = ref(false);
+const isChangingPassword = ref(false);
 
 const updateProfileDetails = async () => {
   profileMessage.value = '';
@@ -41,6 +43,7 @@ const updateProfileDetails = async () => {
     return;
   }
 
+  isSavingProfile.value = true;
   try {
     console.log('Данные для отправки:', profileData)
     const updatedUserDto = await updateProfileApi(profileData);
@@ -55,6 +58,8 @@ const updateProfileDetails = async () => {
     passwordMessage.value = '';
 
     profileMessage.value = error.message || 'Ошибка обновления профиля.';
+  } finally {
+    isSavingProfile.value = false;
   }
 };
 
@@ -67,6 +72,7 @@ const changePassword = async () => {
     return;
   }
 
+  isChangingPassword.value = true;
   try {
     await changePasswordApi(passwordData);
 
@@ -83,6 +89,8 @@ const changePassword = async () => {
     profileMessage.value = '';
 
     passwordMessage.value = error.message || 'Ошибка смены пароля.';
+  } finally {
+    isChangingPassword.value = false;
   }
 };
 </script>
@@ -90,7 +98,7 @@ const changePassword = async () => {
 <template>
   <div class="profile-forms">
 
-    <form @submit.prevent="updateProfileDetails">
+    <form @submit.prevent="updateProfileDetails" class="form-section">
       <h3>Личные данные</h3>
 
       <div class="form-group">
@@ -103,13 +111,17 @@ const changePassword = async () => {
         <input type="email" id="newEmail" v-model="profileData.newEmail" required>
       </div>
 
-      <button type="submit" class="btn btn-success">Сохранить изменения</button>
-      <p v-if="profileMessage" :class="{ 'error': isProfileError, 'success': !isProfileError }">{{ profileMessage }}</p>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" :disabled="isSavingProfile">
+          {{ isSavingProfile ? 'Сохранение...' : 'Сохранить изменения' }}
+        </button>
+      </div>
+      <p v-if="profileMessage" :class="['message', { 'error': isProfileError, 'success': !isProfileError }]">{{ profileMessage }}</p>
     </form>
 
     <div class="divider"></div>
 
-    <form @submit.prevent="changePassword">
+    <form @submit.prevent="changePassword" class="form-section">
       <h3>Сменить пароль</h3>
 
       <div class="form-group">
@@ -122,56 +134,116 @@ const changePassword = async () => {
         <input type="password" id="newPassword" v-model="passwordData.newPassword" required>
       </div>
 
-      <button type="submit" class="btn btn-warning">Изменить пароль</button>
-      <p v-if="passwordMessage" :class="{ 'error': isPasswordError, 'success': !isPasswordError }">{{ passwordMessage }}</p>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-warning" :disabled="isChangingPassword">
+          {{ isChangingPassword ? 'Изменение...' : 'Изменить пароль' }}
+        </button>
+      </div>
+      <p v-if="passwordMessage" :class="['message', { 'error': isPasswordError, 'success': !isPasswordError }]">{{ passwordMessage }}</p>
     </form>
   </div>
 </template>
 <style scoped>
 .profile-forms {
-  margin-top: 20px;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
+
+.form-section h3 {
+  margin: 0 0 16px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-header);
+}
+
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 16px;
 }
 .form-group label {
   display: block;
-  font-weight: bold;
-  margin-bottom: 5px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-header);
+  font-size: 0.95rem;
 }
 .form-group input {
   width: 100%;
-  padding: 8px;
+  padding: 12px 16px;
   box-sizing: border-box;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-main);
+  color: var(--text-header);
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+  font-family: inherit;
 }
+.form-group input:focus {
+  outline: none;
+  border-color: var(--btn-plus);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
 .btn {
-  padding: 10px 15px;
+  padding: 12px 24px;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  margin-right: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: background 0.2s, transform 0.2s;
 }
-.btn-success {
-  background-color: #42b883; /* Цвет Vue/успеха */
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--btn-plus);
   color: white;
 }
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--btn-plus-hover);
+  transform: translateY(-1px);
+}
+
 .btn-warning {
-  background-color: #ff9800; /* Желтый/предупреждение */
+  background-color: #f59e0b; /* amber-500 */
   color: white;
+}
+.btn-warning:hover:not(:disabled) {
+  background-color: #d97706; /* amber-600 */
+  transform: translateY(-1px);
+}
+
+.message {
+  margin-top: 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 12px;
+  border-radius: 8px;
 }
 .error {
-  color: red;
-  margin-top: 10px;
+  color: #ef4444; /* red-500 */
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 .success {
-  color: green;
-  margin-top: 10px;
+  color: #10b981; /* emerald-500 */
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
+
 .divider {
   height: 1px;
-  background: linear-gradient(to right, transparent, #444, transparent);
-  margin: 10px 0;
+  background: var(--border-color);
+  margin: 8px 0;
 }
 </style>

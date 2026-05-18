@@ -77,7 +77,7 @@ const social = useSocialStore();
 .relationship-actions {
   display: flex;
   flex-direction: column;
-  gap: 8px; /* Уменьшил до 8px для плотности */
+  gap: 12px;
   width: 100%;
 }
 
@@ -89,20 +89,20 @@ const social = useSocialStore();
 
 .action-row {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
 }
 
 /* ОБЩИЙ СТИЛЬ ДЛЯ ВСЕХ КНОПОК */
 button {
   width: 100%;
-  height: 42px; /* Фиксированная высота для идеальной одинаковости */
-  padding: 0 10px;
+  height: 44px; /* Фиксированная высота для идеальной одинаковости */
+  padding: 0 16px;
   border-radius: 8px;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s, transform 0.2s;
   border: none;
   display: flex;
   align-items: center;
@@ -110,59 +110,77 @@ button {
   white-space: nowrap;
 }
 
+button:hover {
+  transform: translateY(-1px);
+}
+
 /* СИНЯЯ (ГЛАВНАЯ) */
 .btn-primary {
-  background-color: #3498db;
+  background-color: var(--btn-plus);
   color: white;
 }
-.btn-primary:hover { background-color: #2980b9; }
+.btn-primary:hover { background-color: var(--btn-plus-hover); }
 
 /* СЕРАЯ (ВТОРИЧНАЯ) */
 .btn-secondary {
-  background-color: #3d3d3d;
-  color: #e0e0e0;
+  background-color: var(--bg-dropdown);
+  color: var(--text-header);
+  border: 1px solid var(--border-color);
 }
-.btn-secondary:hover { background-color: #4d4d4d; }
+.btn-secondary:hover { background-color: var(--hover-dropdowb); border-color: var(--text-muted); }
 
 /* КОНТУРНАЯ */
 .btn-outline {
   background-color: transparent;
-  border: 1px solid #3498db;
-  color: #3498db;
+  border: 1px solid var(--btn-plus);
+  color: var(--btn-plus);
 }
-.btn-outline:hover { background-color: rgba(52, 152, 219, 0.1); }
+.btn-outline:hover { background-color: rgba(99, 102, 241, 0.1); }
 
 /* КНОПКА БЛОКИРОВКИ (ОПАСНОСТЬ) */
 .btn-block-action {
-  background-color: #3d3d3d;
-  color: #e74c3c;
-  border: 1px solid rgba(231, 76, 60, 0.2);
+  background-color: transparent;
+  color: #ef4444; /* red-500 */
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 .btn-block-action:hover {
-  background-color: #c0392b;
-  color: white;
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
 /* КНОПКА РАЗБЛОКИРОВКИ (АКТИВНАЯ БЛОКИРОВКА) */
 .btn-block.active {
-  background-color: #e74c3c;
+  background-color: #ef4444;
   color: white;
 }
+.btn-block.active:hover { background-color: #dc2626; }
 
 /* ЗВЕЗДОЧКА */
 .btn-star-minimal {
-  width: 45px; /* Фиксированная ширина, чтобы не растягивалась */
-  min-width: 45px;
-  background: #3d3d3d;
+  width: 44px; /* Фиксированная ширина, чтобы не растягивалась */
+  min-width: 44px;
+  padding: 0;
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-color);
   font-size: 1.2rem;
+  line-height: 1;
 }
-.star-empty { color: #f1c40f; opacity: 0.5; }
-.star-filled { filter: drop-shadow(0 0 2px rgba(241, 196, 15, 0.5)); }
+.btn-star-minimal:hover {
+  background: var(--hover-dropdowb);
+  border-color: var(--text-muted);
+}
+.star-empty { color: #f59e0b; opacity: 0.7; }
+.star-filled { color: #f59e0b; filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.4)); }
 
 /* ЗАГРУЗКА */
+.loading-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
 .skeleton-btn {
-  height: 42px;
-  background: linear-gradient(90deg, #2c2c2c 25%, #3d3d3d 50%, #2c2c2c 75%);
+  height: 44px;
+  background: linear-gradient(90deg, var(--bg-dropdown) 25%, var(--border-color) 50%, var(--bg-dropdown) 75%);
   background-size: 200% 100%;
   animation: loading 1.5s infinite;
   border-radius: 8px;

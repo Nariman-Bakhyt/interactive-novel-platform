@@ -8,6 +8,7 @@ import type {
 } from "@/types/novel";
 import axios, { type AxiosResponse } from "axios";
 import type {UserResponseDto} from "@/types/auth.ts";
+import type {PagedModel} from "@/types/PagedModel.ts";
 
 export const createNovel = async (payload: NovelRequestDto) => {
   const formData = new FormData();
@@ -102,11 +103,11 @@ export async function getChapter(novelId: number,chapterId: number): Promise<Cha
   const response = await apiClient.get(`/novels/public/${novelId}/chapter/${chapterId}`);
   return response.data;
 }
-export const findAllNovels = async (dto: NovelSearchRequestDto, page: number, size: number) => {
-  const response = await apiClient.post(`/novels/public?page=${page}&size=${size}`, dto);
+export const findAllNovels = async (dto: NovelSearchRequestDto, page: number, size: number, sort: string = 'lastChapterAddedAt,desc') => {
+  const response = await apiClient.post(`/novels/public?page=${page}&size=${size}&sort=${sort}`, dto);
   return response.data;
 };
-export async function searchNovels(title:string , page:number, size:number ):Promise<any> {
+export async function searchNovels(title:string , page:number, size:number ):Promise<PagedModel<NovelResponseDto>> {
   const response = await apiClient.get('/novels/public/search', {
     params: {title, page, size}
   })

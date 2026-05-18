@@ -72,5 +72,8 @@ onUnmounted(() => {
 
 <style>
 /* Глобальные стили можно писать здесь или в assets/main.css */
-
+body, html {
+  background-color: var(--bg-main);
+  color: var(--text-header);
+}
 </style>

@@ -75,49 +75,65 @@ const setTab = (tab: SocialTab) => {
 <style scoped>
 .social-page {
   display: grid;
-  grid-template-columns: 250px 1fr;
-  gap: 30px;
+  grid-template-columns: 280px 1fr;
+  gap: 32px;
   max-width: 1200px;
-  margin: 40px auto;
-  padding: 0 20px;
+  margin: 100px auto 60px;
+  padding: 0 24px;
 }
 .social-sidebar {
-  background: #2c2c2c;
-  padding: 20px;
+  background: var(--bg-dropdown);
+  padding: 24px;
   border-radius: 16px;
   height: fit-content;
   position: sticky;
   top: 100px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px var(--shadow-color);
+}
+.social-sidebar h2 {
+  margin: 0 0 20px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-header);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
 }
 .tab-btn {
   width: 100%;
   text-align: left;
-  padding: 12px 15px;
+  padding: 12px 16px;
   background: transparent;
-  color: #aaa;
+  color: var(--text-muted);
   border: none;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
   font-weight: 500;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
+  font-size: 0.95rem;
 }
 .tab-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
+  background: var(--hover-dropdowb);
+  color: var(--text-header);
 }
 .tab-btn.active {
-  background: #3498db;
-  color: #fff;
+  background: var(--btn-plus);
+  color: white;
+  font-weight: 600;
 }
 .social-content {
-  background: #2c2c2c;
+  background: var(--bg-dropdown);
   border-radius: 16px;
-  padding: 30px;
+  padding: 32px;
   min-height: 600px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px var(--shadow-color);
 }
 .content-header h1 {
-  margin: 0 0 25px 0;
-  font-size: 1.5rem;
+  margin: 0 0 32px 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-header);
 }
 </style>

@@ -300,17 +300,18 @@ const truncate = (text: string, length: number) => {
                 </div>
 
                 <div class="form-group" v-if="isEditMode">
-                  <label>Статус</label> <div class="status-selector">
-                  <button
-                    v-for="status in statusOptions"
-                    :key="status.value"
-                    type="button"
-                    :class="['status-btn', { active: form.status === status.value }]"
-                    @click="form.status = status.value"
-                  >
-                    {{ status.label }}
-                  </button>
-                </div>
+                  <label>Статус</label>
+                  <div class="status-selector">
+                    <button
+                      v-for="status in statusOptions"
+                      :key="status.value"
+                      type="button"
+                      :class="['status-btn', { active: form.status === status.value }]"
+                      @click="form.status = status.value"
+                    >
+                      {{ status.label }}
+                    </button>
+                  </div>
                 </div>
 
                 <div class="form-group">
@@ -367,9 +368,9 @@ const truncate = (text: string, length: number) => {
 }
 
 .editor-page {
-  padding-top: 80px;
+  padding: 100px 24px 60px;
   width: 100%;
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -381,396 +382,146 @@ const truncate = (text: string, length: number) => {
 
 .novel-view-card {
   background: var(--bg-dropdown);
-  padding: 40px;
-  border-radius: 20px;
+  padding: 48px;
+  border-radius: 24px;
   width: 100%;
-  max-width: 700px;
+  max-width: 800px;
   display: flex;
   flex-direction: column;
   align-items: center; /* Центрируем всё содержимое */
   text-align: center;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
 
-  border: 1px solid var(--border-subtle);
-  transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.2s ease;
+.status-badge {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  display: inline-block;
+  margin-bottom: 24px;
+}
+.status-badge.completed { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2);}
+.status-badge.in_progress { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2);}
+.status-badge.draft { background: rgba(161, 161, 170, 0.1); color: #a1a1aa; border: 1px solid rgba(161, 161, 170, 0.2);}
+
+.novel-main-title {
+  margin: 0 0 24px;
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--text-header);
+  letter-spacing: -0.02em;
 }
 
 .card-cover-preview {
-  width: 240px;
-  height: 340px;
+  width: 260px;
+  height: 390px;
   object-fit: cover;
   border-radius: 12px;
-  margin: 20px 0;
+  margin: 0 0 32px;
   border: 1px solid var(--border-color);
-  box-shadow: 0 10px 30px var(--shadow-color);
-  transition: border-color 0.3s ease;
+  box-shadow: 0 12px 32px var(--shadow-color);
+  transition: transform 0.3s ease;
+}
+.card-cover-preview:hover {
+  transform: scale(1.02);
 }
 
 .description-text {
-  color: var(--bg-profile);
-  line-height: 1.7;
+  color: var(--text-muted);
+  line-height: 1.6;
   white-space: pre-wrap;
-  text-align: center; /* Центрируем текст аннотации в просмотре */
+  text-align: left; /* Аннотацию лучше читать слева */
   word-break: break-word;
   overflow-wrap: anywhere;
   max-width: 100%;
 }
 
 .novel-editor-layout {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 40px;
-  align-items: start;
-}
-
-.novel-preview-sidebar {
-  position: sticky;
-  top: 100px;
-}
-
-.mini-card {
-  background: var(--bg-dropdown);
-  border-radius: 16px;
-  overflow: hidden;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  border: 1px solid var(--border-subtle);
-  transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.2s ease;
-}
-
-.mini-card:hover { transform: translateY(-5px); }
-
-.image-container {
+  display: block;
   width: 100%;
-  height: 220px;
-  position: relative;
 }
-
-.mini-cover {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 10px 30px var(--shadow-color);
-  transition: border-color 0.3s ease;
-}
-
-.mini-info {
-  padding: 20px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.mini-info h4 {
-  margin: 10px 0 10px 0;
-  color: var(--text-header);
-  transition: color 0.3s ease;
-  font-size: 1.2rem;
-}
-
-.mini-desc {
-  font-size: 0.9rem;
-  line-height: 1.4;
-  margin: 0;
-  color: var(--text-muted);
-  transition: color 0.3s ease;
-}
-
 
 .novel-form-main {
   background:  var(--bg-dropdown);
-
-  padding: 40px;
-  border-radius: 20px;
-  border: 1px solid var(--border-subtle);
-  transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.2s ease;
-}
-
-.novel-form-main h1 {
-  color: var(--text-header);
-  transition: color 0.3s ease;
-  margin-top: 0;
-  margin-bottom: 30px;
-  text-align: left; /* Заголовок формы можно оставить слева */
-}
-
-.form-group {
-  margin-bottom: 25px;
-  text-align: left;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 10px;
-  color: var(--text-header);
-  transition: color 0.3s ease;
-}
-
-.form-group input, .form-group textarea {
-  width: 100%;
-  background: var(--bg-main); /* Используем фон приложения для контраста */
-  border: 1px solid var(--border-color);
-  color: var(--text-header);
-  padding: 15px;
-  border-radius: 10px;
-  box-sizing: border-box;
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-}
-.form-group input::placeholder, .form-group textarea::placeholder {
-  color: var(--text-muted);
-  opacity: 0.6;
-}
-.form-actions {
-  display: flex;
-  gap: 15px;
-}
-
-.btn-save {
-  background: #42b883;
-  color: white;
-  border: none;
-  padding: 15px 30px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: bold;
-  flex: 1;
-}
-
-.btn-cancel {
-  padding: 15px 25px;
-  border-radius: 10px;
-  cursor: pointer;
-  background: var(--bg-main);
-  color: var(--text-header);
-  border: 1px solid var(--border-color);
-  transition: all 0.3s ease;
-}
-
-@media (max-width: 900px) {
-  .novel-editor-layout {
-    grid-template-columns: 1fr;
-  }
-  .novel-preview-sidebar {
-    position: static;
-    margin-bottom: 30px;
-  }
-}
-
-.novel-metadata-chips {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-.chip-group {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-}
-.chip {
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  border: 1px solid var(--border-color);
-  background: var(--border-subtle);
-  color: var(--text-muted);
-  transition: all 0.3s ease;
-}
-.genre-chip { color: #42b883; border-color: #42b883; }
-.tag-chip { color: #aaa; }
-
-/* Сетка выбора в форме */
-.selector-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 5px;
-}
-.selector-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  background: var(--bg-main);
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
-  transition: all 0.3s ease;
-}
-.selector-btn:hover { background: var(--hover-dropdowb); }
-.selector-btn.active {
-  background: #42b883;
-  color: white;
-  border-color: #42b883;
-}
-.tag-btn.active {
-  background: #2980b9;
-  border-color: #2980b9;
-}
-.full-description {
-  color: var(--text-muted);
-  transition: color 0.3s ease;
-  line-height: 1.8;
-  white-space: pre-wrap; /* Сохраняет переносы строк из базы */
-  text-align: left; /* Аннотацию лучше читать слева */
-  width: 100%;
-  margin-bottom: 30px;
-}
-.section-title {
-  margin-bottom: 15px;
-  color: var(--text-header);
-  transition: color 0.3s ease;
-  font-size: 1.3rem;
-  text-align: left;
-}
-.divider {
-  width: 100%;
-  border: 0;
-  border-top: 1px solid var(--border-subtle);
-  margin: 20px 0;
-}
-.table-of-contents {
-  width: 100%;
-  text-align: left;
-}
-
-.toc-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.chapter-count {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-
-.chapters-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 15px;
-}
-
-.chapter-item {
-  display: flex;
-  align-items: center;
-  padding: 14px 20px;
-  background: var(--bg-main);
-  border-radius: 10px;
-  border: 1px solid transparent;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  user-select: none;
-}
-
-.chapter-item:hover {
-  background: rgba(66, 184, 131, 0.1); /* Цвет Vue с прозрачностью */
-  border-color: rgba(66, 184, 131, 0.3);
-  transform: translateX(5px); /* Легкий сдвиг вправо при наведении */
-}
-
-.ch-number {
-  font-weight: bold;
-  color: #42b883;
-  margin-right: 10px;
-  min-width: 85px;
-}
-
-.ch-title {
-  flex-grow: 1;
-  color: var(--text-header);
-  transition: color 0.3s ease;
-}
-
-
-.ch-icon {
-  opacity: 0.3;
-  transition: opacity 0.2s;
-}
-.chapter-item:hover .ch-icon {
-  opacity: 1;
-}
-
-.view-footer {
-  display: flex;
-  gap: 20px;
-  margin-top: 40px;
-  width: 100%;
-}
-
-.btn-edit-main {
-  flex: 1;
-  padding: 12px;
-  background: var(--bg-main);
-  color: var(--text-header);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-.btn-edit-main:hover {
-  background: var(--hover-dropdowb);
-}
-
-.btn-add-chapter {
-  flex: 1;
-  padding: 12px;
-  background: #42b883;
-  color: white;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  font-weight: bold;
-}
-/* Обновленная сетка редактора */
-.novel-editor-layout {
-  display: block; /* Убираем старую сетку */
-  width: 100%;
-}
-
-.novel-form-main {
-  background: var(--bg-dropdown);
-  padding: 50px;
+  padding: 48px;
   border-radius: 24px;
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px var(--shadow-color);
+  transition: all 0.3s ease;
 }
 
 .form-header {
   margin-bottom: 40px;
-  border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 24px;
 }
 
 .form-header h1 {
-  font-size: 2.2rem;
-  margin: 0 0 10px 0;
+  font-size: 2.25rem;
+  font-weight: 800;
+  margin: 0 0 12px 0;
   color: var(--text-header);
+  letter-spacing: -0.02em;
 }
 
 .subtitle {
   color: var(--text-muted);
   font-size: 1.1rem;
+  margin: 0;
 }
 
 .novel-form-grid {
   display: grid;
   grid-template-columns: 1fr 340px; /* Основной контент шире */
-  gap: 50px;
+  gap: 48px;
 }
 
-/* Левая колонка */
+.form-group {
+  margin-bottom: 32px;
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--text-header);
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.form-group input, .form-group textarea {
+  width: 100%;
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  color: var(--text-header);
+  padding: 16px;
+  border-radius: 12px;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+.form-group input:focus, .form-group textarea:focus {
+  outline: none;
+  border-color: var(--btn-plus);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+.form-group input::placeholder, .form-group textarea::placeholder {
+  color: var(--input-placeholder);
+}
+
 .large-input {
-  font-size: 1.5rem !important;
+  font-size: 1.25rem !important;
   font-weight: 600;
   padding: 18px !important;
 }
 
 textarea {
-  font-size: 1.05rem;
   line-height: 1.6;
   resize: vertical;
 }
@@ -779,7 +530,6 @@ textarea {
 .form-sidebar-right {
   display: flex;
   flex-direction: column;
-  gap: 30px;
 }
 
 .cover-upload-zone {
@@ -791,16 +541,21 @@ textarea {
   cursor: pointer;
   border: 2px dashed var(--border-color);
   transition: all 0.3s ease;
+  background: var(--bg-main);
 }
 
 .cover-upload-zone:hover {
-  border-color: #42b883;
+  border-color: var(--btn-plus);
 }
 
 .upload-preview-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.3s;
+}
+.cover-upload-zone:hover .upload-preview-img {
+  transform: scale(1.05);
 }
 
 .upload-overlay {
@@ -814,6 +569,7 @@ textarea {
   transition: opacity 0.3s;
   color: white;
   font-weight: 600;
+  backdrop-filter: blur(2px);
 }
 
 .cover-upload-zone:hover .upload-overlay {
@@ -828,9 +584,10 @@ textarea {
 }
 
 .tag-option, .status-btn {
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-size: 0.85rem;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
   background: var(--bg-main);
   border: 1px solid var(--border-color);
   color: var(--text-muted);
@@ -839,25 +596,27 @@ textarea {
 }
 
 .tag-option:hover, .status-btn:hover {
-  border-color: #42b883;
+  border-color: var(--btn-plus);
   color: var(--text-header);
+  background: var(--hover-dropdowb);
 }
 
 .tag-option.active {
-  background: #34495e;
-  color: white;
-  border-color: #34495e;
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--btn-plus);
+  border-color: var(--btn-plus);
 }
 
 .tag-option.genre.active {
-  background: #42b883;
-  border-color: #42b883;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: #10b981;
 }
 
 .status-btn.active {
-  background: var(--text-header);
-  color: var(--bg-main);
-  border-color: var(--text-header);
+  background: var(--btn-plus);
+  color: white;
+  border-color: var(--btn-plus);
 }
 
 /* Кнопки действий */
@@ -865,36 +624,46 @@ textarea {
   grid-column: span 2;
   display: flex;
   justify-content: flex-end;
-  gap: 20px;
-  margin-top: 30px;
-  padding-top: 30px;
-  border-top: 1px solid var(--border-subtle);
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border-color);
 }
 
 .btn-primary {
-  background: #42b883;
+  background: var(--btn-plus);
   color: white;
-  padding: 16px 40px;
+  padding: 16px 32px;
   border-radius: 12px;
-  font-size: 1.1rem;
-  font-weight: bold;
+  font-size: 1.05rem;
+  font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: transform 0.2s, background 0.2s;
+  transition: all 0.2s;
 }
 
-.btn-primary:hover {
-  background: #3aa373;
+.btn-primary:hover:not(:disabled) {
+  background: var(--btn-plus-hover);
   transform: translateY(-2px);
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn-secondary {
-  padding: 16px 30px;
+  padding: 16px 32px;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-header);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.btn-secondary:hover {
+  background: var(--hover-dropdowb);
 }
 
 @media (max-width: 1000px) {
@@ -914,20 +683,21 @@ textarea {
   justify-content: center;
   gap: 8px;
   width: 100%;
-  margin-top: 12px;
-  padding: 8px;
+  margin-top: 16px;
+  padding: 12px;
   background: transparent;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  color: #ff4757; /* Цвет ошибки/удаления */
-  font-size: 0.9rem;
+  color: #ef4444; /* red-500 */
+  font-size: 0.95rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.btn-remove-link:hover {
-  background: rgba(255, 71, 87, 0.1);
-  border-color: #ff4757;
+.btn-remove-link:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
 }
 
 .btn-remove-link:disabled {
@@ -935,7 +705,169 @@ textarea {
   cursor: not-allowed;
 }
 
-.btn-remove-link .icon {
-  font-size: 1.1rem;
+.novel-metadata-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+  width: 100%;
+}
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.chip {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  background: var(--bg-main);
+  color: var(--text-muted);
+}
+.genre-chip {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+.tag-chip {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.2);
+  color: #6366f1;
+}
+
+.novel-content {
+  width: 100%;
+  text-align: left;
+}
+
+.full-description {
+  color: var(--text-muted);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  text-align: left;
+  width: 100%;
+  margin-bottom: 32px;
+  font-size: 1rem;
+}
+.section-title {
+  margin: 0 0 16px;
+  color: var(--text-header);
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: left;
+}
+.divider {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--border-color);
+  margin: 32px 0;
+}
+.table-of-contents {
+  width: 100%;
+  text-align: left;
+}
+
+.toc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.chapter-count {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.chapters-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chapter-item {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  background: var(--bg-main);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.chapter-item:hover {
+  background: var(--hover-dropdowb);
+  border-color: var(--text-muted);
+  transform: translateX(4px);
+}
+
+.ch-number {
+  font-weight: 600;
+  color: var(--btn-plus);
+  margin-right: 16px;
+  min-width: 80px;
+}
+
+.ch-title {
+  flex-grow: 1;
+  color: var(--text-header);
+  font-weight: 500;
+}
+
+
+.ch-icon {
+  opacity: 0.5;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.chapter-item:hover .ch-icon {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.view-footer {
+  display: flex;
+  gap: 16px;
+  margin-top: 48px;
+  width: 100%;
+}
+
+.btn-edit-main {
+  flex: 1;
+  padding: 16px;
+  background: var(--bg-main);
+  color: var(--text-header);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1.05rem;
+  transition: all 0.2s ease;
+}
+.btn-edit-main:hover {
+  background: var(--hover-dropdowb);
+  border-color: var(--text-muted);
+}
+
+.btn-add-chapter {
+  flex: 1;
+  padding: 16px;
+  background: var(--btn-plus);
+  color: white;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1.05rem;
+  transition: background 0.2s, transform 0.2s;
+}
+.btn-add-chapter:hover {
+  background: var(--btn-plus-hover);
+  transform: translateY(-2px);
 }
 </style>

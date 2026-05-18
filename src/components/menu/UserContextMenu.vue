@@ -159,23 +159,24 @@ defineExpose({ openMenu });
 <style scoped>
 .context-menu {
   position: fixed;
-  background: var(--bg-editor-sheet, #2c2c2c);
-  border: 1px solid var(--border-subtle, #3d3d3d);
-  border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-  min-width: 200px;
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px var(--shadow-color);
+  min-width: 220px;
   display: flex;
   flex-direction: column;
-  padding: 4px;
+  padding: 8px;
   z-index: 99999;
 }
 
 .menu-header {
-  padding: 8px 12px;
-  font-size: 0.85rem;
-  color: #888;
-  border-bottom: 1px solid #3d3d3d;
-  margin-bottom: 4px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -184,27 +185,33 @@ defineExpose({ openMenu });
 .menu-item {
   background: none;
   border: none;
-  color: #e0e0e0;
-  padding: 10px 12px;
+  color: var(--text-header);
+  padding: 10px 14px;
   text-align: left;
-  font-size: 0.9rem;
-  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.menu-item:hover { background: #3d3d3d; }
-.menu-item.highlight { color: #3498db; font-weight: bold; }
-.menu-item.danger { color: #e74c3c; }
-.menu-item.danger:hover { background: rgba(231, 76, 60, 0.1); }
-.menu-item.success { color: #2ecc71; }
+.menu-item:hover { background: var(--hover-dropdowb); }
+.menu-item.highlight { color: var(--btn-plus); font-weight: 600;}
+.menu-item.highlight:hover { background: rgba(99, 102, 241, 0.1); }
+.menu-item.danger { color: #ef4444; }
+.menu-item.danger:hover { background: rgba(239, 68, 68, 0.1); }
+.menu-item.success { color: #10b981; }
+.menu-item.success:hover { background: rgba(16, 185, 129, 0.1); }
 
 .menu-divider {
   height: 1px;
-  background: #3d3d3d;
-  margin: 4px 0;
+  background: var(--border-color);
+  margin: 8px 0;
 }
 
-.fade-fast-enter-active, .fade-fast-leave-active { transition: opacity 0.1s, transform 0.1s; }
+.fade-fast-enter-active, .fade-fast-leave-active { transition: opacity 0.15s, transform 0.15s; }
 .fade-fast-enter-from, .fade-fast-leave-to { opacity: 0; transform: scale(0.95); }
 </style>

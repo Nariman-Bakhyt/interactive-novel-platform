@@ -28,6 +28,7 @@ const toggleComments = (blockId: number | null) => {
   if (!blockId) return;
   // Просто вызываем openChat из стора — он сам всё подпишет и загрузит
   chatStore.openChat(blockId, 'BLOCK');
+  window.dispatchEvent(new CustomEvent('open-messenger'));
 };
 
 
@@ -245,7 +246,9 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
   <div class="editor-page-wrapper">
     <div class="notion-style-container">
       <header class="editor-toolbar">
-        <button @click="router.back()" class="btn-minimal">Назад</button>
+        <button @click="router.back()" class="btn-minimal">
+          <span class="icon">←</span> Назад
+        </button>
         <button @click="handleSave" :disabled="isSaving" class="btn-save-notion">
           {{ isSaving ? 'Сохранение...' : 'Сохранить' }}
         </button>
@@ -309,13 +312,14 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
           </div>
 
           <div class="side-control right">
-            <div class="block-controls-right" v-if="activeBlockIndex === index || activeCommentsBlockId === index">
+            <div class="block-controls-right" v-if="activeBlockIndex === index || chatStore.activeTargetId === block.id">
 
+              <!-- Кнопка комментария. При клике на неё откроется сайдбар. -->
               <button
                 v-if="block.id"
                 class="comment-trigger-small"
-                :class="{ 'is-active': activeCommentsBlockId === index }"
-                @click="toggleComments(block.id)"
+                :class="{ 'is-active': chatStore.activeTargetId === block.id }"
+                @click.stop="toggleComments(block.id)"
                 title="Обсудить блок"
               >
                 💬
@@ -341,7 +345,7 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
 .editor-page-wrapper {
   min-height: 100vh;
   background-color: var(--bg-editor-page); /* Используем переменную страницы */
-  padding: 60px 20px;
+  padding: 80px 24px 100px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -350,12 +354,12 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
 
 .notion-style-container {
   width: 100%;
-  max-width: 720px; /* Приравниваем к читалке */
+  max-width: 760px; /* Приравниваем к читалке */
   background-color: var(--bg-editor-sheet);
-  padding: 60px 40px; /* Уменьшили отступы, чтобы текст был той же ширины */
-  border-radius: 16px;
-  box-shadow: 0 10px 40px var(--shadow-color);
-  border: 1px solid var(--border-subtle);
+  padding: 48px 64px; /* Уменьшили отступы, чтобы текст был той же ширины */
+  border-radius: 24px;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border: 1px solid var(--border-color);
   min-height: 80vh;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s;
 }
@@ -365,20 +369,25 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
   max-width: 850px;
   display: flex;
   justify-content: space-between;
-  margin-bottom: 20px;
-  padding: 10px 0;
+  margin-bottom: 32px;
+  padding: 0;
+  align-items: center;
 }
 
 .main-title-input {
   width: 100%;
-  font-size: 2.5rem; /* Как .chapter-title в читалке */
+  font-size: 2.75rem; /* Как .chapter-title в читалке */
   font-weight: 800;
   background: none;
   border: none;
   color: var(--text-header);
   outline: none;
-  margin-bottom: 40px;
+  margin-bottom: 48px;
   text-align: center; /* Центрируем заголовок как в читалке */
+  letter-spacing: -0.02em;
+}
+.main-title-input::placeholder {
+  color: var(--input-placeholder);
 }
 
 .canvas {
@@ -389,24 +398,23 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
 .block-row {
   display: flex;
   align-items: flex-start;
-  group: block;
-  padding: 4px 0;
+  padding: 8px 0;
   position: relative;
-  border-radius: 4px;
+  border-radius: 8px;
+  transition: background-color 0.2s;
 }
 
 .block-row:hover {
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 4px;
+  background-color: rgba(161, 161, 170, 0.05); /* Очень слабый фон при наведении */
 }
 
 .block-row.is-dragging {
-  opacity: 0.2;
+  opacity: 0.3;
 }
 
 .side-control {
-  width: 45px;
-  min-height: 30px;
+  width: 48px;
+  min-height: 32px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -417,28 +425,44 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   cursor: pointer;
+  transition: color 0.2s, transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
 }
 
 .plus-button:hover {
   color: var(--btn-plus);
+  background: var(--hover-dropdowb);
+  transform: scale(1.1);
 }
 
 .drag-handle-notion {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   user-select: none;
-  padding: 5px;
+  padding: 4px 8px;
   cursor: grab;
   color: var(--text-muted);
-  opacity: 0.4;
+  opacity: 0.5;
+  transition: opacity 0.2s, color 0.2s;
+  border-radius: 4px;
+}
+.drag-handle-notion:hover {
+  opacity: 1;
+  color: var(--text-header);
+  background: var(--hover-dropdowb);
 }
 
 .drag-handle-notion:active { cursor: grabbing; }
 
 .block-main-content {
   flex: 1;
-  padding: 0 5px;
+  padding: 0 8px;
 }
 
 .block-textarea {
@@ -450,44 +474,48 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
   line-height: 1.8;   /* Как .chapter-content в читалке */
   resize: none;
   outline: none;
-  padding: 6px 0;
+  padding: 8px 0;
   overflow: hidden;
   font-family: inherit;
   -webkit-font-smoothing: antialiased;
 }
 
 .block-textarea::placeholder {
-  color: var(--text-muted);
-  opacity: 0.5;
+  color: var(--input-placeholder);
 }
 
 .image-block-wrapper {
-  padding: 10px 0;
+  padding: 12px 0;
 }
 
 .image-url-input {
-
-  padding: 8px 12px;
-  font-size: 0.9rem;
-  margin-bottom: 10px;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  margin-bottom: 16px;
   width: 100%;
   background: var(--bg-main);
   border: 1px solid var(--border-color);
   color: var(--text-header);
-  border-radius: 6px;
+  border-radius: 8px;
+  transition: border-color 0.2s;
+}
+.image-url-input:focus {
+  outline: none;
+  border-color: var(--btn-plus);
 }
 
 .image-preview img {
   max-width: 100%;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px var(--shadow-color);
+  border: 1px solid var(--border-color);
 }
 
 /* Всплывающее меню */
 .type-selector-menu {
   position: absolute;
   top: 100%;
-  left: 10px;
+  left: 8px;
   background: var(--bg-dropdown);
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -496,16 +524,20 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
   flex-direction: column;
   box-shadow: 0 8px 24px var(--shadow-color);
   overflow: hidden;
+  padding: 4px;
 }
 
 .type-selector-menu button {
-  padding: 10px 20px;
+  padding: 8px 16px;
   background: none;
   border: none;
   color: var(--text-header);
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
+  font-size: 0.95rem;
+  border-radius: 4px;
+  transition: background 0.2s;
 }
 
 .type-selector-menu button:hover {
@@ -514,30 +546,51 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
 
 .btn-save-notion {
   background: var(--btn-plus);
-  color: #fff; /* Текст на кнопке лучше оставить белым для контраста */
+  color: white;
   border: none;
-  padding: 8px 20px;
-  border-radius: 6px;
+  padding: 10px 20px;
+  border-radius: 8px;
   font-weight: 600;
+  font-size: 0.95rem;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: background 0.2s, transform 0.2s;
 }
-.btn-save-notion:hover {
-  opacity: 0.9;
+.btn-save-notion:hover:not(:disabled) {
+  background: var(--btn-plus-hover);
+  transform: translateY(-1px);
 }
+.btn-save-notion:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .btn-minimal {
   background: none;
   border: none;
-  color: #888;
+  color: var(--text-muted);
   cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-left: -12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
 }
+.btn-minimal:hover {
+  color: var(--text-header);
+  background: var(--hover-dropdowb);
+}
+
 /* --- ПРАВАЯ ПАНЕЛЬ УПРАВЛЕНИЯ БЛОКОМ --- */
 .side-control.right {
   width: 80px; /* Увеличили ширину, чтобы влезли две кнопки */
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  padding-right: 10px;
+  padding-right: 8px;
 }
 .block-row:hover .side-control.right,
 .block-row.active-block .side-control.right {
@@ -553,240 +606,21 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
 .comment-trigger-small {
   background: none;
   border: none;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   cursor: pointer;
   opacity: 0.4;
   transition: all 0.2s ease;
   padding: 4px;
-}
-
-.comment-trigger-small:hover,
-.comment-trigger-small.is-active {
-  opacity: 1;
-  transform: scale(1.1);
-}
-
-.comment-trigger-small.is-active {
-  filter: drop-shadow(0 0 5px var(--btn-plus));
-}
-
-/* --- САЙДБАР КОММЕНТАРИЕВ --- */
-.comments-sidebar {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 350px;
-  height: 100vh;
-  background-color: var(--bg-editor-sheet);
-  border-left: 1px solid var(--border-subtle);
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  box-shadow: -10px 0 30px rgba(0,0,0,0.1);
-}
-
-.sidebar-header {
-  padding: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.sidebar-header h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: var(--text-header);
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 1.2rem;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.close-btn:hover {
-  color: var(--btn-plus);
-}
-
-/* --- СПИСОК КОММЕНТАРИЕВ --- */
-.comments-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background-color: var(--bg-editor-sheet);
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-subtle) transparent;
-}
-
-.comment-group {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* --- ЛИПКИЕ ДАТЫ --- */
-.sticky-sentinel {
-  position: absolute;
-  top: 0;
-  height: 1px;
-  width: 100%;
-}
-
-.date-sticky-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: flex;
-  justify-content: center;
-  margin: 10px 0;
-}
-
-.date-badge {
-  background: var(--bg-main);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 4px 12px;
-  border-radius: 12px;
-  opacity: 0;
-  transform: translateY(-5px);
-  transition: all 0.3s ease;
-}
-
-.date-badge[data-in-text],
-.is-scrolling-active .date-badge {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* --- ПУЗЫРЬКИ СООБЩЕНИЙ --- */
-.comment-item {
-  display: flex;
-  flex-direction: column;
-  max-width: 90%;
-}
-
-.comment-bubble {
-  background: var(--bg-main);
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px 14px 14px 4px;
-  padding: 10px 12px;
-  transition: background 0.2s;
-}
-
-.comment-bubble:hover {
-  background: var(--hover-dropdowb); /* Использую твою переменную с опечаткой как в коде */
-}
-
-.user-badge {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--btn-plus);
-  display: block;
-  margin-bottom: 4px;
-}
-
-.comment-body {
-  margin: 0;
-  font-size: 0.95rem;
-  line-height: 1.4;
-  color: var(--text-header);
-  white-space: pre-wrap;
-}
-
-.comment-footer {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 4px;
-}
-
-.comment-date {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-}
-
-/* --- ПОЛЕ ВВОДА --- */
-.sidebar-input-area {
-  padding: 15px;
-  border-top: 1px solid var(--border-subtle);
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
-}
-
-.sidebar-input-area textarea {
-  flex: 1;
-  background: var(--bg-main);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 10px;
-  color: var(--text-header);
-  resize: none;
-  font-family: inherit;
-  outline: none;
-}
-
-.send-btn {
-  background: var(--btn-plus);
-  color: white;
-  border: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* --- КОНТЕКСТНОЕ МЕНЮ --- */
-.context-menu {
-  position: fixed;
-  background: var(--bg-editor-sheet);
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 5px 15px var(--shadow-color);
-  border-radius: 8px;
-  z-index: 10000;
-  min-width: 140px;
-  padding: 5px;
-}
-
-.menu-item {
-  padding: 8px 12px;
-  cursor: pointer;
   border-radius: 4px;
-  font-size: 0.9rem;
-  transition: background 0.2s;
 }
 
-.menu-item.delete {
-  color: #ff4d4f;
+.comment-trigger-small:hover {
+  opacity: 1;
+  background: var(--hover-dropdowb);
+}
+.comment-trigger-small.is-active {
+  opacity: 1;
+  color: var(--btn-plus);
 }
 
-.menu-item:hover {
-  background: var(--bg-main);
-}
-
-/* Анимация появления сайдбара */
-.slide-enter-active, .slide-leave-active {
-  transition: transform 0.3s ease;
-}
-.slide-enter-from, .slide-leave-to {
-  transform: translateX(100%);
-}
 </style>

@@ -101,47 +101,117 @@ const toggleInfo = (event: Event) => {
 <style scoped>
 .novel-card-wrapper { position: relative; display: flex; height: 100%; z-index: 1; }
 .novel-card-wrapper:hover { z-index: 50; }
-.novel-card { display: flex; flex-direction: column; width: 100%; background: var(--bg-dropdown); border-radius: 16px; overflow: hidden; border: 1px solid var(--border-subtle); transition: transform 0.3s ease; cursor: pointer; }
-.novel-card:hover { transform: translateY(-10px); }
+.novel-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: var(--bg-dropdown);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
+  cursor: pointer;
+}
+.novel-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 24px var(--shadow-color);
+  border-color: var(--btn-plus);
+}
 
-.cover-wrapper { position: relative; height: 350px; }
-.cover-wrapper img { width: 100%; height: 100%; object-fit: cover; }
-.info-trigger { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border-radius: 50%; background: rgba(0, 0, 0, 0.7); border: 1px solid rgba(255, 255, 255, 0.3); color: white; display: flex; justify-content: center; align-items: center; cursor: pointer; backdrop-filter: blur(5px); transition: background 0.2s; }
-.info-trigger:hover { background: rgba(0, 0, 0, 0.9); }
+.cover-wrapper { position: relative; height: 320px; overflow: hidden; }
+.cover-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+.novel-card:hover .cover-wrapper img {
+  transform: scale(1.05);
+}
 
-.novel-info { padding: 1.5rem; display: flex; flex-direction: column; flex-grow: 1; }
-.novel-info h3 { margin-bottom: 0.5rem; font-size: 1.2rem; color: var(--text-header); }
-.novel-info p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.info-trigger {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background 0.2s, transform 0.2s;
+}
+.info-trigger:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
+}
+
+.novel-info { padding: 1.25rem; display: flex; flex-direction: column; flex-grow: 1; }
+.novel-info h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-header);
+  line-height: 1.3;
+}
+.novel-info p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 
 /* --- ВСПЛЫВАЮЩЕЕ ОКНО (POPOVER) --- */
-.novel-popover { position: absolute; top: 0; left: 105%; width: 320px; background: var(--bg-dropdown); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 15px 10px 40px var(--shadow-color); z-index: 100; padding: 20px; pointer-events: all; }
+.novel-popover {
+  position: absolute;
+  top: 0;
+  left: 105%;
+  width: 320px;
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px var(--shadow-color);
+  z-index: 100;
+  padding: 20px;
+  pointer-events: all;
+}
 .novel-popover::before { content: ''; position: absolute; top: 0; left: -30px; width: 35px; height: 100%; background: transparent; }
-.novel-popover::after { content: ''; position: absolute; top: 30px; left: -10px; border-width: 10px 10px 10px 0; border-style: solid; border-color: transparent var(--bg-dropdown) transparent transparent; }
+.novel-popover::after { content: ''; position: absolute; top: 30px; left: -9px; border-width: 9px 9px 9px 0; border-style: solid; border-color: transparent var(--bg-dropdown) transparent transparent; }
 
-.pop-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-.pop-header h4 { margin: 0; font-size: 1.2rem; color: var(--text-header); }
-.close-pop { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; line-height: 1; }
+.pop-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.pop-header h4 { margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text-header); line-height: 1.3;}
+.close-pop { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; line-height: 1; transition: color 0.2s;}
+.close-pop:hover { color: var(--text-header); }
 
-.pop-stats { display: flex; gap: 15px; margin-bottom: 12px; font-size: 0.85rem; color: var(--text-header); font-weight: 600; }
+.pop-stats { display: flex; gap: 16px; margin-bottom: 12px; font-size: 0.85rem; color: var(--text-header); font-weight: 600; }
 .stat-item { display: flex; align-items: center; gap: 4px; }
-.rating { color: #f1c40f; }
+.rating { color: #f59e0b; } /* amber-500 */
 
 .pop-metadata { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
 .chips-row { display: flex; flex-wrap: wrap; gap: 6px; }
-.pop-chip { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; background: var(--bg-main); border: 1px solid var(--border-color); }
-.pop-chip.genre { border-color: var(--btn-plus); color: var(--btn-plus); }
+.pop-chip { font-size: 0.75rem; font-weight: 500; padding: 2px 8px; border-radius: 4px; background: var(--bg-main); border: 1px solid var(--border-color); color: var(--text-muted); }
+.pop-chip.genre { border-color: rgba(99, 102, 241, 0.3); color: #6366f1; background: rgba(99, 102, 241, 0.05); }
 
-.pop-desc { font-size: 0.8rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 15px; color: var(--text-muted); }
+.pop-desc { font-size: 0.9rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 16px; color: var(--text-muted); }
 .pop-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 
 /* --- ЭЛЕМЕНТЫ ВНУТРИ POPOVER --- */
-.status-badge { font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
-.status-badge.completed { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
-.status-badge.in_progress { background: rgba(52, 152, 219, 0.2); color: #3498db; }
-.status-badge.draft { background: rgba(149, 165, 166, 0.2); color: #95a5a6; }
+.status-badge { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 4px 8px; border-radius: 4px; font-weight: 700; }
+.status-badge.completed { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2);}
+.status-badge.in_progress { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2);}
+.status-badge.draft { background: rgba(161, 161, 170, 0.1); color: #a1a1aa; border: 1px solid rgba(161, 161, 170, 0.2);}
 
-.btn-read-now { padding: 6px 14px; background: #6366f1; border: none; color: white; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: background 0.2s; white-space: nowrap; }
-.btn-read-now:hover { background: #4f46e5; }
+.btn-read-now { padding: 8px 16px; background: var(--btn-plus); border: none; color: white; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: background 0.2s, transform 0.2s; white-space: nowrap; }
+.btn-read-now:hover { background: var(--btn-plus-hover); transform: translateY(-1px); }
 
 /* --- АДАПТИВ И АНИМАЦИИ --- */
 @media (max-width: 768px) {
@@ -149,6 +219,6 @@ const toggleInfo = (event: Event) => {
   .novel-popover::before, .novel-popover::after { display: none; }
 }
 
-.slide-fade-enter-active, .slide-fade-leave-active { transition: all 0.3s ease; }
+.slide-fade-enter-active, .slide-fade-leave-active { transition: all 0.2s ease; }
 .slide-fade-enter-from, .slide-fade-leave-to { opacity: 0; transform: translateX(10px); }
 </style>

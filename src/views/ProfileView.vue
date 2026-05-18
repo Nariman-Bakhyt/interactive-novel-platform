@@ -152,15 +152,15 @@ const openFollowing = () => {
             <span class="stat-value">{{ profileData.novelsCount || 0 }}</span>
             <span class="stat-label">Новелл</span>
           </div>
-          <div class="stat-box" @click="openFriends">
+          <div class="stat-box clickable" @click="openFriends">
             <span class="stat-value">{{ profileData.friendsCount }}</span>
             <span class="stat-label">Друзей</span>
           </div>
-          <div class="stat-box" @click="openFollowers">
+          <div class="stat-box clickable" @click="openFollowers">
             <span class="stat-value">{{ profileData.followersCount || 0 }}</span>
             <span class="stat-label">Подписчиков</span>
           </div>
-          <div class="stat-box" @click="openFollowing">
+          <div class="stat-box clickable" @click="openFollowing">
             <span class="stat-value">{{ profileData.followingCount || 0 }}</span>
             <span class="stat-label">Подписки</span>
           </div>
@@ -186,40 +186,41 @@ const openFollowing = () => {
 <style scoped>
 
 .social-actions {
-  margin-top: 15px;
+  margin-top: 24px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .profile-page {
   max-width: 1000px;
-  margin: 80px auto 40px; /* Отступ сверху под фиксированный хедер */
-  padding: 0 20px;
-  color: #e0e0e0;
+  margin: 100px auto 60px; /* Отступ сверху под фиксированный хедер */
+  padding: 0 24px;
+  color: var(--text-header);
 }
 
 .profile-layout {
   display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 30px;
+  grid-template-columns: 320px 1fr;
+  gap: 32px;
 }
 
 /* Сайдбар с аватаром */
 .profile-sidebar {
-  background: #2c2c2c;
-  padding: 30px;
+  background: var(--bg-dropdown);
+  padding: 32px;
   border-radius: 16px;
   text-align: center;
   height: fit-content;
-  border: 1px solid #3d3d3d;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px var(--shadow-color);
 }
 
 .avatar-wrapper {
   position: relative;
-  width: 160px;
-  height: 160px;
-  margin: 0 auto 20px;
+  width: 180px;
+  height: 180px;
+  margin: 0 auto 24px;
 }
 
 .profile-avatar {
@@ -227,32 +228,34 @@ const openFollowing = () => {
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid black;
+  border: 4px solid var(--border-color);
 }
 
 
 .profile-name {
-  margin: 10px 0 5px;
-  font-size: 1.5rem;
+  margin: 0 0 4px;
+  font-size: 1.75rem;
+  font-weight: 700;
 }
 
 .profile-role {
-  color: #888;
-  font-size: 0.9rem;
-  margin-bottom: 25px;
+  color: var(--text-muted);
+  font-size: 1rem;
+  margin-bottom: 32px;
 }
 
 .btn-edit-full {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px; /* Зазор между иконкой и текстом внутри кнопки */
-  padding: 10px 20px;
+  justify-content: center;
+  gap: 12px; /* Зазор между иконкой и текстом внутри кнопки */
+  padding: 12px 20px;
   background-color: var(--bg-main); /* Или тот цвет, что на скрине */
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   color: var(--text-header);
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -262,79 +265,96 @@ const openFollowing = () => {
 .btn-edit-full:hover {
   background-color: var(--hover-dropdowb); /* Подсветка при наведении */
   border-color: var(--text-muted);
-  transform: translateY(-1px);
 }
 
 .btn-edit-full span {
-  font-size: 1.1rem; /* Иконка чуть покрупнее текста */
+  font-size: 1.25rem; /* Иконка чуть покрупнее текста */
 }
 
 /* Основной контент */
 .info-card {
-  background: #2c2c2c;
-  padding: 30px;
+  background: var(--bg-dropdown);
+  padding: 32px;
   border-radius: 16px;
-  border: 1px solid #3d3d3d;
-  margin-bottom: 20px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 32px;
+  box-shadow: 0 4px 12px var(--shadow-color);
 }
 
 .info-card h3 {
   margin-top: 0;
-  margin-bottom: 20px;
-  font-size: 1.2rem;
-  border-bottom: 1px solid #3d3d3d;
-  padding-bottom: 10px;
+  margin-bottom: 24px;
+  font-size: 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 16px;
+  font-weight: 600;
 }
 
 .info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 24px;
 }
 
 .info-item label {
   display: block;
-  color: #888;
-  font-size: 0.8rem;
-  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .info-item span {
   font-weight: 500;
+  font-size: 1.1rem;
 }
 
 /* Секция статистики */
 .stats-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
 }
 
 .stat-box {
-  background: #2c2c2c;
-  padding: 20px;
+  background: var(--bg-dropdown);
+  padding: 24px;
   border-radius: 16px;
   text-align: center;
-  border: 1px solid #3d3d3d;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px var(--shadow-color);
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.stat-box.clickable {
+  cursor: pointer;
+}
+
+.stat-box.clickable:hover {
+  transform: translateY(-2px);
+  border-color: var(--btn-plus);
 }
 
 .stat-value {
   display: block;
-  font-size: 1.8rem;
-  font-weight: bold;
-  color: #3498db;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--btn-plus);
+  margin-bottom: 4px;
 }
 
 .stat-label {
-  color: #888;
-  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .profile-actions {
   display: flex;
+  flex-direction: column;
   gap: 12px; /* Тот самый зазор между кнопками */
-  margin-bottom: 20px; /* Отступ снизу от блока кнопок */
-  flex-wrap: wrap; /* Чтобы на мобилках они могли перенестись */
 }
 
 /* Адаптивность для мобилок */

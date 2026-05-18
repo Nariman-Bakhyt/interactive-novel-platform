@@ -145,24 +145,25 @@ const avatarDisplayUrl = computed(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 15px;
-  padding: 10px 0;
+  gap: 16px;
+  padding: 16px 0;
 }
 
 .avatar-container {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 140px;
+  height: 140px;
   cursor: pointer;
   border-radius: 50%;
   overflow: hidden;
-  border: 3px solid #3498db;
+  border: 4px solid var(--btn-plus);
   transition: transform 0.2s ease, border-color 0.2s ease;
+  box-shadow: 0 4px 12px var(--shadow-color);
 }
 
 .avatar-container:hover {
-  transform: scale(1.03);
-  border-color: #2980b9;
+  transform: scale(1.05);
+  border-color: var(--btn-plus-hover);
 }
 
 .user-avatar-main {
@@ -175,11 +176,8 @@ const avatarDisplayUrl = computed(() => {
 /* Оверлей при наведении */
 .avatar-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -187,32 +185,31 @@ const avatarDisplayUrl = computed(() => {
   opacity: 0;
   transition: opacity 0.2s ease;
   color: white;
+  backdrop-filter: blur(2px);
 }
 
 .avatar-container:hover .avatar-overlay {
   opacity: 1;
 }
 
-.overlay-icon { font-size: 24px; }
-.overlay-text { font-size: 12px; font-weight: 500; }
+.overlay-icon { font-size: 2rem; margin-bottom: 4px;}
+.overlay-text { font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;}
 
 .spinner-container {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
+  backdrop-filter: blur(2px);
 }
 
 .loader {
-  width: 30px;
-  height: 30px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #3498db;
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-top: 3px solid white;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -222,27 +219,36 @@ const avatarDisplayUrl = computed(() => {
   100% { transform: rotate(360deg); }
 }
 
-.message-text {
-  font-size: 13px;
-  margin: 5px 0;
-  min-height: 18px;
+.info-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 40px; /* Чтобы не прыгало при появлении текста */
 }
-.error-msg { color: #ff6b6b; }
-.success-msg { color: #51cf66; }
+
+.message-text {
+  font-size: 0.9rem;
+  margin: 0 0 8px;
+  font-weight: 500;
+  text-align: center;
+}
+.error-msg { color: #ef4444; } /* red-500 */
+.success-msg { color: #10b981; } /* emerald-500 */
 
 .btn-delete {
   background: transparent;
-  color: var(--text-header);
+  color: var(--text-muted);
   border: none;
-  font-size: 12px;
-  text-decoration: underline;
+  font-size: 0.9rem;
   cursor: pointer;
-  padding: 5px 10px;
+  padding: 6px 12px;
   transition: color 0.2s;
+  font-weight: 500;
 }
 
 .btn-delete:hover:not(:disabled) {
-  color: #ff6b6b;
+  color: #ef4444;
+  text-decoration: underline;
 }
 
 .btn-delete:disabled {

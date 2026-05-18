@@ -28,7 +28,7 @@ const updateSelection = () => {
 
     // Рассчитываем позицию (центрируем над выделением)
     btnPos.value = {
-      top: rect.top + window.scrollY - 45, // Чуть выше
+      top: rect.top + window.scrollY - 48, // Чуть выше
       left: rect.left + window.scrollX + (rect.width / 2) - 60 // Центрируем по кнопке
     };
     showButton.value = true;
@@ -116,31 +116,34 @@ onUnmounted(() => {
 .quote-floating-btn {
   position: absolute;
   z-index: 999999; /* Максимальный приоритет */
-  background: #1a1a1a;
-  color: #ffffff;
-  border: 1px solid #444;
+  background: var(--bg-dropdown);
+  color: var(--text-header);
+  border: 1px solid var(--border-color);
   padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 14px;
+  border-radius: 24px;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+  box-shadow: 0 4px 15px var(--shadow-color);
   white-space: nowrap;
   pointer-events: auto;
   user-select: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .quote-floating-btn:hover {
-  background: var(--btn-plus, #6e41e2);
+  background: var(--btn-plus);
+  color: white;
   transform: translateY(-2px);
   border-color: var(--btn-plus);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
 }
 
 .icon {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   line-height: 1;
 }
 </style>

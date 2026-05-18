@@ -3,7 +3,7 @@
 /* 1. Сброс стандартных отступов */
 body, html {
   margin: 0;
-  padding: 0;/* Гарантируем, что браузер покажет минимум полный экран */
+  padding: 0;
 }
 
 #app {
@@ -11,63 +11,63 @@ body, html {
   width: 100vw;
 }
 
-
 :root {
-  --bg-header: #282828;
-  --text-header: #ffffff;
-  --bg-dropdown: #2c2c2c;
-  --border-color: #444;
-  --btn-plus: #2980b9;
-  --bg-main: #1a1a1a;
-  --hover-dropdowb: #3d3d3d;
-  --bg-app: #313233;
-  --bg-profile: #e0e0e0;
-  --text-muted: #aaa;
-  --border-subtle: rgba(255, 255, 255, 0.05);
-  --bg-editor-page: #0f0f0f;      /* Фон всей страницы (самый темный) */
-  --bg-editor-sheet: #1a1a1a;     /* Фон самого "листа" */
-  --shadow-color: rgba(0, 0, 0, 0.5);
-  --input-placeholder: #555;
+  /* Modern Dark Theme (Zinc/Indigo based) */
+  --bg-header: #18181b;       /* zinc-900 */
+  --text-header: #f4f4f5;     /* zinc-100 */
+  --bg-dropdown: #27272a;     /* zinc-800 */
+  --border-color: #3f3f46;    /* zinc-700 */
+  --btn-plus: #6366f1;        /* indigo-500 */
+  --btn-plus-hover: #4f46e5;  /* indigo-600 */
+  --bg-main: #09090b;         /* zinc-950 */
+  --hover-dropdowb: #3f3f46;  /* zinc-700 */
+  --bg-app: #18181b;          /* zinc-900 */
+  --bg-profile: #27272a;      /* zinc-800 */
+  --text-muted: #a1a1aa;      /* zinc-400 */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --bg-editor-page: #09090b;
+  --bg-editor-sheet: #18181b;
+  --shadow-color: rgba(0, 0, 0, 0.6);
+  --input-placeholder: #71717a; /* zinc-500 */
 
-  --avatar-text: #ffffff;           /* Цвет букв в плейсхолдерах */
-  --aura-opacity: 0.4;             /* Прозрачность свечения (ярче для темной темы) */
-  --aura-blur: 12px;               /* Радиус размытия */
-  --unread-dot: #ff4757;           /* Цвет индикатора непрочитанных */
+  --avatar-text: #ffffff;
+  --aura-opacity: 0.5;
+  --aura-blur: 16px;
+  --unread-dot: #ef4444;      /* red-500 */
+
+  --main-font: 'Onest', system-ui, -apple-system, sans-serif;
 }
 
 [data-theme="light"] {
-  --bg-header: #FFFAEF;
-  --text-header: #2B2B2B;
-  --bg-dropdown: #f9f9f9;
-  --border-color: #ddd;
-  --btn-plus: #3498db;
-  --bg-main: #f4f4f4;
-  --hover-dropdowb: #e0e0e0;
-  --bg-app: #EDEDED;
-  --bg-profile: #444;
-  --text-inverse: #f9f9f9 ;
-  --text-muted: #666;
-  --border-subtle: rgba(0, 0, 0, 0.1);
-  --bg-editor-page: #EDEDED;      /* Светлый фон страницы */
-  --bg-editor-sheet: #ffffff;     /* Белый лист */
-  --shadow-color: rgba(0, 0, 0, 0.1);
-  --input-placeholder: #aaa;
+  /* Modern Light Theme */
+  --bg-header: #ffffff;
+  --text-header: #09090b;     /* zinc-950 */
+  --bg-dropdown: #ffffff;
+  --border-color: #e4e4e7;    /* zinc-200 */
+  --btn-plus: #4f46e5;        /* indigo-600 */
+  --btn-plus-hover: #4338ca;  /* indigo-700 */
+  --bg-main: #fafafa;         /* zinc-50 */
+  --hover-dropdowb: #f4f4f5;  /* zinc-100 */
+  --bg-app: #f4f4f5;          /* zinc-100 */
+  --bg-profile: #ffffff;
+  --text-inverse: #ffffff;
+  --text-muted: #71717a;      /* zinc-500 */
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --bg-editor-page: #f4f4f5;
+  --bg-editor-sheet: #ffffff;
+  --shadow-color: rgba(0, 0, 0, 0.08);
+  --input-placeholder: #a1a1aa; /* zinc-400 */
 
-  --avatar-text: #ffffff;           /* Буквы оставляем белыми для контраста с HSL цветом */
-  --aura-opacity: 0.25;            /* Делаем свечение мягче, чтобы не "грязнить" светлый фон */
-  --aura-blur: 8px;
-  --unread-dot: #e84118;
+  --avatar-text: #ffffff;
+  --aura-opacity: 0.15;
+  --aura-blur: 12px;
+  --unread-dot: #dc2626;      /* red-600 */
 }
-
-:root {
-  --main-font: 'Onest', sans-serif;
-}
-
 
 body {
   background-color: var(--bg-main);
   color: var(--text-header);
-  transition: background-color 0.3s, color 0.3s;
+  transition: background-color 0.3s ease, color 0.3s ease;
   margin: 0;
   font-family: var(--main-font);
   -webkit-font-smoothing: antialiased;
@@ -76,12 +76,33 @@ body {
 
 /* Это магический селектор для твоего JS-кода */
 ::highlight(search-results) {
-  background-color: #f1c40f !important; /* Яркий желтый */
+  background-color: #fcd34d !important; /* Яркий желтый */
   color: #000 !important;              /* Черный текст для контраста */
-  text-decoration: underline;          /* Подчеркивание для верности */
+  border-radius: 2px;
 }
 
 /* Добавим плавности, чтобы не резало глаза */
 ::highlight(search-results) {
   transition: background-color 0.5s ease;
+}
+
+/* Стилизация скроллбара */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-muted);
+}
+
+/* Общие стили для красивых карточек и элементов */
+button {
+  font-family: var(--main-font);
 }

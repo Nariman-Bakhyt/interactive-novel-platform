@@ -2,7 +2,7 @@
 import { useAuthStore } from '@/api/auth.ts'; // Используем ваш Pinia Store
 import { useRouter } from 'vue-router';
 import AuthModal from "@/views/auth/AuthModal.vue";
-import {computed, inject, onMounted, ref, watch} from "vue";
+import {computed, inject, onMounted, ref, watch, onUnmounted, nextTick} from "vue";
 import {useThemeStore} from "@/api/theme.ts";
 import {searchNovels} from "@/api/novelService.ts";
 import {searchUsers} from "@/api/profileService.ts";
@@ -13,9 +13,32 @@ const showCreateMenu = ref(false);
 const showDropdown = ref(false);
 const themeStore = useThemeStore();
 
+const searchContainerRef = ref<HTMLElement | null>(null);
+const searchResultsRef = ref<HTMLElement | null>(null);
+
 onMounted(() => {
   themeStore.applyTheme();
+  document.addEventListener('click', handleClickOutside);
+  document.addEventListener('keydown', handleEscKey);
 });
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+  document.removeEventListener('keydown', handleEscKey);
+});
+
+const handleClickOutside = (event: MouseEvent) => {
+  if (isSearchOpen.value && searchContainerRef.value && !searchContainerRef.value.contains(event.target as Node)) {
+    closeSearch();
+  }
+};
+
+const handleEscKey = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && isSearchOpen.value) {
+    closeSearch();
+  }
+};
+
 
 const isSearchOpen = ref(false);
 const searchQuery = ref('');
@@ -23,10 +46,50 @@ const searchType = ref<'novels' | 'users'>('novels');
 const searchResults = ref<any[]>([]);
 const isSearching = ref(false);
 
+const searchPage = ref(0);
+const searchIsLastPage = ref(false);
+
 let searchTimeout: number;
 
 
 const openUserMenu = inject('openUserMenu') as (event: MouseEvent, userId: number, username: string) => void;
+
+const fetchSearchResults = async (page: number, append = false) => {
+  if (searchQuery.value.length < 2) return;
+
+  isSearching.value = true;
+  try {
+    let data;
+    if (searchType.value === 'novels') {
+      // УВЕЛИЧИЛИ ДО 12, чтобы контейнер в 300px точно переполнялся и появлялся скролл
+      data = await searchNovels(searchQuery.value, page, 12);
+    } else {
+      data = await searchUsers(searchQuery.value, page, 12);
+    }
+
+    if (append) {
+      searchResults.value = [...searchResults.value, ...data.content];
+    } else {
+      searchResults.value = data.content;
+      // При новом поиске прокручиваем наверх
+      await nextTick();
+      if (searchResultsRef.value) {
+        searchResultsRef.value.scrollTop = 0;
+      }
+    }
+
+    // БЕЗОПАСНАЯ ПРОВЕРКА (как в Catalog.vue)
+    const totalPages = data.page?.totalPages ||  1;
+    searchIsLastPage.value = page >= totalPages - 1;
+
+    searchPage.value = page;
+  } catch (e) {
+    console.error(e);
+  } finally {
+    isSearching.value = false;
+  }
+};
+
 
 // Живой поиск
 watch(searchQuery, (newQuery) => {
@@ -36,23 +99,29 @@ watch(searchQuery, (newQuery) => {
     return;
   }
 
-  isSearching.value = true;
-  searchTimeout = window.setTimeout(async () => {
-    try {
-      if (searchType.value === 'novels') {
-        const data = await searchNovels(newQuery, 0, 5);
-        searchResults.value = data.content;
-      } else {
-        const data = await searchUsers(newQuery, 0, 5);
-        searchResults.value = data.content;
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      isSearching.value = false;
-    }
+  searchTimeout = window.setTimeout(() => {
+    fetchSearchResults(0);
   }, 500);
 });
+
+watch(searchType, () => {
+    if(searchQuery.value.length >= 2){
+        fetchSearchResults(0);
+    } else {
+        searchResults.value = [];
+    }
+})
+
+const handleSearchScroll = async (e: Event) => {
+  const target = e.target as HTMLElement;
+  // Скролл может быть не до самого пикселя из-за масштабирования, поэтому используем небольшую погрешность
+  const bottom = Math.abs(target.scrollHeight - target.scrollTop - target.clientHeight) < 20;
+
+  if (bottom && !isSearching.value && !searchIsLastPage.value) {
+    await fetchSearchResults(searchPage.value + 1, true);
+  }
+};
+
 
 const closeSearch = () => {
   isSearchOpen.value = false;
@@ -120,12 +189,11 @@ const menu = (event: MouseEvent,res:any) => {
   <header class="main-header">
     <RouterLink to="/" class="logo">Novels Platform</RouterLink>
     <div class="header-right">
-      <div class="search-container" :class="{ 'is-open': isSearchOpen }">
-        <button class="search-trigger" @click="isSearchOpen = !isSearchOpen" v-if="!isSearchOpen">
-          🔍
+      <div class="search-container" :class="{ 'is-open': isSearchOpen }" ref="searchContainerRef">
+        <button class="search-trigger" @click.stop="isSearchOpen = true" v-if="!isSearchOpen">
+          <span class="icon">🔍</span>
         </button>
-
-        <div v-if="isSearchOpen" class="search-bar-wrapper">
+        <div v-if="isSearchOpen" class="search-bar-wrapper" @click.stop>
           <select v-model="searchType" class="search-type-select">
             <option value="novels">📖 Новеллы</option>
             <option value="users">👤 Люди</option>
@@ -139,7 +207,7 @@ const menu = (event: MouseEvent,res:any) => {
           />
           <button class="close-search" @click="closeSearch">✕</button>
 
-          <div v-if="searchResults.length > 0" class="search-results">
+          <div v-if="searchResults.length > 0" class="search-results scrollbar" ref="searchResultsRef" @scroll="handleSearchScroll">
             <div
               v-for="res in searchResults"
               :key="res.id"
@@ -158,6 +226,7 @@ const menu = (event: MouseEvent,res:any) => {
                 <span class="res-sub">{{ searchType === 'novels' ? res.status : 'Пользователь' }}</span>
               </div>
             </div>
+            <div v-if="isSearching" class="search-loading">Загрузка...</div>
           </div>
         </div>
       </div>
@@ -230,9 +299,19 @@ const menu = (event: MouseEvent,res:any) => {
 .theme-toggle{
   background:none;
   border:none;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+.theme-toggle:hover {
+  background: var(--hover-dropdowb);
+}
+
 .menu-wrapper{
   position: relative; /* Чтобы меню знало, где лево/право кнопки */
   display: flex;
@@ -242,13 +321,14 @@ const menu = (event: MouseEvent,res:any) => {
 .logo {
   color: var(--text-header);
   text-decoration: none;
-  font-size: 1.5rem;
-  font-weight: bold;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 .user-status {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   position: relative;
   height: 100%;
 
@@ -256,11 +336,11 @@ const menu = (event: MouseEvent,res:any) => {
 
 .plus-btn{
   background: var(--btn-plus); /* Красивый синий цвет */
-  color: var(--text-header);
+  color: #fff;
   border: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -268,13 +348,13 @@ const menu = (event: MouseEvent,res:any) => {
   transition: transform 0.2s, background 0.2s;
 }
 .plus-btn:hover {
-  background: var(--btn-plus);
-  transform: scale(1.1);
+  background: var(--btn-plus-hover);
+  transform: translateY(-1px);
 }
 
 .plus-icon {
-  font-size: 20px;
-  font-weight: bold;
+  font-size: 18px;
+  font-weight: 600;
   line-height: 1;
 }
 .dropdown-menu {
@@ -283,10 +363,11 @@ const menu = (event: MouseEvent,res:any) => {
   background: var(--bg-dropdown);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 12px var(--shadow-color);
   z-index: 100;
-  min-width: 180px;
+  min-width: 200px;
   overflow: hidden;
+  padding: 4px;
 }
 
 .create-menu {
@@ -300,13 +381,15 @@ const menu = (event: MouseEvent,res:any) => {
 
 .dropdown-menu button {
   width: 100%;
-  padding: 10px 15px;
+  padding: 8px 12px;
   background: none;
   border: none;
   color: var(--text-header);
   text-align: left;
   cursor: pointer;
   font-size: 14px;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
 }
 
 .dropdown-menu button:hover {
@@ -316,7 +399,7 @@ const menu = (event: MouseEvent,res:any) => {
 .separator {
   height: 1px;
   background: var(--border-color);
-  margin: 5px 0;
+  margin: 4px 0;
 }
 
 .main-header {
@@ -324,7 +407,7 @@ const menu = (event: MouseEvent,res:any) => {
   top: 0;
   left: 0;
   right: 0;
-  padding: 0 30px;
+  padding: 0 24px;
   height: 60px;
   z-index: 1000;
   display: flex;
@@ -332,40 +415,57 @@ const menu = (event: MouseEvent,res:any) => {
   align-items: center;
   background-color: var(--bg-header);
   color: var(--text-header);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid var(--border-color);
 }
 
 
 .dropdown-trigger {
-  border-radius: 4px;
+  border-radius: 20px;
+  padding: 4px 12px 4px 4px;
   transition: background 0.2s;
   cursor: pointer;
   outline: none;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  border: 1px solid transparent;
 }
+.dropdown-trigger:hover {
+  background: var(--hover-dropdowb);
+  border-color: var(--border-color);
+}
+.username {
+  font-weight: 500;
+  font-size: 0.9rem;
+  padding-left: 4px;
+}
+
 .user-avatar-lg{
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #ccc;
+  border: 1px solid var(--border-color);
 }
 
 
 .login-button-corner {
-  padding: 10px 20px;
-  background-color: #42b883;
+  padding: 8px 16px;
+  background-color: var(--btn-plus);
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 6px;
   cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+.login-button-corner:hover {
+  background-color: var(--btn-plus-hover);
 }
 .header-right {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
 }
 
 .search-container {
@@ -380,6 +480,14 @@ const menu = (event: MouseEvent,res:any) => {
   font-size: 1.2rem;
   cursor: pointer;
   padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.search-trigger:hover {
+  background: var(--hover-dropdowb);
 }
 
 .search-bar-wrapper {
@@ -387,8 +495,8 @@ const menu = (event: MouseEvent,res:any) => {
   align-items: center;
   background: var(--bg-main);
   border: 1px solid var(--border-color);
-  border-radius: 20px;
-  padding: 2px 10px;
+  border-radius: 8px;
+  padding: 4px 12px;
   width: 400px; /* Ширина развернутого поиска */
   position: relative;
   animation: slideIn 0.3s ease;
@@ -403,41 +511,49 @@ const menu = (event: MouseEvent,res:any) => {
   background: none;
   border: none;
   color: var(--text-header);
-  padding: 8px;
+  padding: 6px 8px;
   width: 100%;
   outline: none;
+  font-size: 0.9rem;
+}
+.search-input::placeholder {
+  color: var(--input-placeholder);
 }
 
 .search-type-select {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   cursor: pointer;
   outline: none;
-  margin-right: 5px;
+  margin-right: 8px;
+  font-weight: 500;
 }
 
 .search-results {
   position: absolute;
-  top: 45px;
+  top: 100%;
+  margin-top: 8px;
   left: 0;
   right: 0;
   background: var(--bg-dropdown);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px var(--shadow-color);
   max-height: 300px;
   overflow-y: auto;
+  padding: 4px;
 }
 
 .result-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px;
+  gap: 12px;
+  padding: 8px;
   cursor: pointer;
   transition: background 0.2s;
+  border-radius: 6px;
 }
 
 .result-item:hover {
@@ -445,8 +561,8 @@ const menu = (event: MouseEvent,res:any) => {
 }
 
 .res-thumb {
-  width: 35px;
-  height: 45px;
+  width: 40px;
+  height: 40px;
   object-fit: cover;
   border-radius: 4px;
 }
@@ -456,14 +572,33 @@ const menu = (event: MouseEvent,res:any) => {
   flex-direction: column;
 }
 
-.res-name { font-size: 0.9rem; font-weight: 600; }
+.res-name { font-size: 0.9rem; font-weight: 500; }
 .res-sub { font-size: 0.75rem; color: var(--text-muted); }
+
+.search-loading {
+  padding: 8px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
 
 .close-search {
   background: none;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 5px;
+  padding: 4px;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.close-search:hover {
+  color: var(--text-header);
+}
+
+.scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
 }
 </style>
