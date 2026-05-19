@@ -1,6 +1,5 @@
 package project.interactivenovelplatform.service;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.web.multipart.MultipartFile;
@@ -9,7 +8,6 @@ import project.interactivenovelplatform.dto.request.RatingRequestDto;
 import project.interactivenovelplatform.dto.response.AllRatingsResponseDto;
 import project.interactivenovelplatform.dto.response.CommentResponseDto;
 import project.interactivenovelplatform.dto.response.RatingResponseDto;
-import project.interactivenovelplatform.security.UserPrincipal;
 
 import java.util.List;
 

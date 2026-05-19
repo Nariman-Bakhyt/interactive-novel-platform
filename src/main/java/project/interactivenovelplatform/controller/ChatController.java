@@ -1,7 +1,7 @@
 package project.interactivenovelplatform.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -119,7 +119,7 @@ public class ChatController {
     @PostMapping("/{conversationId}/members")
     public ResponseEntity<ConversationResponseDto> addUserToGroup(
             @AuthenticationPrincipal UserPrincipal user,
-            @PathVariable Long conversationId,
+            @PathVariable @Valid Long conversationId,
             @RequestBody List<Long> targetUserIds) {
 
         return ResponseEntity.ok().body(chatService.addUserToGroup(user.getId(), targetUserIds, conversationId));

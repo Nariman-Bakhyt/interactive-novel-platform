@@ -8,8 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Slice;
 import org.springframework.context.ApplicationEventPublisher;
 import project.interactivenovelplatform.event.SocialWebsocketEvent;
-import java.util.HashMap;
-import java.util.Map;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
 import org.springframework.security.access.AccessDeniedException;

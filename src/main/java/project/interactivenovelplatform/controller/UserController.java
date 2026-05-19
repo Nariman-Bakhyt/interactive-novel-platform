@@ -21,8 +21,6 @@ import project.interactivenovelplatform.security.UserPrincipal;
 import project.interactivenovelplatform.service.StorageService;
 import project.interactivenovelplatform.service.UserService;
 
-import java.security.Principal;
-
 @RestController
 @RequestMapping("/api/users")
 @AllArgsConstructor

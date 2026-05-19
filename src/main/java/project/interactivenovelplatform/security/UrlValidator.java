@@ -10,7 +10,9 @@ public class UrlValidator {
             "interactivenovel.ru",
             "localhost:9000",
             "http://192.168.8.*:9000",
-            "127.0.0.1:9000"
+            "127.0.0.1:9000",
+            "localhost",
+            "127.0.0.1"
     );
 
     public static boolean isTrusted(String url) {
