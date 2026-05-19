@@ -16,13 +16,13 @@ import java.util.Optional;
 public interface ConversationMemberRepository extends JpaRepository<ConversationMembersEntity, ConversationMembersId> {
     // Получить список чатов пользователя (отсортированных по последнему сообщению)
     @Query(value = """
-        SELECT cm FROM ConversationMembersEntity cm 
-        JOIN FETCH cm.conversation c 
-        WHERE cm.user.id = :userId AND cm.isDeleted = false 
+        SELECT cm FROM ConversationMembersEntity cm
+        JOIN FETCH cm.conversation c
+        WHERE cm.user.id = :userId AND cm.isDeleted = false
         ORDER BY cm.isPinned DESC, c.lastMessageAt DESC
     """,
     countQuery = """
-        SELECT COUNT(cm) FROM ConversationMembersEntity cm 
+        SELECT COUNT(cm) FROM ConversationMembersEntity cm
         WHERE cm.user.id = :userId AND cm.isDeleted = false
     """)
     Page<ConversationMembersEntity> findActiveChatsForUser(@Param("userId") Long userId, Pageable pageable);

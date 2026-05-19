@@ -27,7 +27,6 @@ import java.util.List;
 @RequestMapping("/api/comments")
 public class CommentController {
     private final CommentService commentService;
-    private final NovelService novelService;
 
     @RateLimited(capacity = 100, minutes = 1)
     @GetMapping("/public")

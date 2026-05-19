@@ -70,12 +70,4 @@ public class NovelEntity {
             inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
     private Set<TagEntity> tags = new HashSet<>();
-
-    public double calculateAverage(){
-        if(ratingCount == 0){
-            return 0.0;
-        }
-        double average = (double) totalScore / ratingCount;
-        return Math.round(average * 100.0) / 100.0;
-    }
 }

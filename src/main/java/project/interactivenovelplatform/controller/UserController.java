@@ -26,7 +26,6 @@ import project.interactivenovelplatform.service.UserService;
 @AllArgsConstructor
 public class UserController {
     private final UserService userService;
-    private final StorageService storageService;
 
     @RateLimited(capacity = 20, minutes = 1)
     @GetMapping("/me")
