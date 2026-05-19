@@ -5,6 +5,7 @@ import { findAllNovels } from "@/api/novelService.ts";
 import { searchUsers } from "@/api/profileService.ts";
 import type { NovelResponseDto, NovelSearchRequestDto, TagOrGenreResponseDto } from "@/types/novel.ts";
 import NovelCard from "@/components/NovelCard.vue";
+import { DEFAULT_AVATAR } from "@/utils/media.ts";
 
 const router = useRouter();
 const novels = ref<NovelResponseDto[]>([]);
@@ -282,7 +283,7 @@ onUnmounted(() => {
                     class="autocomplete-item"
                     @click="selectAuthor(author)"
                   >
-                    <img :src="author.avatarUrl || 'http://127.0.0.1:9000/interactive-novel-assets/avatars/default-avatar.png'" class="author-avatar-sm" />
+                    <img :src="author.avatarUrl || DEFAULT_AVATAR" class="author-avatar-sm" />
                     <span>{{ author.username }}</span>
                   </div>
                   <div v-if="isAuthorSearching" class="autocomplete-loading">Загрузка...</div>

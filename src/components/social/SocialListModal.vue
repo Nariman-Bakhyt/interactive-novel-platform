@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {onMounted, onUnmounted, ref} from "vue";
 import RelationshipButton from "@/components/social/RelationshipButton.vue";
+import { DEFAULT_AVATAR } from "@/utils/media.ts";
 
 const props = defineProps<{
   title: string;
@@ -59,7 +60,7 @@ onUnmounted(() => observer.disconnect());
 
       <div class="list-container">
         <div v-for="user in users" :key="user.userId" class="user-item">
-          <img :src="user.avatarUrl || 'http://127.0.0.1:9000/interactive-novel-assets/avatars/default-avatar.png'" class="mini-avatar">
+          <img :src="user.avatarUrl || DEFAULT_AVATAR" class="mini-avatar">
           <div class="user-content">
             <div class="user-header">
               <span class="username">{{ user.username }}</span>

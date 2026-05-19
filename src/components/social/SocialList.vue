@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {ref, onMounted, onUnmounted, nextTick, inject} from "vue";
 import RelationshipButton from "@/components/social/RelationshipButton.vue";
+import { DEFAULT_AVATAR } from "@/utils/media.ts";
 
 const props = defineProps<{
   fetchFn: (page: number, size: number) => Promise<any>;
@@ -63,7 +64,7 @@ onUnmounted(() => observer?.disconnect());
          @click="openUserProfile(user.userId)"
          @contextmenu.prevent="openUserMenu($event, user.userId, user.username)"
     >
-      <img :src="user.avatarUrl || 'http://127.0.0.1:9000/interactive-novel-assets/avatars/default-avatar.png'" class="mini-avatar">
+      <img :src="user.avatarUrl || DEFAULT_AVATAR" class="mini-avatar">
 
       <div class="user-content">
         <span class="username">{{ user.username }}</span>

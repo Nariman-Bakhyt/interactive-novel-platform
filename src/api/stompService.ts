@@ -6,8 +6,16 @@ export const isConnected = ref(false);
 // Создаем экземпляр клиента один раз внутри этого файла
 
 
+const getBrokerURL = (): string => {
+  if (import.meta.env.PROD) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}/ws`;
+  }
+  return `ws://${import.meta.env.VITE_API_IP}:8080/ws`;
+};
+
 const stompClient = new Client({
-  brokerURL: `ws://${import.meta.env.VITE_API_IP}:8080/ws`,
+  brokerURL: getBrokerURL(),
   // Убрали статический connectHeaders отсюда
   debug: (str) => console.log('STOMP Debug:', str),
   reconnectDelay: 5000,

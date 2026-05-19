@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { NovelResponseDto } from "@/types/novel.ts";
 import LibraryButton from "@/components/library/LibraryButton.vue";
+import { DEFAULT_COVER } from "@/utils/media.ts";
 
 const props = defineProps<{
   novel: NovelResponseDto;
@@ -53,7 +54,7 @@ const toggleInfo = (event: Event) => {
 
     <div class="novel-card" @mouseenter="handleMouseEnter" @click="handleCardClick">
       <div class="cover-wrapper">
-        <img :src="novel.coverUrl || 'http://127.0.0.1:9000/interactive-novel-assets/covers/default-cover.png'" :alt="novel.title" />
+        <img :src="novel.coverUrl || DEFAULT_COVER" :alt="novel.title" />
         <button class="info-trigger" @click="toggleInfo"><i>i</i></button>
       </div>
       <div class="novel-info">

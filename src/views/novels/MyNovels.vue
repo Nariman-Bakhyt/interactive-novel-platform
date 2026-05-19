@@ -23,7 +23,7 @@
       <div v-for="novel in novels" :key="novel.id" class="novel-card">
         <div class="cover-wrapper">
           <img
-            :src="novel.coverUrl || 'http://127.0.0.1:9000/interactive-novel-assets/covers/default-cover.png'"
+            :src="novel.coverUrl || DEFAULT_COVER"
             alt="Обложка"
             class="card-cover"
           >
@@ -56,6 +56,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { getMyNovels } from '@/api/novelService';
 import type { NovelResponseDto } from '@/types/novel';
+import { DEFAULT_COVER } from '@/utils/media';
 
 const router = useRouter();
 const novels = ref<NovelResponseDto[]>([]); // Указываем тип массива

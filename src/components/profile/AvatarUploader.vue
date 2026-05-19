@@ -1,5 +1,5 @@
 <script setup lang = "ts">
-import {ref, defineProps, defineEmits, watch, computed} from 'vue';
+import {ref, watch, computed} from 'vue';
 import {uploadAvatar} from "@/api/profileService.ts";
 import type {ProfileResponseDto, UserResponseDto} from '@/types/auth';
 import {useAuthStore} from "@/api/auth.ts";

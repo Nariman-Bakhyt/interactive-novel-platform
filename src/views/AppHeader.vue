@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/api/auth.ts'; // Используем ваш Pinia Store
 import { useRouter } from 'vue-router';
-import AuthModal from "@/views/auth/AuthModal.vue";
+
 import {computed, inject, onMounted, ref, watch, onUnmounted, nextTick} from "vue";
 import {useThemeStore} from "@/api/theme.ts";
 import {searchNovels} from "@/api/novelService.ts";
 import {searchUsers} from "@/api/profileService.ts";
+import { DEFAULT_COVER, DEFAULT_AVATAR } from "@/utils/media.ts";
+import AuthModal from "@/views/auth/AuthModal.vue";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -172,7 +174,7 @@ const closeDropdownWithDelay = () => {
 const avatarDisplayUrl = computed(() => {
   const url = authStore.userDetails?.avatarUrl;
   if (!url) {
-    return 'http://127.0.0.1:9000/interactive-novel-assets/avatars/default-avatar.png';
+    return DEFAULT_AVATAR;
   }
   return `${url}?t=${authStore.avatarTimestamp}`;
 });
@@ -216,9 +218,7 @@ const menu = (event: MouseEvent,res:any) => {
               @contextmenu.prevent="menu($event,res)"
             >
               <img
-                :src="res.coverUrl || res.avatarUrl || (searchType === 'novels'
-                ? 'http://127.0.0.1:9000/interactive-novel-assets/covers/default-cover.png'
-                : 'http://127.0.0.1:9000/interactive-novel-assets/avatars/default-avatar.png')"
+                :src="res.coverUrl || res.avatarUrl || (searchType === 'novels' ? DEFAULT_COVER : DEFAULT_AVATAR)"
                 class="res-thumb"
               >
               <div class="res-info">

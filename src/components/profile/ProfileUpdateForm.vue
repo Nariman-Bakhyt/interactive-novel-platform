@@ -2,7 +2,7 @@
 import { updateProfileApi,changePasswordApi } from '@/api/profileService.ts';
 import type {UserUpdateRequestDto, ChangePasswordRequestDto } from '@/types/user';
 import type {ProfileResponseDto, UserResponseDto} from '@/types/auth';
-import { defineProps, defineEmits, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 import {useAuthStore} from "@/api/auth.ts";
 
 // --- PROPS и ЭМИТЫ ---

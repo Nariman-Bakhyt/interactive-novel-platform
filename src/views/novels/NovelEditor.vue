@@ -8,6 +8,7 @@ import type {
   TagOrGenreResponseDto
 } from "@/types/novel.ts";
 import {useToastStore} from "@/components/toast/toastStore.ts";
+import {DEFAULT_COVER} from "@/utils/media.ts";
 import {
   createNovel,
   deleteChapter,
@@ -27,7 +28,7 @@ const isLoading = ref(false);
 const isSaving = ref(false);
 const isUploadingCover = ref(false);
 
-const defaultCover = 'http://127.0.0.1:9000/interactive-novel-assets/covers/default-cover.png';
+const defaultCover = DEFAULT_COVER;
 const fileInput = ref<HTMLInputElement | null>(null);
 const chaptersList = ref<ChapterShortResponseDto[]>([]);
 const allGenres = ref<TagOrGenreResponseDto[]>([]);

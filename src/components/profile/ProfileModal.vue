@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, defineEmits, onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '@/api/auth.ts';
 import type {ProfileResponseDto, UserResponseDto} from '@/types/auth';
 import AvatarUploader from './AvatarUploader.vue';

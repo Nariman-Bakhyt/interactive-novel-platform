@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { useAuthStore } from "@/api/auth.ts";
-import axios from "axios";
+import {ref, watch} from 'vue';
+import {useAuthStore} from "@/api/auth.ts";
 import {VerificationTokenType} from "@/types/auth.ts";
 
 

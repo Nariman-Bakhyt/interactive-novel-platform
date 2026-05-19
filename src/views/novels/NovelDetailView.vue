@@ -4,6 +4,7 @@ import {useRoute, useRouter} from 'vue-router';
 import {getNovelById} from "@/api/novelService.ts";
 import type {ChapterShortResponseDto, NovelResponseDto} from "@/types/novel.ts";
 import type {AllRatingResponseDto} from "@/types/rating.ts";
+import {DEFAULT_COVER} from "@/utils/media.ts";
 import {deleteRating, getRatings, setRating} from "@/api/ratingService.ts";
 import type {CommentResponseDto} from "@/types/comment.ts";
 import {deleteComment, getComments} from "@/api/commentService.ts";
@@ -432,7 +433,7 @@ const handleDelete = async () => {
       <header class="novel-header">
         <div class="cover-section">
           <img
-            :src="novel.coverUrl || 'http://127.0.0.1:9000/interactive-novel-assets/covers/default-cover.png'"
+            :src="novel.coverUrl || DEFAULT_COVER"
             :alt="novel.title"
             class="main-cover"
           />

@@ -3,7 +3,7 @@ import {useAuthStore} from "@/api/auth.ts";
 import {getCachedVisitorId} from "@/api/fingerprint.ts";
 
 const apiClient = axios.create({
-  baseURL: `http://${import.meta.env.VITE_API_IP}:8080/api`,
+  baseURL: import.meta.env.PROD ? '/api' : `http://${import.meta.env.VITE_API_IP}:8080/api`,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
