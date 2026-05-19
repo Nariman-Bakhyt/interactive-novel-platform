@@ -21,7 +21,6 @@ import project.interactivenovelplatform.repository.*;
 import project.interactivenovelplatform.security.UserPrincipal;
 import project.interactivenovelplatform.service.*;
 
-import java.security.Principal;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -188,14 +187,11 @@ public class NovelServiceImpl implements NovelService {
     @Transactional(readOnly = true)
     public Page<NovelResponseDto> findAll(NovelSearchRequestDto dto, Pageable pageable) {
 
-        // 1. Базовая спецификация (отсекаем удаленные и скрытые новеллы)
-        Specification<NovelEntity> spec = (root, query, cb) -> {
-            query.distinct(true);
-            return cb.and(
-                    cb.not(root.get("status").in(NON_PUBLIC_STATUSES)),
-                    cb.equal(root.get("isDeleted"), false)
-            );
-        };
+        
+        Specification<NovelEntity> spec = (root, query, cb) -> cb.and(
+                cb.not(root.get("status").in(NON_PUBLIC_STATUSES)),
+                cb.equal(root.get("isDeleted"), false)
+        );
 
         for (Sort.Order order : pageable.getSort()) {
             if (!ALLOWED_SORT_FIELDS.contains(order.getProperty())) {
@@ -203,19 +199,19 @@ public class NovelServiceImpl implements NovelService {
             }
         }
 
-        // 2. Архитектурный переключатель сортировки
-        // По умолчанию используем ту сортировку, которую прислал фронтенд (по дате, рейтингу и т.д.)
+        
+        
         Pageable effectivePageable = pageable;
 
         if (dto != null) {
 
-            // ЕСЛИ ИДЕТ ПОИСК ПО ТЕКСТУ:
+            
             if (dto.getTitle() != null && !dto.getTitle().isBlank()) {
                 spec = spec.and(NovelSpecifications.titleLike(dto.getTitle()));
 
-                // Убиваем стандартную сортировку из Pageable, заменяя её на Sort.unsorted().
-                // Это позволяет сработать сложной сортировке по релевантности (query.orderBy)
-                // внутри спецификации titleLike без SQL-конфликтов.
+                
+                
+                
                 effectivePageable = PageRequest.of(
                         pageable.getPageNumber(),
                         pageable.getPageSize(),
@@ -223,7 +219,7 @@ public class NovelServiceImpl implements NovelService {
                 );
             }
 
-            // Добавляем остальные фильтры (они работают всегда)
+            
             spec = spec.and(NovelSpecifications.hasAuthor(dto.getAuthorId()))
                     .and(NovelSpecifications.hasStatus(dto.getStatus()))
                     .and(NovelSpecifications.hasRatingInRange(dto.getMinRating(), dto.getMaxRating()))
@@ -231,12 +227,12 @@ public class NovelServiceImpl implements NovelService {
                     .and(NovelSpecifications.filterByTags(dto.getIncludedTagIds(), dto.getExcludedTagIds()));
         }
 
-        // 3. Шаг "Thin Page": Вытаскиваем и сортируем ТОЛЬКО идентификаторы (id)
+        
         Pageable finalEffectivePageable = effectivePageable;
         Page<NovelRepository.NovelIdOnly> thinPage = novelRepository.findBy(spec, q -> q.as(NovelRepository.NovelIdOnly.class).page(finalEffectivePageable));
 
         if (thinPage.isEmpty()) {
-            // Возвращаем пустую страницу с ОРИГИНАЛЬНЫМ pageable, чтобы фронт получил правильные метаданные
+            
             return Page.empty(pageable);
         }
 
@@ -264,17 +260,17 @@ public class NovelServiceImpl implements NovelService {
         if(novel.getStatus() == Novel.RETRACTED) {
             throw new IllegalStateException("Нельзя редактировать роман, отозванный автором.");
         }
-        // 1. Обновление Title:
+        
         if (dto.getTitle() != null && !dto.getTitle().isBlank()) {
             novel.setTitle(dto.getTitle());
         }
 
-        // 2. Обновление Description:
+        
         if (dto.getDescription() != null && !dto.getDescription().isBlank()) {
             novel.setDescription(dto.getDescription());
         }
 
-        // 3. Обновление Status:
+        
         if (dto.getStatus() != null && !dto.getStatus().isBlank()) {
             Novel newStatus = getStatusFromString(dto.getStatus());
             if(newStatus == Novel.RETRACTED) {
@@ -295,13 +291,13 @@ public class NovelServiceImpl implements NovelService {
     }
 
     @Override
-    public NovelResponseDto updateCoverUrl(Long id, MultipartFile file, Principal principal){
+    public NovelResponseDto updateCoverUrl(Long id, MultipartFile file){
         var novel = novelRepository.findById(id)
                 .filter(n -> !n.getIsDeleted())
                 .orElseThrow(() -> new EntityNotFoundException("новелла не найдена"));
         String oldUrl = novel.getCoverUrl();
 
-        // 2. Используем дату создания новеллы для пути (чтобы папка не менялась)
+        
         String datePath = novel.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
         String folderPath = String.format("covers/users/%d/%s", novel.getAuthor().getId(), datePath);
         String newUrl = null;
@@ -314,7 +310,7 @@ public class NovelServiceImpl implements NovelService {
 
                 newUrl = storageService.uploadFile(file, folderPath, filename);
                 final String finalUrl = newUrl;
-                // 5. Обновляем БД
+                
                 var savedNovel = transactionTemplate.execute(_ ->saveNewCoverUrl(id,finalUrl));
 
                 if (oldUrl != null && newUrl != null) {

@@ -45,7 +45,7 @@ public class GuestIdFilter extends OncePerRequestFilter {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-        // Если JWT фильтр уже нашел юзера
+        
         if (auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)) {
             filterChain.doFilter(request, response);
             return;
@@ -53,6 +53,7 @@ public class GuestIdFilter extends OncePerRequestFilter {
 
 
 
+        // X-Visitor-Id (фингерпринт устройства) необходим для ограничения частоты сброса кук и предотвращения DDoS (cookie-clearing attack).
         String visitorId = request.getHeader("X-Visitor-Id");
 
         if (visitorId == null || visitorId.isBlank()) {
@@ -71,15 +72,16 @@ public class GuestIdFilter extends OncePerRequestFilter {
                     .orElse(null);
         }
 
-        // 2. Валидация и создание (если нужно)
+        
         if (guestToken == null || !validateToken(guestToken)) {
 
-            // ПРОВЕРКА ЛИМИТА: Сколько раз этот visitorId может запрашивать новый guest_id
+            
             if (!tryConsumeGenerationLimit(visitorId)) {
                 handleLimitExceeded(response);
                 return;
             }
 
+            // Подпись UUID с помощью HMAC защищает от подделки guest_id клиентом без хранения сессии на сервере (stateless).
             String newUuid = UUID.randomUUID().toString();
             String signature = generateSignature(newUuid);
             String secureToken = newUuid + "." + signature;
@@ -87,9 +89,10 @@ public class GuestIdFilter extends OncePerRequestFilter {
             Cookie guestCookie = new Cookie("guest_id", secureToken);
             guestCookie.setHttpOnly(true);
             guestCookie.setPath("/");
-            guestCookie.setMaxAge(60 * 60 * 24 * 365); // 1 год
+            guestCookie.setMaxAge(60 * 60 * 24 * 365); 
 
             response.addCookie(guestCookie);
+            // Используем request attribute вместо SecurityContext, чтобы не загрязнять контекст безопасности неавторизованным пользователем.
             request.setAttribute("VALID_GUEST_ID", newUuid);
         } else {
             request.setAttribute("VALID_GUEST_ID", guestToken.split("\\.")[0]);
@@ -99,7 +102,7 @@ public class GuestIdFilter extends OncePerRequestFilter {
     }
 
     private boolean tryConsumeGenerationLimit(String visitorId) {
-        // Лимит: 5 генерации ID в 10 минут (чтобы не спамили удалением кук)
+        
         BucketConfiguration config = BucketConfiguration.builder()
                 .addLimit(limit -> limit.capacity(5).refillGreedy(3, Duration.ofMinutes(10)))
                 .build();

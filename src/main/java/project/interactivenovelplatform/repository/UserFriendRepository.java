@@ -40,16 +40,18 @@ public interface UserFriendRepository extends JpaRepository<UserFriendEntity, Lo
     Optional<UserFriendEntity> findUserFriendBySenderIdAndReceiverIdAndStatus(Long senderId, Long receiverId, RelationStatus status);
     Optional<UserFriendEntity> findUserFriendByIdAndStatusAndReceiverId(Long id, RelationStatus status, Long receiverId);
 
-    @EntityGraph(attributePaths = {"sender"}) // Качаем тех, кто кинул заявку МНЕ
+    @EntityGraph(attributePaths = {"sender"}) 
     Slice<UserFriendEntity> findByReceiverIdAndStatus(Long receiverId, RelationStatus status, Pageable pageable);
 
     @EntityGraph(attributePaths = {"receiver"})
     Slice<UserFriendEntity> findBySenderIdAndStatus(Long senderId, RelationStatus status, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"sender", "receiver"}) // Качаем друзей (обе стороны)
+    @EntityGraph(attributePaths = {"sender", "receiver"}) 
     @Query("SELECT f FROM UserFriendEntity f WHERE (f.sender.id = :userId OR f.receiver.id = :userId) AND f.status = :status")
     Slice<UserFriendEntity> findAllFriendsByUserId(@Param("userId") Long userId, @Param("status") RelationStatus status, Pageable pageable);
 
+    // Так как связь дружбы симметрична и хранится одной строкой (sender-receiver), выражение CASE вычисляет ID друга
+    // на стороне СУБД. Это избавляет от загрузки полных сущностей и маппинга на уровне Java, отдавая лишь плоские ID.
     @Query("""
         SELECT CASE WHEN f.sender.id = :userId THEN f.receiver.id ELSE f.sender.id  END , f.id
         FROM UserFriendEntity f

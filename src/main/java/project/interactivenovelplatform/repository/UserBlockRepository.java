@@ -16,8 +16,8 @@ import java.util.Set;
 public interface UserBlockRepository extends JpaRepository<UserBlockEntity, Long> {
     boolean existsUserBlockEntityByBlockerIdAndBlockedId (Long blockerId, Long blockedId) ;
     @Query("""
-        SELECT COUNT(b) > 0 FROM UserBlockEntity b 
-        WHERE (b.blocker.id = :u1 AND b.blocked.id = :u2) 
+        SELECT COUNT(b) > 0 FROM UserBlockEntity b
+        WHERE (b.blocker.id = :u1 AND b.blocked.id = :u2)
            OR (b.blocker.id = :u2 AND b.blocked.id = :u1)
     """)
     boolean isBlockedEitherWay(@Param("u1") Long u1, @Param("u2") Long u2);
@@ -29,14 +29,14 @@ public interface UserBlockRepository extends JpaRepository<UserBlockEntity, Long
     List<Object[]> findAllBlockedIds(@Param("userId") Long userId);
 
     @Query("""
-        SELECT ub.blocker.id as blockerId, ub.blocked.id as blockedId 
-        FROM UserBlockEntity ub 
+        SELECT ub.blocker.id as blockerId, ub.blocked.id as blockedId
+        FROM UserBlockEntity ub
         WHERE (ub.blocked.id = :myId AND ub.blocker.id IN :opponentIds)
            OR (ub.blocker.id = :myId AND ub.blocked.id IN :opponentIds)
     """)
     List<BlockInfo> findAllBlockInfoBetween(@Param("myId") Long myId, @Param("opponentIds") Set<Long> opponentIds);
 
-    // Проекция (вложенный интерфейс прямо в репозитории)
+    
     interface BlockInfo {
         Long getBlockerId();
         Long getBlockedId();

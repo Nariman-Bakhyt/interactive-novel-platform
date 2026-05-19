@@ -17,7 +17,7 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
     Optional<AppUserEntity> findById(Long id);
     Optional <AppUserEntity> findByUsernameIgnoreCase(String username);
     Optional<AppUserEntity> findByEmailIgnoreCase(String email);
-    @EntityGraph(attributePaths = {"role"}) // "roles" должно совпадать с именем поля в Entity
+    @EntityGraph(attributePaths = {"role"}) 
     @Query("SELECT u FROM AppUserEntity u WHERE " +
             "UPPER(u.username) = UPPER(:input) OR " +
             "UPPER(u.email) = UPPER(:input) OR " +
@@ -40,6 +40,8 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
     Optional<Long> findIdByUsername(@Param("username") String username);
 
 
+    // Использование проекционного конструктора DTO в JPQL с агрегатными подзапросами вычисляет счетчики и состояния связей в один roundtrip к БД.
+    // Это исключает N+1 query problem и экономит 8-10 отдельных обращений к СУБД за смежными сущностями.
     @Query("""
     SELECT new project.interactivenovelplatform.dto.response.ProfileResponseDto(
         u.id,
@@ -119,21 +121,21 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
     @Query("""
     SELECT new project.interactivenovelplatform.dto.response.RelationshipStateDto(
         u.id,
-        ((SELECT COUNT(f1) FROM UserFollowerEntity f1 
+        ((SELECT COUNT(f1) FROM UserFollowerEntity f1
                   WHERE f1.sender.id = :currentUserId AND f1.receiver.id = u.id) > 0),
-        
-        ((SELECT COUNT(f2) FROM UserFollowerEntity f2 
+
+        ((SELECT COUNT(f2) FROM UserFollowerEntity f2
           WHERE f2.sender.id = u.id AND f2.receiver.id = :currentUserId) > 0),
-          
+
         ((SELECT COUNT(fr) FROM UserFriendEntity fr
           WHERE fr.status = project.interactivenovelplatform.entity.RelationStatus.FRIEND
           AND ((fr.sender.id = :currentUserId AND fr.receiver.id = u.id)
             OR (fr.sender.id = u.id AND fr.receiver.id = :currentUserId))) > 0),
-            
+
         ((SELECT COUNT(cf) FROM UserCloseFriendsEntity cf WHERE cf.owner.id = :currentUserId AND cf.friend.id = u.id) > 0),
-        
+
         ((SELECT COUNT(b1) FROM UserBlockEntity b1 WHERE b1.blocker.id = :currentUserId AND b1.blocked.id = u.id) > 0),
-        
+
         ((SELECT COUNT(b2) FROM UserBlockEntity b2 WHERE b2.blocker.id = u.id AND b2.blocked.id = :currentUserId) > 0)
     )
     FROM AppUserEntity u WHERE u.id IN :targetIds

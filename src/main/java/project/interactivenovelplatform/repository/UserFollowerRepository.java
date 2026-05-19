@@ -27,10 +27,10 @@ public interface UserFollowerRepository extends JpaRepository<UserFollowerEntity
 
     Optional<UserFollowerEntity> findBySenderIdAndReceiverId(Long userA, Long userB);
 
-    @EntityGraph(attributePaths = {"sender"}) // Качаем тех, кто подписался на меня
+    @EntityGraph(attributePaths = {"sender"}) 
     Page<UserFollowerEntity> findByReceiverId(Long receiverId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"receiver"}) // Качаем тех, на кого я подписан
+    @EntityGraph(attributePaths = {"receiver"}) 
     Page<UserFollowerEntity> findBySenderId(Long senderId, Pageable pageable);
 
     @Query("SELECT f.receiver.id , f.id  FROM UserFollowerEntity f WHERE f.sender.id = :senderId")

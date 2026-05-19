@@ -16,7 +16,7 @@ public class MessageResponseDto {
     private OffsetDateTime timestamp;
     private Metadata metadata;
 
-    // Инфо об отправителе
+    
     private Long senderId;
     private String senderUsername;
     private String senderAvatarUrl;

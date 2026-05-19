@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ConversationMemberRepository extends JpaRepository<ConversationMembersEntity, ConversationMembersId> {
-    // Получить список чатов пользователя (отсортированных по последнему сообщению)
+    
     @Query(value = """
         SELECT cm FROM ConversationMembersEntity cm
         JOIN FETCH cm.conversation c
@@ -41,7 +41,7 @@ public interface ConversationMemberRepository extends JpaRepository<Conversation
             "WHERE m.conversation.id = :conversationId AND m.isDeleted = true")
     void restoreAllMembersInConversation(@Param("conversationId") Long conversationId);
 
-    // Метод для быстрого получения всех ID участников (для рассылки WebSocket)
+    
     @Query("SELECT m.user.id FROM ConversationMembersEntity m WHERE m.conversation.id = :conversationId")
     List<Long> findAllMemberIdsByConversationId(@Param("conversationId") Long conversationId);
 

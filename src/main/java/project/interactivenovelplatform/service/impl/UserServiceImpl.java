@@ -168,7 +168,7 @@ public class UserServiceImpl  implements UserService {
                     throw new DuplicateKeyException("Имя пользователя уже занято.");
                 }
 
-                // Конфликт по EMAIL
+                
                 if (isEmailChanged && conflictUser.getEmail().equalsIgnoreCase(dto.getNewEmail())&& !userId.equals(conflictUser.getId())) {
                     throw new DuplicateKeyException("Email уже занят.");
                 }
@@ -200,7 +200,7 @@ public class UserServiceImpl  implements UserService {
                 .orElseThrow(()->new EntityNotFoundException("Пользователь с Id: " + userId + " не найден"));
         String oldAvatarUrl = user.getAvatarUrl();
 
-        // 2. Используем дату создания новеллы для пути (чтобы папка не менялась)
+        
         String folderPath = "avatars/users/" + user.getId();
         String newAvatarUrl = null;
         try {
@@ -255,7 +255,7 @@ public class UserServiceImpl  implements UserService {
         return UserPrincipal.create(user);
     }
 
-    // Выносим вспомогательную логику в приватный метод для читаемости
+    
     private Optional<AppUserEntity> tryFindById(String input) {
         if (input != null && input.matches("\\d+")) {
             try {
@@ -274,9 +274,9 @@ public class UserServiceImpl  implements UserService {
         AppUserEntity user = userRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new UsernameNotFoundException(username));
 
-        // Снимаем блокировку, если время истекло, но флаг isLocked не сброшен (на всякий случай)
+        
         if (user.isLocked() && user.getLockTime().isBefore(OffsetDateTime.now())) {
-            resetFailedAttempts(user); // Сбрасываем счетчик и флаги
+            resetFailedAttempts(user); 
         }
         int newCount = user.getFailedAttemptCount() + 1;
         user.setFailedAttemptCount(newCount);
@@ -291,15 +291,15 @@ public class UserServiceImpl  implements UserService {
         userRepository.save(user);
     }
 
-    // Вспомогательный метод для определения времени блокировки
+    
     private long getLockDuration(int failedCount) {
         if (failedCount == 3) return 10;
         if (failedCount == 4) return 20;
         if (failedCount == 5) return 40;
-        return 80; // 80 минут для всех последующих
+        return 80; 
     }
 
-    // Метод для сброса счетчиков после успешного входа или истечения времени
+    
     public void resetFailedAttempts(AppUserEntity user) {
         user.setLocked(false);
         user.setLockTime(null);
@@ -310,7 +310,7 @@ public class UserServiceImpl  implements UserService {
         AppUserEntity user = userRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new UsernameNotFoundException(username));
 
-        // Если счетчик равен 0 и isLocked = false, ничего не делаем.
+        
         if (user.getFailedAttemptCount() > 0 || user.isLocked()) {
             user.setFailedAttemptCount(0);
             user.setLocked(false);

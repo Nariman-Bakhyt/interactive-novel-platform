@@ -107,7 +107,7 @@ public class UserLibraryServiceImpl implements UserLibraryService {
             throw new AccessDeniedException("Библиотека доступна только для подписчиков");
         }
         List<PrivacyLevel> allowedBookLevels = new ArrayList<>();
-        allowedBookLevels.add(PrivacyLevel.EVERYONE); // Публичные книги видят все, кто прошел фейс-контроль
+        allowedBookLevels.add(PrivacyLevel.EVERYONE); 
 
         if (isFollower) {
             allowedBookLevels.add(PrivacyLevel.FOLLOWERS);

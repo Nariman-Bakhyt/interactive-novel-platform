@@ -19,12 +19,12 @@ public class ScheduledChapterPublisher {
     private final ChapterRepository chapterRepository;
     private final NovelRepository novelRepository;
 
-    @Scheduled(cron = "0 * * * * *") // Каждую минуту
+    @Scheduled(cron = "0 * * * * *") 
     @Transactional
     public void publishScheduledChapters() {
         OffsetDateTime now = OffsetDateTime.now();
         
-        // Находим только те главы, время публикации которых пришло
+        
         List<ChapterEntity> scheduledChapters = chapterRepository.findAllByStatusAndPublishedAtBeforeAndIsDeletedFalse(
                 ChapterStatus.SCHEDULED, now
         );
@@ -33,7 +33,7 @@ public class ScheduledChapterPublisher {
             chapter.setStatus(ChapterStatus.PUBLISHED);
             chapterRepository.save(chapter);
 
-            // Обновляем статистику соответствующей новеллы инкрементально
+            
             NovelEntity novel = chapter.getNovel();
             novel.setChapterCount(novel.getChapterCount() + 1);
             if (novel.getLastChapterAddedAt() == null || chapter.getPublishedAt().isAfter(novel.getLastChapterAddedAt())) {

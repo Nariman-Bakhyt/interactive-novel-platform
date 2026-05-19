@@ -32,38 +32,12 @@ public class NovelSpecifications {
         return (root, query, cb) -> status == null ? null : cb.equal(root.get("status"), status);
     }
 
-    public static Specification<NovelEntity> hasAllGenres(Collection<String> genresNames) {
-        return (root, query, cb) ->{
-            if (genresNames == null || genresNames.isEmpty() ) return null;
-            Predicate[] predicates = genresNames.stream().map(
-                    name -> {
-                        Join<NovelEntity, GenreEntity> genreJoin = root.join("genres");
-                        return cb.equal(genreJoin.get("name"), name);
-                    })
-                    .toArray(Predicate[]::new);
-            return cb.and(predicates);
-        };
-    }
-
-    public  static Specification<NovelEntity> hasAllTags(Collection<String> tagNames){
-        return (root, query, cb) -> {
-            if (tagNames == null || tagNames.isEmpty() ) return null;
-            Predicate[] predicates = tagNames.stream().map(
-                    name->{
-                        Join<NovelEntity, TagEntity> tagJoin = root.join("tags");
-                        return cb.equal(tagJoin.get("name"), name);
-                    })
-                    .toArray(Predicate[]::new);
-            return cb.and(predicates);
-
-        };
-
-    }
 
     public static Specification<NovelEntity> filterByTags(Collection<Long> includedIds, Collection<Long> excludedIds) {
         return (root, query, cb) -> {
             Predicate predicate = cb.conjunction();
             if(includedIds != null && !includedIds.isEmpty()) {
+                // Используем subquery с группировкой и HAVING, чтобы реализовать логику строгого "И" (AND) для тегов. Обычный JOIN применил бы "ИЛИ" (OR).
                 Subquery<Long> subqueryInclude = query.subquery(Long.class);
                 Root<NovelEntity> subRootInclude = subqueryInclude.from(NovelEntity.class);
                 Join<NovelEntity, TagEntity> tagJoin = subRootInclude.join("tags");
@@ -77,6 +51,7 @@ public class NovelSpecifications {
             }
 
             if (excludedIds != null && !excludedIds.isEmpty()) {
+                // Исключаем новеллы с запрещенными тегами через NOT IN подзапрос. Прямое исключение в JOIN вернет ложные совпадения из-за наличия других тегов.
                 Subquery<Long> subqueryExclude = query.subquery(Long.class);
                 Root<NovelEntity> subRootExclude = subqueryExclude.from(NovelEntity.class);
                 Join<NovelEntity, TagEntity> tagJoin = subRootExclude.join("tags");
@@ -132,13 +107,15 @@ public class NovelSpecifications {
             String startPattern = title.toUpperCase() + "%";
             var likePredicate = cb.like(cb.upper(root.get("title")), pattern);
 
+            // Вычисляем приоритет сортировки: заголовки, начинающиеся со строки поиска, выводятся первыми (caseExpression = 0),
+            // а совпадения в середине строки — вторыми (caseExpression = 1). Это выносит логику релевантности на уровень СУБД.
             var caseExpression = cb.selectCase()
                     .when(cb.like(cb.upper(root.get("title")), startPattern), 0)
                     .otherwise(1);
 
             query.orderBy(
-                    cb.asc(caseExpression),           // Сначала совпадения в начале
-                    cb.asc(root.get("title"))     // Затем по алфавиту для одинаковых групп
+                    cb.asc(caseExpression),           
+                    cb.asc(root.get("title"))     
             );
             return likePredicate;
         } );

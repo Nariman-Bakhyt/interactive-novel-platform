@@ -8,14 +8,14 @@ import project.interactivenovelplatform.service.UserService;
 @Component
 public class AuthenticationFailureListener implements ApplicationListener<AuthenticationFailureBadCredentialsEvent> {
 
-    private final UserService userService; // Внедряем ваш сервис
+    private final UserService userService; 
 
-    // Конструктор
+    
     public AuthenticationFailureListener(UserService userService) {
         this.userService = userService;
     }
 
-    // 💡 Этот метод вызывается каждый раз при неудачной попытке входа
+    
     @Override
     public void onApplicationEvent(AuthenticationFailureBadCredentialsEvent event) {
         Object principal = event.getAuthentication().getPrincipal();

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import project.interactivenovelplatform.service.UserService;
 @Component
 public class AuthenticationSuccessListener implements ApplicationListener<AuthenticationSuccessEvent> {
-    private final UserService userService; // Внедряем ваш сервис
+    private final UserService userService; 
     public AuthenticationSuccessListener(UserService userService) {
         this.userService = userService;
     }
@@ -17,13 +17,13 @@ public class AuthenticationSuccessListener implements ApplicationListener<Authen
         Object principal = event.getAuthentication().getPrincipal();
         String username;
         if (principal instanceof UserDetails userDetails) {
-            // Spring Security обычно возвращает объект UserDetails
+            
             username = userDetails.getUsername();
         } else if (principal instanceof String principalName) {
-            // Если Principal - это просто строка
+            
             username = principalName;
         } else {
-            // Если объект Principal другой, пропускаем
+            
             return;
         }
         userService.handleSuccessfulLogin(username);

@@ -12,6 +12,6 @@ public class JwtAuthenticationResponseDto {
     public JwtAuthenticationResponseDto(String accessToken, String username) {
         this.accessToken = accessToken;
         this.username = username;
-        // tokenType автоматически устанавливается в "Bearer" дефолтом
+        
     }
 }

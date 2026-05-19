@@ -41,7 +41,7 @@ public class UserSocialController {
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody UserRelationRequestDto dto) {
         userSocialService.unfollow(principal.getId(), dto);
-        return ResponseEntity.noContent().build(); // 204 No Content
+        return ResponseEntity.noContent().build(); 
     }
     @RateLimited(capacity = 20, minutes = 1)
     @GetMapping("/followers")
@@ -67,9 +67,9 @@ public class UserSocialController {
     }
 
 
-    // ==========================================
-    // БЛОК ДРУЗЕЙ (FRIENDS)
-    // ==========================================
+    
+    
+    
     @RateLimited(capacity = 5, minutes = 1)
     @PostMapping("/friends/requests")
     @PreAuthorize("isAuthenticated()")
@@ -129,9 +129,9 @@ public class UserSocialController {
         return ResponseEntity.ok(userSocialService.getFriends(principal.getId(), pageable));
     }
 
-    // ==========================================
-    // БЛОК БЛИЗКИХ ДРУЗЕЙ (CLOSE FRIENDS)
-    // ==========================================
+    
+    
+    
     @RateLimited(capacity = 20, minutes = 1)
     @GetMapping("/friends/close")
     @PreAuthorize("isAuthenticated()")
@@ -156,9 +156,9 @@ public class UserSocialController {
         userSocialService.removeCloseFriend(principal.getId(), dto);
         return ResponseEntity.noContent().build();
     }
-    // ==========================================
-    // БЛОК ЧЕРНОГО СПИСКА (BLACKLIST)
-    // ==========================================
+    
+    
+    
     @RateLimited(capacity = 5, minutes = 1)
     @PostMapping("/blocks")
     @PreAuthorize("isAuthenticated()")

@@ -26,25 +26,25 @@ public class JwtTokenProvider {
     private final long jwtExpiration;
     private final SecretKey key;
 
-    // 1. Внедряем значения из application.properties через конструктор
+    
     public JwtTokenProvider(@Value("${jwt.secret}") String jwtSecret,
                             @Value("${jwt.expiration}") long jwtExpiration) {
         this.jwtSecret = jwtSecret;
         this.jwtExpiration = jwtExpiration;
 
-        // 2. Инициализируем Key, используя внедренное значение
-        // Используем Decoders.BASE64, предполагая, что ключ в properties закодирован в Base64
+        
+        
         this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
 
     }
-    // 1. Генерация Токена (вызывается при входе)
+    
     public String generateAccessToken(Authentication authentication) {
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
-        return generateAccessToken(userPrincipal); // Вызываем перегруженный метод
+        return generateAccessToken(userPrincipal); 
     }
     public String generateAccessToken(UserPrincipal userPrincipal) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + 900000); // 15 минут
+        Date expiryDate = new Date(now.getTime() + 900000); 
         List<String> roles = userPrincipal.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .toList();
@@ -68,17 +68,18 @@ public class JwtTokenProvider {
     }
 
     public boolean verifyRefreshTokenSignature(String tokenWithSignature) {
+        // Быстрая верификация подписи токена обновления по HMAC. Позволяет отсекать некорректные токены на раннем этапе (fast-fail), защищая БД/хранилище от спама невалидными запросами.
         String[] parts = tokenWithSignature.split("\\.");
         if (parts.length != 2) return false;
 
         String uuid = parts[0];
         String signature = parts[1];
 
-        // Считаем подпись заново для этого UUID и сравниваем
+        
         return signature.equals(calculateHmac(uuid));
     }
 
-    // Приватный метод для вычисления подписи
+    
     private String calculateHmac(String data) {
         try {
             Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
@@ -97,7 +98,7 @@ public class JwtTokenProvider {
 
     public String generateTokenFromUserId(Long userId) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + 900000); // Те же 15 минут
+        Date expiryDate = new Date(now.getTime() + 900000); 
 
         return Jwts.builder()
                 .subject(userId.toString())
@@ -115,11 +116,11 @@ public class JwtTokenProvider {
                 .parseSignedClaims(token)
                 .getPayload();
 
-        // Возвращаем userId
+        
         return claims.get("userId", Long.class);
     }
 
-    // 3. Получение username пользователя из токена
+    
     public String getUsernameFromToken(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(this.key)
@@ -127,11 +128,11 @@ public class JwtTokenProvider {
                 .parseSignedClaims(token)
                 .getPayload();
 
-        // Возвращаем username
+        
         return claims.get("username", String.class);
     }
 
-    // 4. Проверка валидности
+    
     public boolean validateToken(String authToken) {
         try {
             Jwts.parser()
@@ -140,7 +141,7 @@ public class JwtTokenProvider {
                     .parseSignedClaims(authToken);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
-            // Логирование ошибки
+            
         }
         return false;
     }

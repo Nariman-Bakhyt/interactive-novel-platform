@@ -46,21 +46,22 @@ public class WebSecurityConfig {
     @Bean
     public FilterRegistrationBean<GuestIdFilter> registrationGuest(GuestIdFilter filter) {
         FilterRegistrationBean<GuestIdFilter> registration = new FilterRegistrationBean<>(filter);
-        registration.setEnabled(false); // Отключаем автоматическую регистрацию в Tomcat
+        // Отключаем авто-регистрацию в Servlet Container. Фильтр должен запускаться строго в цепочке Spring Security.
+        registration.setEnabled(false); 
         return registration;
     }
 
     @Bean
     public FilterRegistrationBean<RateLimitFilter> registrationRate(RateLimitFilter filter) {
         FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>(filter);
-        registration.setEnabled(false); // Отключаем автоматическую регистрацию в Tomcat
+        registration.setEnabled(false); 
         return registration;
     }
 
     @Bean
     public FilterRegistrationBean<JwtAuthenticationFilter> registrationJwt(JwtAuthenticationFilter filter) {
         FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
-        registration.setEnabled(false); // Тоже отключаем, чтобы не было двойного вызова
+        registration.setEnabled(false); 
         return registration;
     }
 
@@ -77,27 +78,27 @@ public class WebSecurityConfig {
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration); // Применяем ко всем путям
+        source.registerCorsConfiguration("/**", configuration); 
         return source;
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) {
         return config.getAuthenticationManager();
     }
 
-    //Связываем Spring Security с вашей базой данных
-//    @Bean
-//    public DaoAuthenticationProvider authenticationProvider(PasswordEncoder passwordEncoder) {
-//        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-//        authProvider.setUserDetailsService(userDetailsService); // Ваш UserServiceImpl
-//        authProvider.setPasswordEncoder(passwordEncoder); // Ваш BCrypt
-//        return authProvider;
-//    }
+    
 
-    // Основная конфигурация фильтров (Сердце безопасности)
+
+
+
+
+
+
+
+    
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http ,PasswordEncoder passwordEncoder) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http ,PasswordEncoder passwordEncoder) {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -118,15 +119,16 @@ public class WebSecurityConfig {
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
                 )
 
-//                .authenticationProvider(authenticationProvider(passwordEncoder))
-                // 1. Сначала проверяем JWT. Если он есть и валиден — пользователь авторизован.
+
+                
+                // Важен строгий порядок: JWT-аутентификация -> GuestIdFilter (получение guest_id для гостей) -> RateLimitFilter (лимиты по resolved identity).
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
-                // 2. Затем идет GuestIdFilter.
-                // Внутри него мы добавим проверку: если пользователь уже авторизован, просто идем дальше.
+                
+                
                 .addFilterAfter(guestIdFilter, JwtAuthenticationFilter.class)
 
-                // 3. Лимиты проверяем в самом конце, когда уже точно знаем либо userId, либо guestId.
+                
                 .addFilterAfter(rateLimitFilter, GuestIdFilter.class);
 
         return http.build();

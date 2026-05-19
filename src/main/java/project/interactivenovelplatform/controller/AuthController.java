@@ -65,9 +65,7 @@ public class AuthController {
         return ResponseEntity.ok("Код подтверждения отправлен на почту");
     }
 
-    /**
-     * Шаг 2: Вход по коду (проверка кода и создание сессии)
-     */
+    
     @RateLimited(capacity = 5, minutes = 5)
     @PostMapping("/login/verify")
     public ResponseEntity<?> verifyLoginCode(@RequestBody @Valid VerifyLoginCodeRequestDto verifyRequest, HttpServletRequest request) {
@@ -147,9 +145,7 @@ public class AuthController {
         return ResponseEntity.ok("Код подтверждения для смены пароля отправлен на почту.");
     }
 
-    /**
-     * Подтверждение кода для любого действия (Пароль, Email и т.д.)
-     */
+    
     @PostMapping("/verify-code")
     public ResponseEntity<String> verifyCode(
             @AuthenticationPrincipal UserPrincipal principal,
@@ -160,9 +156,7 @@ public class AuthController {
         return ResponseEntity.ok("Действие успешно подтверждено.");
     }
 
-    /**
-     * Запрос на смену Email (Шаг 1: Отправка кода на НОВУЮ почту)
-     */
+    
     @PostMapping("/email/update-request")
     public ResponseEntity<String> requestEmailUpdate(
             @AuthenticationPrincipal UserPrincipal principal,

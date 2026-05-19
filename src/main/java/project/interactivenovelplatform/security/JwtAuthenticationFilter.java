@@ -36,6 +36,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (StringUtils.hasText(token) && tokenProvider.validateToken(token)) {
                 Claims claims = tokenProvider.getClaimsFromToken(token);
+                // Создаем UserPrincipal напрямую из JWT claims. Это исключает обращение к базе данных при каждом HTTP-запросе, обеспечивая полноценный stateless-режим.
                 UserPrincipal userDetails = UserPrincipal.createFromClaims(claims);
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
@@ -47,6 +48,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         } catch (Exception ex) {
             logger.error("Could not set user authentication in security context", ex);
+            // Не выбрасываем исключение сразу, чтобы публичные эндпоинты (public/**) могли корректно работать, просто деградируя сессию до анонимной. Фильтрацию приватных маршрутов берет на себя securityFilterChain.
             request.setAttribute("JWT_EXPIRED_OR_INVALID", true);
         }
 

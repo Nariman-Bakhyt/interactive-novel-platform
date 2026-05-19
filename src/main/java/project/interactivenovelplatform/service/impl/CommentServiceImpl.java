@@ -87,10 +87,10 @@ public class CommentServiceImpl implements CommentService {
         rating.setTimestamp(timestamp);
         RatingEntity savedRating = ratingRepository.save(rating);
 
-        // Update counts in DB using the repository method
+        
         ratingRepository.updateNovelStats(novelId, scoreDiff, countDiff);
 
-        // Fetch updated novel entity
+        
         var updatedNovel = novelService.getNovelEntity(novelId);
 
         RatingResponseDto response = new RatingResponseDto(
@@ -189,6 +189,8 @@ public class CommentServiceImpl implements CommentService {
     public CommentResponseDto createComment(List<MultipartFile> files, CommentRequestDto dto, Long currentId){
         OffsetDateTime now = OffsetDateTime.now();
         String datePath = now.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+        // Сетевой I/O (загрузка файлов в MinIO) вынесен из транзакции (выполняется внутри createMetadata). 
+        // Это предотвращает долгое удержание соединений с БД и исчерпание пула (Connection Pool exhaustion) под нагрузкой.
         Metadata metadata = createMetadata(files, datePath, dto, currentId);
 
         try {
@@ -209,6 +211,7 @@ public class CommentServiceImpl implements CommentService {
             return response;
         }
         catch (Exception e) {
+            // Компенсирующее действие: при падении транзакции БД удаляем файлы из MinIO, чтобы избежать накопления "осиротевших" файлов.
             if (metadata.getImages() != null) {
                 for (String image : metadata.getImages()) {
                     storageService.deleteFile(image);
@@ -253,18 +256,18 @@ public class CommentServiceImpl implements CommentService {
                 if (!UrlValidator.isTrusted(dto.getAnchorUrl())) {
                     throw new BadRequestException("Ссылка ведет на недоверенный ресурс");
                 }
-                // 2. Формируем чистую ссылку с Query-параметром ?q=
+                
                 String rawText = dto.getQuoteText();
-                // Кодируем текст (пробелы станут %20, а не плюсики)
+                
                 String encodedText = URLEncoder.encode(rawText, StandardCharsets.UTF_8).replace("+", "%20");
 
                 String finalUrl = dto.getAnchorUrl();
 
-                // Если в anchorUrl уже есть параметры (содержит ?), добавляем через &, если нет — через ?
+                
                 String separator = finalUrl.contains("?") ? "&" : "?";
                 finalUrl += separator + "q=" + encodedText;
 
-                // 3. Сохраняем в метаданные
+                
                 metadata.setType("QUOTE");
                 metadata.setQuoteText(rawText);
                 metadata.setAnchorUrl(finalUrl);
@@ -296,7 +299,7 @@ public class CommentServiceImpl implements CommentService {
         } else {
             throw new IllegalArgumentException("Comment must have a target (block, chapter, or novel)");
         }
-        // нужно дополнить форумами и тд
+        
     }
 
     @Override

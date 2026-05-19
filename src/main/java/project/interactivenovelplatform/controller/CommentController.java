@@ -17,7 +17,6 @@ import project.interactivenovelplatform.dto.request.CommentRequestDto;
 import project.interactivenovelplatform.dto.response.CommentResponseDto;
 import project.interactivenovelplatform.security.UserPrincipal;
 import project.interactivenovelplatform.service.CommentService;
-import project.interactivenovelplatform.service.NovelService;
 
 import java.security.Principal;
 import java.util.List;
@@ -53,7 +52,7 @@ public class CommentController {
     @DeleteMapping("/{commentId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> deleteComment(@PathVariable Long commentId, Principal principal){
-        CommentResponseDto deletedComment = commentService.deleteComment(commentId, principal.getName());
+        commentService.deleteComment(commentId, principal.getName());
         return ResponseEntity.ok().build();
     }
 

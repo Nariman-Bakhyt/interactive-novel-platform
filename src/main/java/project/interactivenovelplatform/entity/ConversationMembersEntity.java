@@ -45,7 +45,7 @@ public class ConversationMembersEntity {
     private boolean isMuted = false;
 
     @Column(name = "is_deleted")
-    private boolean isDeleted = false; // Юзер "удалил" чат у себя (скрыл)
+    private boolean isDeleted = false; 
 
     @Column(name = "last_read_at")
     private OffsetDateTime lastReadAt = OffsetDateTime.now();

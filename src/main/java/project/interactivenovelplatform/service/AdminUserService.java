@@ -14,5 +14,5 @@ public interface AdminUserService  {
     AdminUserResponseDto findByUsername(UserNameRequestDto username);
     AdminUserResponseDto setRolesToUser(Long userId, Set<RoleRequestDto> newRoleNames);
     AdminUserResponseDto addRoleToUser(Long userId, RoleRequestDto newRoleName);
-    //AdminUserResponseDto toggleLockStatus(Long userId, boolean isLocked);
+    
 }

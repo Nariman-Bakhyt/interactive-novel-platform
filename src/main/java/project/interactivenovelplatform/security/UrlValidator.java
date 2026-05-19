@@ -18,16 +18,16 @@ public class UrlValidator {
     public static boolean isTrusted(String url) {
         if (url == null || url.isBlank()) return false;
 
-        // 1. Если это относительный путь (начинается с /), значит он наш и доверенный
+        
         if (url.startsWith("/")) {
             return true;
         }
 
         try {
-            // 2. Для абсолютных ссылок исправляем склейку
+            
             String cleanUrl = url.contains("://") ? url : "http://" + url;
 
-            // Убираем возможный двойной слеш после протокола, если пришло "/novels..."
+            
             cleanUrl = cleanUrl.replace("http:///", "http://localhost/");
 
             URI uri = new URI(cleanUrl);

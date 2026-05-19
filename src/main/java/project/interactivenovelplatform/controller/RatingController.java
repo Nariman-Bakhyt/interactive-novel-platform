@@ -37,7 +37,7 @@ public class RatingController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> deleteRating(@PathVariable Long novelId,@PathVariable Long ratingId, Authentication authentication){
         UserPrincipal user = (UserPrincipal) authentication.getPrincipal();
-        var body = ratingService.deleteRating(novelId,ratingId, user.getId());
+        ratingService.deleteRating(novelId,ratingId, user.getId());
         return ResponseEntity.ok().build();
     }
     @RateLimited(capacity = 30, minutes = 1)

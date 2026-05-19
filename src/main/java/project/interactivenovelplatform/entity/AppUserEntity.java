@@ -47,13 +47,13 @@ public class AppUserEntity implements UserDetails {
     private Boolean isDeleted = Boolean.FALSE;
 
     @Column(name = "failed_attempt_count")
-    private Integer failedAttemptCount = 0; // Счетчик неудачных попыток
+    private Integer failedAttemptCount = 0; 
 
     @Column(name = "is_locked")
-    private boolean isLocked = false;       // Флаг полной блокировки
+    private boolean isLocked = false;       
 
     @Column(name = "lock_time")
-    private OffsetDateTime  lockTime;         // Время, когда блокировка будет снята
+    private OffsetDateTime  lockTime;         
 
     @Column(name = "is_active")
     private boolean isActive = false;
@@ -82,14 +82,14 @@ public class AppUserEntity implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        // Если аккаунт не помечен как заблокированный, возвращаем true
+        
         if (!this.isLocked) {
             return true;
         }
 
-        // Если аккаунт заблокирован, проверяем время
+        
         if (this.lockTime != null && this.lockTime.isAfter(OffsetDateTime.now())) {
-            // Если время блокировки еще не истекло, аккаунт заблокирован (return false)
+            
             return false;
         }
         else if(this.lockTime == null){
@@ -105,16 +105,16 @@ public class AppUserEntity implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return !this.isDeleted; // Используем ваше поле isDeleted
+        return !this.isDeleted; 
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return this.role.stream()
-                // 1. Получаем имя константы Enum (например, "THE_MAKER" или "ADMIN")
+                
                 .map(roleEntity -> roleEntity.getName().name())
 
-                // 2. Добавляем префикс "ROLE_" для Spring Security
+                
                 .map(roleName -> new SimpleGrantedAuthority("ROLE_" + roleName))
                 .collect(Collectors.toList());
     }

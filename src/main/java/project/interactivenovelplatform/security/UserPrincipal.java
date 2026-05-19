@@ -73,7 +73,7 @@ public class UserPrincipal implements UserDetails {
         return new UserPrincipal(
                 id,
                 username,
-                null, // Пароль в Stateless не нужен
+                null, 
                 isActive,
                 isLocked,
                 authorities

@@ -79,7 +79,7 @@ public class VerificationServiceImpl implements VerificationService {
         String attemptsKey = "attempts:" + type + ":" + userId;
         String redisKey = getRedisKey(type, userId);
 
-        // 1. Проверка блокировки
+        
         if (Boolean.TRUE.equals(redisTemplate.hasKey(lockKey))) {
             throw new IllegalStateException("Слишком много неудачных попыток. Доступ временно ограничен.");
         }
@@ -88,7 +88,7 @@ public class VerificationServiceImpl implements VerificationService {
             String finalPendingValue = null;
             String jsonValue = redisTemplate.opsForValue().get(redisKey);
 
-            // 2. Ищем в Redis
+            
             if (jsonValue != null) {
                 try {
                     VerificationCacheDto cachedData = objectMapper.readValue(jsonValue, VerificationCacheDto.class);
@@ -96,7 +96,7 @@ public class VerificationServiceImpl implements VerificationService {
                         finalPendingValue = cachedData.getPendingValue();
                     }
                 } catch (Exception e) {
-                    // Если JSON битый, просто проигнорируем и пойдем в БД
+                    
                 }
             }
 

@@ -54,7 +54,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         }
         throw new IllegalStateException("Principal is not of type AppUserEntity");
     }
-    private int getHighestRoleRank(AppUserEntity user) { // Меньшее числовое значение (0, 1, 2...) соответствует более высокому рангу.
+    private int getHighestRoleRank(AppUserEntity user) { 
 
         return user.getRole().stream()
                 .map(roleEntity -> roleEntity.getName().getRank())

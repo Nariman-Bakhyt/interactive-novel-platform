@@ -28,14 +28,14 @@ public class TagAndGenreServiceImpl implements TagAndGenreService {
         if(ids == null || ids.isEmpty()) return List.of();
 
         if(isTag){
-            // Используем переданные ID напрямую
+            
             List<TagEntity> tags = tagRepository.findAllById(ids);
             novelEntity.getTags().clear();
             novelEntity.getTags().addAll(tags);
             return tags.stream().map(tag->new TagOrGenreResponseDto(tag.getId(),tag.getName())).toList();
         }
         else {
-            // Используем переданные ID напрямую
+            
             List<GenreEntity> genres = genreRepository.findAllById(ids);
             novelEntity.getGenres().clear();
             novelEntity.getGenres().addAll(genres);

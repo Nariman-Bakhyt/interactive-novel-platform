@@ -13,11 +13,13 @@ public class AsyncConfig {
 
     @Bean(name = "taskExecutor")
     public Executor taskExecutor() {
+        // Настраиваем кастомный пул потоков для асинхронных фоновых задач (например, рассылки почты).
+        // Ограничение пула (Core 5, Max 10) и очередь в 500 задач защищают JVM от перерасхода памяти и OOM при пиковых нагрузках.
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(5); // Увеличено для лучшей обработки асинхронных задач
-        executor.setMaxPoolSize(10); // Увеличено для лучшей обработки асинхронных задач
+        executor.setCorePoolSize(5); 
+        executor.setMaxPoolSize(10); 
         executor.setQueueCapacity(500);
-        executor.setThreadNamePrefix("EmailThread-"); // Теперь в логах ты увидишь это имя
+        executor.setThreadNamePrefix("EmailThread-"); 
         executor.initialize();
         return executor;
     }

@@ -29,7 +29,7 @@ public class ViewCountSyncScheduler {
                 .count(100)
                 .build();
 
-        // Используем AtomicInteger, так как обычный int нельзя менять внутри лямбды
+        
         final AtomicInteger updatedCount = new AtomicInteger(0);
 
         redisTemplate.executeWithStickyConnection(connection -> {
@@ -57,7 +57,7 @@ public class ViewCountSyncScheduler {
 
             Long novelId = Long.parseLong(parts[3]);
 
-            // Атомарно забираем значение и удаляем ключ из Redis
+            
             String value = redisTemplate.opsForValue().getAndDelete(key);
 
             if (value != null) {

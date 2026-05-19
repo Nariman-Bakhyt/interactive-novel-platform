@@ -11,7 +11,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL) // Главная магия здесь
+@JsonInclude(JsonInclude.Include.NON_NULL) 
 public class Metadata {
     private String type;
     private List<String> images;

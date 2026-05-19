@@ -19,9 +19,9 @@ public interface MessageRepository extends JpaRepository<MessageEntity, Long> {
     Optional<MessageEntity> findById(Long id);
 
     @Query("""
-    SELECT m FROM MessageEntity m 
-    WHERE m.conversation.id = :conversationId 
-      AND m.isDeleted = false 
+    SELECT m FROM MessageEntity m
+    WHERE m.conversation.id = :conversationId
+      AND m.isDeleted = false
       AND (cast(:clearedAt as timestamp) IS NULL OR m.timestamp > :clearedAt)
     """)
     Slice<MessageEntity> findMessages(

@@ -17,6 +17,8 @@ import java.time.Duration;
 public class RateLimitConfig {
     @Bean
     public RedisClient redisClient(RedisConnectionFactory factory) {
+        // Извлекаем нативный Lettuce RedisClient из существующего LettuceConnectionFactory Spring Boot.
+        // Это исключает создание дублирующих пулов подключений к Redis и экономит системные сокеты.
         if (factory instanceof LettuceConnectionFactory lettuceFactory) {
             return (RedisClient) lettuceFactory.getNativeClient();
         }

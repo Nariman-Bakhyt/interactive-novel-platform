@@ -8,8 +8,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class WsEventDto<T> {
-    private WsDomain domain;    // CHAT или SOCIAL
-    private String type;        // Конкретный Enum в виде строки (NEW_MESSAGE, FRIEND_REQUEST_SENT)
-    private T payload;          // Данные
+    private WsDomain domain;    
+    private String type;        
+    private T payload;          
 }
 

@@ -74,7 +74,7 @@ public class NovelController {
     }
 
     @RateLimited(capacity = 5, minutes = 10)
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE) // Указываем тип контента
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE) 
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<NovelResponseDto> createNovel(
             @ModelAttribute @Valid NovelRequestDto novelRequestDto,
@@ -100,8 +100,8 @@ public class NovelController {
     @RateLimited(capacity = 5, minutes = 60)
     @PostMapping("{novelId}/cover")
     @PreAuthorize("@novelServiceImpl.isAuthor(#novelId, authentication.principal) or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN)")
-    public ResponseEntity<NovelResponseDto> updateCover(@RequestParam(value = "file", required = false) MultipartFile file,@PathVariable Long novelId , Principal principal){
-        var novel = novelService.updateCoverUrl(novelId,file,principal);
+    public ResponseEntity<NovelResponseDto> updateCover(@RequestParam(value = "file", required = false) MultipartFile file,@PathVariable Long novelId ){
+        var novel = novelService.updateCoverUrl(novelId,file);
         return ResponseEntity.ok().body(novel);
     }
 

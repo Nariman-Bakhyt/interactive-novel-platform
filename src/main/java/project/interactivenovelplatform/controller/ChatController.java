@@ -29,7 +29,7 @@ import java.util.List;
 public class ChatController {
     private final ChatService chatService;
 
-    // 1. Получить список всех чатов пользователя
+    
     @GetMapping
     public ResponseEntity<PagedModel<ConversationResponseDto>> getMyChats(
             @AuthenticationPrincipal UserPrincipal user,
@@ -40,7 +40,7 @@ public class ChatController {
         return ResponseEntity.ok(new PagedModel<> (chatService.getUserChats(user.getId(), pageable)));
     }
 
-    // 2. Получить историю сообщений конкретного чата
+    
     @GetMapping("/{conversationId}/messages")
     public ResponseEntity<Slice<MessageResponseDto>> getChatMessages(
             @AuthenticationPrincipal UserPrincipal user,
@@ -53,7 +53,7 @@ public class ChatController {
         return ResponseEntity.ok(chatService.getChatMessages(user.getId(), conversationId, pageable));
     }
 
-    // 3. Начать приватный чат (или получить существующий)
+    
     @PostMapping("/private/{targetUserId}")
     public ResponseEntity<ConversationResponseDto> getOrCreatePrivateChat(
             @AuthenticationPrincipal UserPrincipal user,
@@ -61,7 +61,7 @@ public class ChatController {
         return ResponseEntity.ok(chatService.getOrCreatePrivateChat(user.getId(), targetUserId));
     }
 
-    // 4. Создать групповый чат
+    
     @PostMapping(value = "/group", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ConversationResponseDto> createGroupChat(
             @AuthenticationPrincipal UserPrincipal user,
@@ -69,7 +69,7 @@ public class ChatController {
         return ResponseEntity.ok(chatService.createGroupChat(user.getId(), request));
     }
 
-    // 5. Отправить сообщение (с поддержкой файлов Multipart)
+    
     @PostMapping(value = "/{conversationId}/messages", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MessageResponseDto> sendMessage(
             @AuthenticationPrincipal UserPrincipal user,
@@ -79,7 +79,7 @@ public class ChatController {
         return ResponseEntity.ok().build();
     }
 
-    // 6. Удалить сообщение
+    
     @DeleteMapping("/messages/{messageId}")
     public ResponseEntity<Void> deleteMessage(
             @AuthenticationPrincipal UserPrincipal user,
@@ -88,7 +88,7 @@ public class ChatController {
         return ResponseEntity.ok().build();
     }
 
-    // 7. Скрыть/Удалить чат для себя
+    
     @DeleteMapping("/{conversationId}")
     public ResponseEntity<Void> deleteChatForUser(
             @AuthenticationPrincipal UserPrincipal user,
@@ -97,7 +97,7 @@ public class ChatController {
         return ResponseEntity.ok().build();
     }
 
-    // 8. Настройки чата (Закрепить / Mute)
+    
     @PatchMapping("/conversation/settings")
     public ResponseEntity<Void> toggleSettings(
             @AuthenticationPrincipal UserPrincipal user,
@@ -106,7 +106,7 @@ public class ChatController {
         return ResponseEntity.ok().build();
     }
 
-    // 9. Выйти из группы
+    
     @PostMapping("/{conversationId}/leave")
     public ResponseEntity<Void> leaveGroup(
             @AuthenticationPrincipal UserPrincipal user,
@@ -115,7 +115,7 @@ public class ChatController {
         return ResponseEntity.ok().build();
     }
 
-    // 10. Добавить пользователя в группу
+    
     @PostMapping("/{conversationId}/members")
     public ResponseEntity<ConversationResponseDto> addUserToGroup(
             @AuthenticationPrincipal UserPrincipal user,
@@ -125,7 +125,7 @@ public class ChatController {
         return ResponseEntity.ok().body(chatService.addUserToGroup(user.getId(), targetUserIds, conversationId));
     }
 
-    // 11. Исключить пользователя из группы
+    
     @DeleteMapping("/{conversationId}/members/{targetUserId}")
     public ResponseEntity<Void> kickUser(
             @AuthenticationPrincipal UserPrincipal user,

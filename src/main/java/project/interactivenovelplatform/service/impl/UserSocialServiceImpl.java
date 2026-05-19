@@ -173,7 +173,7 @@ public class UserSocialServiceImpl implements UserSocialService {
         var relation = new UserFriendEntity();
         relation.setSender(userService.getEntityIsActiveAndIsLockedFalse(currentUserId));
         relation.setReceiver(userService.getEntityIsActiveAndIsLockedFalse(dto.getReceiverId()));
-        relation.setStatus(RelationStatus.PENDING); // Новая заявка всегда PENDING
+        relation.setStatus(RelationStatus.PENDING); 
         relation.setUpdatedAt(OffsetDateTime.now());
         var response = convertFriendToDto(friendRepository.save(relation), relation.getReceiver());
 

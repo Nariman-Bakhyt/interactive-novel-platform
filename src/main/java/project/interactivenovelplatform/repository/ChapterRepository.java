@@ -16,25 +16,25 @@ import java.util.Optional;
 
 @Repository
 public interface ChapterRepository extends JpaRepository<ChapterEntity, Long> {
-    // Список для автора (все активные главы)
+    
     @Query("SELECT new project.interactivenovelplatform.dto.response.ChapterShortResponseDto(c.id, c.chapterNumber, c.title, c.status, c.publishedAt) " +
             "FROM ChapterEntity c WHERE c.novel.id = :novelId AND c.isDeleted = false ORDER BY c.chapterNumber ASC")
     List<ChapterShortResponseDto> findAllByNovelIdShort(@Param("novelId") Long novelId);
 
-    // Публичный список (только активные опубликованные главы)
+    
     @Query("SELECT new project.interactivenovelplatform.dto.response.ChapterShortResponseDto(c.id, c.chapterNumber, c.title, c.status, c.publishedAt) " +
             "FROM ChapterEntity c WHERE c.novel.id = :novelId AND c.status = project.interactivenovelplatform.entity.ChapterStatus.PUBLISHED AND c.isDeleted = false ORDER BY c.chapterNumber ASC")
     List<ChapterShortResponseDto> findAllPublishedByNovelIdShort(@Param("novelId") Long novelId);
 
-    // Подсчет активных опубликованных глав новеллы
+    
     @Query("SELECT COUNT(c) FROM ChapterEntity c WHERE c.novel.id = :novelId AND c.status = project.interactivenovelplatform.entity.ChapterStatus.PUBLISHED AND c.isDeleted = false")
     long countPublishedChapters(@Param("novelId") Long novelId);
 
-    // Дата публикации последней активной опубликованной главы
+    
     @Query("SELECT MAX(c.publishedAt) FROM ChapterEntity c WHERE c.novel.id = :novelId AND c.status = project.interactivenovelplatform.entity.ChapterStatus.PUBLISHED AND c.isDeleted = false")
     Optional<OffsetDateTime> findLatestPublishedDate(@Param("novelId") Long novelId);
 
-    // Поиск активных глав для автопубликации планировщиком
+    
     List<ChapterEntity> findAllByStatusAndPublishedAtBeforeAndIsDeletedFalse(ChapterStatus status, OffsetDateTime now);
 
     Optional<ChapterEntity> findByNovelIdAndIdAndIsDeletedFalse(Long novelId, Long id);

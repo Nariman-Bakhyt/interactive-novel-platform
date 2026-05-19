@@ -32,7 +32,7 @@ public class MinioConfig {
                 System.out.println("Корзина " + bucketName + " не найдена. Создаю...");
                 client.makeBucket(io.minio.MakeBucketArgs.builder().bucket(bucketName).build());
             }
-        } catch (Exception e) { // Логируем ошибку через SLF4J
+        } catch (Exception e) { 
             log.error("Ошибка подключения или инициализации MinIO: {}", e.getMessage(), e);
         }
 

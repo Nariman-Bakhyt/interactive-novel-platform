@@ -27,14 +27,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     }
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
+        // Для простого message broker встроенный механизм отправки пинг-понг кадров (heartbeats) требует явного указания TaskScheduler.
+        // Без него пинг-понг сообщения не будут отсылаться, и неактивные соединения будут закрываться по таймауту.
         ThreadPoolTaskScheduler heartbeatScheduler = new ThreadPoolTaskScheduler();
         heartbeatScheduler.setPoolSize(1);
         heartbeatScheduler.setThreadNamePrefix("ws-heartbeat-");
         heartbeatScheduler.initialize();
 
         config.enableSimpleBroker("/topic")
-                .setHeartbeatValue(new long[]{10000, 10000}) // Пинг каждые 10 секунд (отправка, ожидание)
-                .setTaskScheduler(heartbeatScheduler); // Без этого Heartbeats не заработают
+                .setHeartbeatValue(new long[]{10000, 10000}) 
+                .setTaskScheduler(heartbeatScheduler); 
 
         config.setApplicationDestinationPrefixes("/app");
     }

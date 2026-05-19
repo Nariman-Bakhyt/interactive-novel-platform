@@ -55,7 +55,7 @@ public class AuthServiceImpl implements AuthService {
         session.setRefreshToken(signedRefreshToken);
         session.setIpAddress(ipAddress);
         session.setLoginTime(OffsetDateTime.now());
-        session.setExpiresAt(OffsetDateTime.now().plusDays(30)); // Исправил на 30 дней для соответствия куке
+        session.setExpiresAt(OffsetDateTime.now().plusDays(30)); 
         session.setActive(true);
         userSessionRepository.save(session);
 
@@ -77,7 +77,7 @@ public class AuthServiceImpl implements AuthService {
         ResponseCookie deleteGuestCookie = ResponseCookie.from("guest_id", "")
                 .httpOnly(true)
                 .path("/")
-                .maxAge(0) // Немедленное удаление
+                .maxAge(0) 
                 .build();
 
         return new AuthResponseDto(accessToken, user.getUsername(), cookie ,deleteGuestCookie, user.getUsername());

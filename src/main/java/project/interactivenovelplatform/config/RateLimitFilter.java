@@ -26,6 +26,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         String guestId = (String) request.getAttribute("VALID_GUEST_ID");
 
+        // Фильтрация лимитов гостей на уровне Servlet Filter выполняется до достижения DispatcherServlet.
+        // Это позволяет отсекать DDOS-атаки и вредоносный парсинг публичных эндпоинтов до парсинга путей в Spring MVC.
         if (guestId != null) {
             byte[] redisKey = ("limit:guest:" + guestId).getBytes(StandardCharsets.UTF_8);
 

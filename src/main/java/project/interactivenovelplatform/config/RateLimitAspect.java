@@ -31,6 +31,7 @@ public class RateLimitAspect {
     private final LettuceBasedProxyManager<byte[]> proxyManager;
     private final HttpServletRequest request;
 
+    // Кэшируем конфигурации Bucket4j, чтобы не выделять память и не пересоздавать правила лимитирования на каждый входящий запрос.
     private final Map<String, BucketConfiguration> configCache = new ConcurrentHashMap<>();
 
     @Around("@annotation(rateLimited)")
@@ -38,26 +39,27 @@ public class RateLimitAspect {
         String rateLimitKey;
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
+        // Разделяем лимиты для авторизованных пользователей (по user:<id>) и гостей (по guest:<id>), чтобы предотвратить взаимное влияние нагрузок.
         if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof UserPrincipal userPrincipal) {
-            // Пользователь аутентифицирован, используем его ID
+            
             rateLimitKey = "user:" + userPrincipal.getId();
         } else {
-            // Пользователь не аутентифицирован, используем ID гостя
+            
             String guestId = (String) request.getAttribute("VALID_GUEST_ID");
             if (guestId == null) {
-                // Это может произойти, если GuestIdFilter был пропущен или не смог установить ID.
-                // В зависимости от требований, можно пропустить rate limiting или бросить ошибку.
-                // Для простоты, пока пропускаем, но это место для потенциального улучшения.
+                
+                
+                
                 return joinPoint.proceed(); 
             }
             rateLimitKey = "guest:" + guestId;
         }
 
-        // 2. Генерируем уникальный ключ для этого метода и этого пользователя/гостя
+        
         String methodName = joinPoint.getSignature().toShortString();
         byte[] key = ("limit:" + methodName + ":" + rateLimitKey).getBytes(StandardCharsets.UTF_8);
 
-        // 3. Получаем или создаем конфиг (кешируем по параметрам аннотации)
+        
         String configKey = rateLimited.capacity() + "-" + rateLimited.minutes();
         BucketConfiguration config = configCache.computeIfAbsent(configKey, k -> 
             BucketConfiguration.builder()
@@ -65,10 +67,10 @@ public class RateLimitAspect {
                             .refillGreedy(rateLimited.capacity(), Duration.ofMinutes(rateLimited.minutes())))
                     .build());
 
-        // 4. Проверяем лимит
+        
         Bucket bucket = proxyManager.getProxy(key, () -> config);
         if (bucket.tryConsume(1)) {
-            return joinPoint.proceed(); // Всё ок, выполняем метод
+            return joinPoint.proceed(); 
         } else {
             log.warn("Rate limit exceeded for key: {}", new String(key, StandardCharsets.UTF_8));
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Лимит запросов исчерпан");

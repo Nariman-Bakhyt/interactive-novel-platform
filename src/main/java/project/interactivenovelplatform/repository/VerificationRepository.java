@@ -15,13 +15,13 @@ import java.util.Optional;
 public interface VerificationRepository extends JpaRepository<VerificationTokenEntity,Long> {
     Optional<VerificationTokenEntity> findByTokenAndTypeAndUser_id(String token, VerificationTokenType type, Long userId);
 
-    // Удаление старых токенов перед генерацией нового
+    
     @Modifying
     @Transactional
     @Query("DELETE FROM VerificationTokenEntity v WHERE v.user.id = :userId AND v.type = :type")
     void deleteByUserIdAndType(Long userId, VerificationTokenType type);
 
-    // Метод для автоматической очистки просроченных записей
+    
     @Modifying
     @Transactional
     void deleteAllByExpiryDateBefore(OffsetDateTime now);

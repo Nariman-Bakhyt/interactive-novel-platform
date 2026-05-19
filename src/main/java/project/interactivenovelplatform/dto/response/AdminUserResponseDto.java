@@ -18,9 +18,9 @@ public class AdminUserResponseDto {
     private String username;
     private String email;
     private OffsetDateTime registrationDate;
-    private Set<String> roles = new HashSet<>(); // Изменено на Set<String> и переименовано
+    private Set<String> roles = new HashSet<>(); 
     private Boolean isDeleted = Boolean.FALSE;
-    private Boolean isLocked = false;       // Флаг полной блокировки
-    private OffsetDateTime  lockTime;         // Время, когда блокировка будет снята
+    private Boolean isLocked = false;       
+    private OffsetDateTime  lockTime;         
     private String avatarUrl;
 }

@@ -23,16 +23,16 @@ import java.util.concurrent.TimeUnit;
 public class StorageServiceImpl implements StorageService {
     private final MinioClient minioClient;
     private final String bucketName;
-    private final String endpoint; // Нужно добавить для формирования URL
+    private final String endpoint; 
     private final static Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-    private final String storageBaseUrl; // Базовый URL для доступа к файлам (например, http://IP:PORT/bucketName)
+    private final String storageBaseUrl; 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(".jpg", ".jpeg", ".png", ".gif");
     private final Tika tika = new Tika();
     public StorageServiceImpl(
             MinioClient minioClient,
             @Value("${minio.bucketName}") String bucketName,
             @Value("${minio.endpoint}") String endpoint,
-            @Value("${app.storage.base-url}") String storageBaseUrl // Внедряем базовый URL из конфига
+            @Value("${app.storage.base-url}") String storageBaseUrl 
     ) {
         this.minioClient = minioClient;
         this.bucketName = bucketName;
@@ -57,7 +57,7 @@ public class StorageServiceImpl implements StorageService {
                         .contentType(file.getContentType())
                         .build()
         );
-        // Возвращаем только путь к файлу внутри бакета
+        
         return blobName;
     }
     @Override
@@ -82,7 +82,7 @@ public class StorageServiceImpl implements StorageService {
 
     @Override
     public String getPublicUrl(String blobName) {
-        // storageBaseUrl уже содержит endpoint и bucketName (например, http://IP:PORT/bucketName)
+        
         return String.format("%s/%s", storageBaseUrl, blobName);
     }
 

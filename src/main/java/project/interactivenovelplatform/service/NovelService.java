@@ -19,8 +19,10 @@ public interface NovelService {
     NovelAndChapterShortResponseDto findById(Long id, Long userId);
     Page<NovelResponseDto> findAll(NovelSearchRequestDto request, Pageable pageable);
     NovelResponseDto update(Long id, NovelUpdateRequestDto dto);
-    NovelResponseDto updateCoverUrl(Long id, MultipartFile file, Principal principal);
     void delete(Long id);
+
+    NovelResponseDto updateCoverUrl(Long id, MultipartFile file);
+
     Page<NovelResponseDto> findNewNovels(int page , int size);
     Page<NovelResponseDto> findMyNovels(int page , int size,Long authorId);
     NovelAndChapterShortResponseDto findMyNovel(Long id,Long authorId);

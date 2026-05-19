@@ -12,7 +12,7 @@ import lombok.Setter;
 public class SendMessageRequestDto {
     private Long conversationId;
     private String content;
-    private String type; // "PLAIN", "IMAGE", "QUOTE"
+    private String type; 
     private String quoteText;
     private String anchorUrl;
 }

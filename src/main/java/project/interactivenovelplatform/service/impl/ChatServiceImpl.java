@@ -56,7 +56,7 @@ public class ChatServiceImpl implements ChatService {
 
     private MessageResponseDto convertToMessageResponse(MessageEntity entity) {
         Metadata metadata = entity.getMetadata();
-        // Если в сообщении есть картинки, превращаем их пути в полные URL
+        
         if (metadata != null && metadata.getImages() != null) {
             List<String> fullUrls = metadata.getImages().stream()
                     .map(imagePath -> {
@@ -166,7 +166,7 @@ public class ChatServiceImpl implements ChatService {
     private ConversationMembersEntity addMember(ConversationsEntity chat, AppUserEntity user, ConversationMembersRole role) {
         ConversationMembersId id = new ConversationMembersId(chat.getId(), user.getId());
 
-        // Проверяем, нет ли уже такого участника в списке чата
+        
         return chat.getMembers().stream()
                 .filter(m -> m.getId().equals(id))
                 .findFirst()
@@ -228,19 +228,19 @@ public class ChatServiceImpl implements ChatService {
             RelationshipStateDto relation = relations.get(targetId);
             UserSettingsResponseDto settings = allSettings.get(targetId);
 
-            // 1. Проверка на существование данных (на случай битых ID)
+            
             if (relation == null || settings == null) {
                 log.warn("Данные для пользователя {} не найдены, пропускаем", targetId);
                 continue;
             }
 
-            // 2. Проверка черных списков
+            
             if (relation.isBlockedByTarget() || relation.isBlockedByMe()) {
                 log.info("Пользователь {} пропущен: блокировка в отношениях", targetId);
                 continue;
             }
 
-            // 3. Проверка приватности
+            
             PrivacyLevel privacy = settings.getCanSendMessage();
             boolean isFriend = relation.isFriend();
             boolean isBestFriend = relation.isBestFriend();
@@ -275,7 +275,7 @@ public class ChatServiceImpl implements ChatService {
                 newChat.setType(ConversationsType.PRIVATE);
                 newChat.setCreatedAt(OffsetDateTime.now());
                 newChat.setLastMessageAt(OffsetDateTime.now());
-                newChat.setMembers(new ArrayList<>()); // инициализируем список
+                newChat.setMembers(new ArrayList<>()); 
 
                 newChat = conversationRepo.save(newChat);
 
@@ -292,19 +292,13 @@ public class ChatServiceImpl implements ChatService {
                 .findFirst()
                 .orElseThrow(() -> new EntityNotFoundException("Участник не найден в чате " + chat.getId()));
 
-        AppUserEntity opponent = chat.getMembers().stream()
-                .map(ConversationMembersEntity::getUser)
-                .filter(u -> !u.getId().equals(currentUserId))
-                .findFirst()
-                .orElse(null);
-
 
         return convertToConversationResponse(chat, isBlocked,conversationMember,currentUserId);
     }
 
-    // ==========================================
-    // 2. СОЗДАНИЕ ГРУППЫ
-    // ==========================================
+    
+    
+    
     @Override
     public ConversationResponseDto createGroupChat(Long creatorId, CreateGroupRequest request) {
 
@@ -337,16 +331,16 @@ public class ChatServiceImpl implements ChatService {
                 group.setAvatarUrl(finalNewAvatarUrl);
                 group = conversationRepo.save(group);
 
-                // Создатель становится админом
+                
                 var me = addMember(group, creator, ConversationMembersRole.ADMIN);
-                // Добавляем остальных
+                
                 for (Long memberId : request.getMemberIds()) {
                     try {
                         validateChatAccess(creatorId, memberId);
                         AppUserEntity member = userService.getEntityIsActiveAndIsLockedFalse(memberId);
                         addMember(group, member, ConversationMembersRole.MEMBER);
                     } catch (AccessDeniedException e) {
-                        // Просто игнорируем этого пользователя и идем дальше
+                        
                     }
                 }
 
@@ -364,15 +358,15 @@ public class ChatServiceImpl implements ChatService {
 
     }
 
-    // ==========================================
-    // 3. ОТПРАВКА СООБЩЕНИЯ
-    // ==========================================
+    
+    
+    
     @Override
     public void sendMessage(Long senderId, SendMessageRequestDto dto, List<MultipartFile> files) {
-        // Шаг 1: Сохраняем скелет в транзакции
+        
         OffsetDateTime now = OffsetDateTime.now();
         String datePath = now.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-        Metadata metadata = createChatMetadata(files, datePath, dto, senderId);
+        Metadata metadata = createChatMetadata(files, datePath, dto);
 
         transactionTemplate.execute(_ -> {
             ConversationMembersEntity membership = memberRepo.findByConversationIdAndUserId(dto.getConversationId(), senderId)
@@ -391,19 +385,19 @@ public class ChatServiceImpl implements ChatService {
             message.setIsDeleted(false);
             message.setMetadata(metadata);
             messageRepo.saveAndFlush(message);
-            // 2. Апдейт самого чата
+            
 
             conversation.setLastMessageAt(now);
             String content = dto.getContent();
-            // Превью сообщения (если есть текст - берем его, если фото - пишем "Фотография")
+            
             String preview = content != null && !content.isBlank() ?
                     (content.length() > 50 ? content.substring(0, 47) + "..." : content)
                     : ("IMAGE".equals(metadata.getType()) ? "📷 Фотография" : "Отправил вложение");
             conversation.setLastMessagePreview(preview);
 
-            // 3. Воскрешаем чат у тех, кто его удалил (скрыл)
+            
             memberRepo.restoreAllMembersInConversation(conversation.getId());
-            // 2. Получаем ID всех участников для рассылки (тоже одним запросом)
+            
             List<Long> memberIds = memberRepo.findAllMemberIdsByConversationId(conversation.getId());
 
             conversationRepo.save(conversation);
@@ -429,10 +423,10 @@ public class ChatServiceImpl implements ChatService {
     }
 
 
-    // ==========================================
-    // 2. ФОРМИРОВАНИЕ METADATA
-    // ==========================================
-    private Metadata createChatMetadata(List<MultipartFile> files, String datePath, SendMessageRequestDto dto, Long userId) {
+    
+    
+    
+    private Metadata createChatMetadata(List<MultipartFile> files, String datePath, SendMessageRequestDto dto) {
         Metadata metadata = new Metadata();
         try {
             if ("IMAGE".equals(dto.getType())) {
@@ -443,7 +437,7 @@ public class ChatServiceImpl implements ChatService {
                 for (MultipartFile file : files) {
                     String actualMimeType = storageService.verifyRealImageType(file);
                     String secureExtension = MimeTypes.getDefaultMimeTypes().forName(actualMimeType).getExtension();
-                    // Изменили папку на chat
+                    
                     String folderPath = String.format("chat/%d/%s", dto.getConversationId(), datePath);
                     String finalFileName = UUID.randomUUID().toString().substring(0, 8) + secureExtension;
                     imageUrls.add(storageService.uploadFile(file, folderPath, finalFileName));
@@ -458,14 +452,14 @@ public class ChatServiceImpl implements ChatService {
                 if (!UrlValidator.isTrusted(dto.getAnchorUrl())) {
                     throw new BadRequestException("Ссылка ведет на недоверенный ресурс");
                 }
-                // 2. Формируем чистую ссылку с Query-параметром ?q=
+                
                 String rawText = dto.getQuoteText();
-                // Кодируем текст (пробелы станут %20, а не плюсики)
+                
                 String encodedText = URLEncoder.encode(rawText, StandardCharsets.UTF_8).replace("+", "%20");
 
                 String finalUrl = dto.getAnchorUrl();
 
-                // Если в anchorUrl уже есть параметры (содержит ?), добавляем через &, если нет — через ?
+                
                 String separator = finalUrl.contains("?") ? "&" : "?";
                 finalUrl += separator + "q=" + encodedText;
                 metadata.setType("QUOTE");
@@ -481,9 +475,9 @@ public class ChatServiceImpl implements ChatService {
     }
 
 
-    // ==========================================
-    // 4. ПОЛУЧЕНИЕ СПИСКА ЧАТОВ (Левое меню)
-    // ==========================================
+    
+    
+    
     @Transactional(readOnly = true)
     @Override
     public Page<ConversationResponseDto> getUserChats(Long userId, Pageable pageable) {
@@ -497,7 +491,7 @@ public class ChatServiceImpl implements ChatService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        // Получаем только необходимые ID (память скажет "спасибо")
+        
         List<UserBlockRepository.BlockInfo> blockInfos = userSocialService.getAllBlockInfoBetween(userId, opponentIds);
 
         Set<Long> blockers = new HashSet<>();
@@ -519,7 +513,7 @@ public class ChatServiceImpl implements ChatService {
 
             if (chat.getType() == ConversationsType.PRIVATE) {
                 Long opponentId = getOpponentId(chat, userId);
-                if (opponentId != null) { // Безопасная проверка
+                if (opponentId != null) { 
                     amIBlocked = blockers.contains(opponentId);
                     isPartnerBlockedByMe = blockedByMe.contains(opponentId);
                 }
@@ -530,25 +524,25 @@ public class ChatServiceImpl implements ChatService {
     }
     private Long getOpponentId(ConversationsEntity chat, Long userId) {
         return chat.getMembers().stream()
-                .map(member -> member.getUser().getId()) // Берем ID всех участников
-                .filter(id -> !id.equals(userId))        // Убираем твой ID
-                .findFirst()                             // Оставляем ID собеседника
-                .orElse(null);                           // Если чат пустой (мало ли), вернет null
+                .map(member -> member.getUser().getId()) 
+                .filter(id -> !id.equals(userId))        
+                .findFirst()                             
+                .orElse(null);                           
     }
 
-    // ==========================================
-    // 5. ПОЛУЧЕНИЕ ИСТОРИИ СООБЩЕНИЙ ЧАТА
-    // ==========================================
+    
+    
+    
     @Transactional(readOnly = true)
     @Override
     public Slice<MessageResponseDto> getChatMessages(Long userId, Long conversationId, Pageable pageable) {
-        // Проверяем, есть ли у юзера доступ к этому чату
+        
         var conversationMember = memberRepo.findByConversationIdAndUserId(conversationId, userId)
                 .filter(m -> !m.isDeleted()
-                ) // Если он скрыл чат, он не должен видеть сообщения, пока не напишет сам
+                ) 
                 .orElseThrow(() -> new RuntimeException("Нет доступа к чату"));
         OffsetDateTime clearedAt = conversationMember.getClearedAt();
-        // Получаем сообщения (с сортировкой от новых к старым)
+        
         return messageRepo.findMessages(conversationId,clearedAt,pageable)
                 .map(this::convertToMessageResponse);
     }
@@ -568,25 +562,25 @@ public class ChatServiceImpl implements ChatService {
         ));
     }
 
-    // ==========================================
-    // 6. УДАЛЕНИЕ СООБЩЕНИЯ (Мягкое)
-    // ==========================================
+    
+    
+    
     @Transactional
     @Override
     public void deleteMessage(Long requesterId, Long messageId) {
         MessageEntity message = messageRepo.findById(messageId)
                 .orElseThrow(() -> new RuntimeException("Сообщение не найдено"));
 
-        // Проверка: удалять может только автор
+        
         if (!message.getSender().getId().equals(requesterId)) {
-            // Если нужно, здесь можно добавить проверку: "А не админ ли группы этот requesterId?"
+            
             throw new RuntimeException("Вы можете удалять только свои сообщения");
         }
 
         message.setIsDeleted(true);
-        // Если хочешь, чтобы вместо текста было написано "Сообщение удалено", раскомментируй:
-        // message.setContent("Сообщение удалено");
-        // message.setMetadata(null);
+        
+        
+        
 
         messageRepo.save(message);
 
@@ -597,23 +591,23 @@ public class ChatServiceImpl implements ChatService {
         ));
     }
 
-    // ==========================================
-    // 7. УДАЛЕНИЕ ЧАТА (Скрытие для себя)
-    // ==========================================
+    
+    
+    
     @Transactional
     @Override
     public void deleteChatForUser(Long userId, Long conversationId) {
         ConversationMembersEntity membership = memberRepo.findByConversationIdAndUserId(conversationId, userId)
                 .orElseThrow(() -> new RuntimeException("Чат не найден"));
 
-        // Мы не удаляем сообщения! Мы просто скрываем чат из списка пользователя
+        
         membership.setDeleted(true);
         memberRepo.save(membership);
     }
 
-    // ==========================================
-    // 8. ВЫХОД ИЗ ГРУППЫ
-    // ==========================================
+    
+    
+    
     @Transactional
     @Override
     public void leaveGroup(Long userId, Long conversationId) {
@@ -627,12 +621,12 @@ public class ChatServiceImpl implements ChatService {
         ConversationMembersEntity membership = memberRepo.findByConversationIdAndUserId(conversationId, userId)
                 .orElseThrow(() -> new RuntimeException("Вы не состоите в этой группе"));
 
-        // Физически удаляем связь. Юзер больше не получит сюда сообщения.
+        
         memberRepo.delete(membership);
 
-        // ВАЖНО: Если это был единственный админ, группа останется "сиротой".
-        // В будущем здесь стоит добавить логику передачи прав другому участнику,
-        // либо удалять группу целиком, если там осталось 0 человек.
+        
+        
+        
     }
 
     @Transactional
@@ -647,9 +641,9 @@ public class ChatServiceImpl implements ChatService {
         memberRepo.save(membership);
     }
 
-    // ==========================================
-    // 10. ИСКЛЮЧЕНИЕ ИЗ ГРУППЫ (Для Админов)
-    // ==========================================
+    
+    
+    
     @Transactional
     @Override
     public void kickUser(Long adminId, Long targetUserId, Long conversationId) {
@@ -664,7 +658,7 @@ public class ChatServiceImpl implements ChatService {
             throw new RuntimeException("Исключать пользователей можно только из групповых чатов");
         }
 
-        // 1. Проверяем права того, кто исключает
+        
         ConversationMembersEntity adminMembership = memberRepo.findByConversationIdAndUserId(conversationId, adminId)
                 .orElseThrow(() -> new RuntimeException("Вы не состоите в этой группе"));
 
@@ -672,14 +666,14 @@ public class ChatServiceImpl implements ChatService {
             throw new RuntimeException("Доступ запрещен: Только администратор может исключать участников");
         }
 
-        // 2. Находим того, кого нужно исключить
+        
         ConversationMembersEntity targetMembership = memberRepo.findByConversationIdAndUserId(conversationId, targetUserId)
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден в этой группе"));
 
         if (targetMembership.getRole() == ConversationMembersRole.ADMIN) {
             throw new RuntimeException("Доступ запрещен: Админ не может удалить другого Админа");
         }
-        // 3. Удаляем связь (пользователь больше не увидит чат и не получит сообщения)
+        
         memberRepo.delete(targetMembership);
     }
 
@@ -706,7 +700,7 @@ public class ChatServiceImpl implements ChatService {
                 .distinct()
                 .toList();
 
-        // Получаем только тех, кто разрешил себя добавлять/писать
+        
         List<Long> finalIdsToAdd = filterAvailableUsers(inviterId, idsToAdd);
 
         if (finalIdsToAdd.isEmpty()) {
@@ -722,7 +716,7 @@ public class ChatServiceImpl implements ChatService {
             member.setUser(user);
             member.setRole(ConversationMembersRole.MEMBER);
 
-            // Добавляем связь с обеих сторон
+            
             chat.getMembers().add(member);
         }
 
@@ -737,7 +731,7 @@ public class ChatServiceImpl implements ChatService {
             ConversationMembersEntity membership = memberRepo.findByConversationIdAndUserId(conversationId, userId)
                     .orElseThrow(() -> new RuntimeException("Участник не найден"));
 
-            // Устанавливаем текущее время как момент последнего прочтения
+            
             OffsetDateTime now = OffsetDateTime.now();
             membership.setLastReadAt(now);
             memberRepo.save(membership);
