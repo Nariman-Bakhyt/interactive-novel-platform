@@ -20,12 +20,14 @@ public interface NovelService {
     Page<NovelResponseDto> findAll(NovelSearchRequestDto request, Pageable pageable);
     NovelResponseDto update(Long id, NovelUpdateRequestDto dto);
     NovelResponseDto updateCoverUrl(Long id, MultipartFile file, Principal principal);
+    void delete(Long id);
     Page<NovelResponseDto> findNewNovels(int page , int size);
     Page<NovelResponseDto> findMyNovels(int page , int size,Long authorId);
     NovelAndChapterShortResponseDto findMyNovel(Long id,Long authorId);
     ChapterResponseDto findChapter(Long chapterId, Long novelId,Long currentUserId ,boolean isLocallyViewed, String deviceId);
     ChapterResponseDto addChapter(Long novelId, ChapterRequestDto dto);
     ChapterResponseDto updateChapter(Long novelId, Long chapterId, ChapterRequestDto dto);
+    ChapterResponseDto updateChapterPublishTime(Long novelId, Long chapterId, java.time.OffsetDateTime publishTime);
     void deleteChapter(Long novelId, Long chapterId);
     void updateChapterNumber(Long novelId, List<ChapterOrderUpdateRequestDto> chapterIds);
     NovelEntity getNovelReference(Long id);

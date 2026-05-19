@@ -5,6 +5,11 @@ import lombok.RequiredArgsConstructor;
 import org.apache.coyote.BadRequestException;
 import org.apache.tika.mime.MimeTypes;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
+import org.springframework.context.ApplicationEventPublisher;
+import project.interactivenovelplatform.event.SocialWebsocketEvent;
+import java.util.HashMap;
+import java.util.Map;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
 import org.springframework.security.access.AccessDeniedException;
@@ -18,6 +23,9 @@ import project.interactivenovelplatform.dto.response.AllRatingResponseDto;
 import project.interactivenovelplatform.dto.response.AllRatingsResponseDto;
 import project.interactivenovelplatform.dto.response.CommentResponseDto;
 import project.interactivenovelplatform.dto.response.RatingResponseDto;
+import project.interactivenovelplatform.dto.response.WsDomain;
+import project.interactivenovelplatform.dto.response.WsEventDto;
+import project.interactivenovelplatform.dto.response.NovelEventType;
 import project.interactivenovelplatform.entity.AppUserEntity;
 import project.interactivenovelplatform.entity.CommentEntity;
 import project.interactivenovelplatform.entity.Metadata;
@@ -38,6 +46,13 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class CommentServiceImpl implements CommentService {
+    private String determineTopic(CommentResponseDto response) {
+        if (response.getBlockId() != null) return "/topic/block." + response.getBlockId();
+        if (response.getChapterId() != null) return "/topic/chapter." + response.getChapterId();
+        if (response.getNovelId() != null) return "/topic/novel." + response.getNovelId();
+        return "/topic/global";
+    }
+
     private final RatingRepository ratingRepository;
     private final NovelService novelService;
     private final UserService userService;
@@ -46,6 +61,7 @@ public class CommentServiceImpl implements CommentService {
     private final StorageHelper storageHelper;
 
     private final TransactionTemplate transactionTemplate;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional
     @Override
@@ -78,7 +94,7 @@ public class CommentServiceImpl implements CommentService {
         // Fetch updated novel entity
         var updatedNovel = novelService.getNovelEntity(novelId);
 
-        return new RatingResponseDto(
+        RatingResponseDto response = new RatingResponseDto(
                 savedRating.getId(),
                 updatedNovel.getTotalScore(),
                 updatedNovel.getRatingCount(),
@@ -88,6 +104,8 @@ public class CommentServiceImpl implements CommentService {
                 timestamp,
                 dto.getScore()
         );
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/novel." + novelId + ".ratings", new WsEventDto<>(WsDomain.NOVEL, NovelEventType.RATING_CREATED.name(), response)));
+        return response;
     }
 
     @Override
@@ -95,7 +113,7 @@ public class CommentServiceImpl implements CommentService {
     public AllRatingsResponseDto getRatings(Long novelId, Pageable pageable){
         var novel = novelService.getNovelEntity(novelId);
         var ratings =ratingRepository.findByNovelId(novelId, pageable);
-        Page<AllRatingResponseDto>  allRatingResponseDtoPage = ratings.map(rating -> new AllRatingResponseDto(
+        Page<AllRatingResponseDto> allRatingResponseDtoPage = ratings.map(rating -> new AllRatingResponseDto(
                 rating.getId(),
                 rating.getCommentText(),
                 rating.getUser().getUsername(),
@@ -120,7 +138,7 @@ public class CommentServiceImpl implements CommentService {
 
         var updatedNovel = novelService.getNovelEntity(novelId);
 
-        return new RatingResponseDto(
+        RatingResponseDto response = new RatingResponseDto(
                 rating.getId(),
                 updatedNovel.getTotalScore(),
                 updatedNovel.getRatingCount(),
@@ -130,6 +148,8 @@ public class CommentServiceImpl implements CommentService {
                 null,
                 rating.getScore()
         );
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/novel." + novelId + ".ratings", new WsEventDto<>(WsDomain.NOVEL, NovelEventType.RATING_DELETED.name(), response)));
+        return response;
     }
 
     private CommentResponseDto convertToResponse(CommentEntity entity) {
@@ -184,7 +204,10 @@ public class CommentServiceImpl implements CommentService {
                         return commentRepository.save(commentEntity);
                     }
             );
-            return convertToResponse(finalCommentEntity);
+            CommentResponseDto response = convertToResponse(finalCommentEntity);
+            String topic = determineTopic(response);
+            applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, topic, new WsEventDto<>(WsDomain.NOVEL, NovelEventType.COMMENT_CREATED.name(), response)));
+            return response;
         }
         catch (Exception e) {
             if (metadata.getImages() != null) {
@@ -279,7 +302,7 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<CommentResponseDto> getComments(CommentRequestDto dto, Pageable pageable   ) {
+    public Slice<CommentResponseDto> getComments(CommentRequestDto dto, Pageable pageable   ) {
         if (dto.getBlockId() != null) {
             return commentRepository.findByBlock_Id(dto.getBlockId(), pageable).map(this::convertToResponse);
         } else if (dto.getChapterId() != null) {
@@ -288,7 +311,7 @@ public class CommentServiceImpl implements CommentService {
             return commentRepository.findByNovel_Id(dto.getNovelId(), pageable).map(this::convertToResponse);
         }
 
-        return Page.empty();
+        return new org.springframework.data.domain.SliceImpl<>(java.util.Collections.emptyList());
     }
 
     @Override
@@ -303,6 +326,9 @@ public class CommentServiceImpl implements CommentService {
 
         comment.setIsDeleted(true);
         commentRepository.save(comment);
-        return convertToResponse(comment);
+        CommentResponseDto response = convertToResponse(comment);
+        String destination = determineTopic(response);
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, destination, new WsEventDto<>(WsDomain.NOVEL, NovelEventType.COMMENT_DELETED.name(), response)));
+        return response;
     }
 }

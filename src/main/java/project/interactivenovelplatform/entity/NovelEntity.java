@@ -12,7 +12,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "novel")
-@SQLRestriction("is_deleted = false")
+@org.hibernate.annotations.SQLDelete(sql = "UPDATE novel SET is_deleted = true WHERE id = ?")
 @Getter @Setter
 @NoArgsConstructor
 public class NovelEntity {

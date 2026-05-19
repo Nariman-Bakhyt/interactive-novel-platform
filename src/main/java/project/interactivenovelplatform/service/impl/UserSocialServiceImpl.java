@@ -3,8 +3,9 @@ package project.interactivenovelplatform.service.impl;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PagedModel;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.data.domain.Slice;
+import org.springframework.context.ApplicationEventPublisher;
+import project.interactivenovelplatform.event.SocialWebsocketEvent;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +38,7 @@ public class UserSocialServiceImpl implements UserSocialService {
     private final UserService userService;
     private final StorageHelper storageHelper;
 
-    private final SimpMessagingTemplate messagingTemplate;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     private UserRelationResponseDto convertFollowerToDto(UserFollowerEntity relationEntity , AppUserEntity appUserEntity ) {
         return new UserRelationResponseDto(
@@ -108,16 +109,10 @@ public class UserSocialServiceImpl implements UserSocialService {
         followerRepository.save(relation);
         var response = convertFollowerToDto(relation, receiver);
 
-        messagingTemplate.convertAndSend(
-                "/topic/user." + receiver.getId() ,
-                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FOLLOW_SUCCESS.name(),
-                        Map.of("userId", currentUserId ,"relationId" ,relation.getId()))
-        );
-        messagingTemplate.convertAndSend(
-                "/topic/user." + currentUserId ,
-                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FOLLOW_SUCCESS.name(),
-                        Map.of("userId", receiver.getId() ,"relationId" ,relation.getId()))
-        );
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/user." + receiver.getId(), new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FOLLOW_SUCCESS.name(),
+                        Map.of("userId", currentUserId ,"relationId" ,relation.getId()))));
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/user." + currentUserId, new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FOLLOW_SUCCESS.name(),
+                        Map.of("userId", receiver.getId() ,"relationId" ,relation.getId()))));
         return response;
     }
 
@@ -144,17 +139,11 @@ public class UserSocialServiceImpl implements UserSocialService {
         var receiver = relation.getReceiver();
         var sender = relation.getSender();
 
-        messagingTemplate.convertAndSend(
-                "/topic/user." + receiver.getId() ,
-                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.UNFOLLOW_SUCCESS.name(),
-                        Map.of("userId", sender.getId() ,"relationId" ,relation.getId()))
-        );
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/user." + receiver.getId(), new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.UNFOLLOW_SUCCESS.name(),
+                        Map.of("userId", sender.getId() ,"relationId" ,relation.getId()))));
 
-        messagingTemplate.convertAndSend(
-                "/topic/user." + sender.getId() ,
-                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.UNFOLLOW_SUCCESS.name(),
-                        Map.of("userId", receiver.getId() ,"relationId" ,relation.getId()))
-        );
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/user." + sender.getId(), new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.UNFOLLOW_SUCCESS.name(),
+                        Map.of("userId", receiver.getId() ,"relationId" ,relation.getId()))));
     }
 
     private void checkAccess(Long currentUserId, UserFollowerEntity relation) {
@@ -189,16 +178,10 @@ public class UserSocialServiceImpl implements UserSocialService {
         var response = convertFriendToDto(friendRepository.save(relation), relation.getReceiver());
 
         var receiver = relation.getReceiver();
-        messagingTemplate.convertAndSend(
-                "/topic/user." + receiver.getId() ,
-                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_RECEIVED.name(),
-                        Map.of("userId", currentUserId ,"relationId" ,response.getId()))
-        );
-        messagingTemplate.convertAndSend(
-                "/topic/user." + currentUserId ,
-                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_SENT.name(),
-                        Map.of("userId", response.getUserId() ,"relationId" ,response.getId()))
-        );
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/user." + receiver.getId(), new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_RECEIVED.name(),
+                        Map.of("userId", currentUserId ,"relationId" ,response.getId()))));
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/user." + currentUserId, new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_SENT.name(),
+                        Map.of("userId", response.getUserId() ,"relationId" ,response.getId()))));
         return response;
     }
     @Transactional
@@ -224,16 +207,10 @@ public class UserSocialServiceImpl implements UserSocialService {
 
         var receiver = relation.getReceiver();
         var sender = relation.getSender();
-        messagingTemplate.convertAndSend(
-                "/topic/user." + sender.getId() ,
-                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_ACCEPTED.name(),
-                        Map.of("userId", receiver.getId() ,"relationId" ,response.getId()))
-        );
-        messagingTemplate.convertAndSend(
-                "/topic/user." + receiver.getId() ,
-                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_ACCEPTED.name(),
-                        Map.of("userId", sender.getId() ,"relationId" ,response.getId()))
-        );
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/user." + sender.getId(), new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_ACCEPTED.name(),
+                        Map.of("userId", receiver.getId() ,"relationId" ,response.getId()))));
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/user." + receiver.getId(), new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_ACCEPTED.name(),
+                        Map.of("userId", sender.getId() ,"relationId" ,response.getId()))));
 
         return response;
     }
@@ -264,16 +241,10 @@ public class UserSocialServiceImpl implements UserSocialService {
         dto.setReceiverId(receiver.getId());
         removeCloseFriend(currentUserId,dto);
 
-        messagingTemplate.convertAndSend(
-                "/topic/user." + sender.getId()  ,
-                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_DECLINED.name(),
-                        Map.of("userId", receiver.getId() ,"relationId" ,relation.getId()))
-        );
-        messagingTemplate.convertAndSend(
-                "/topic/user." + receiver.getId()  ,
-                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_DECLINED.name(),
-                        Map.of("userId", sender.getId() ,"relationId" ,relation.getId()))
-        );
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/user." + sender.getId(), new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_DECLINED.name(),
+                        Map.of("userId", receiver.getId() ,"relationId" ,relation.getId()))));
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/user." + receiver.getId(), new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.FRIEND_REQUEST_DECLINED.name(),
+                        Map.of("userId", sender.getId() ,"relationId" ,relation.getId()))));
 
     }
     @Transactional
@@ -300,11 +271,8 @@ public class UserSocialServiceImpl implements UserSocialService {
         closeFriendRel.setFriend(friend);
         closeFriendRel.setAddedAt(OffsetDateTime.now());
         var response = convertCloseFriendToDto(closeFriendsRepository.save(closeFriendRel), friend);
-        messagingTemplate.convertAndSend(
-                "/topic/user." + currentUserId ,
-                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.CLOSE_FRIEND_ADDED.name(),
-                        Map.of("userId", dto.getReceiverId() ,"relationId" ,closeFriendRel.getId()))
-        );
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/user." + currentUserId, new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.CLOSE_FRIEND_ADDED.name(),
+                        Map.of("userId", dto.getReceiverId() ,"relationId" ,closeFriendRel.getId()))));
         return response;
     }
 
@@ -326,11 +294,8 @@ public class UserSocialServiceImpl implements UserSocialService {
         } else {
             throw new IllegalArgumentException("Необходимо указать ID связи (relationId) или ID пользователя (receiverId)");
         }
-        messagingTemplate.convertAndSend(
-                "/topic/user." + currentUserId ,
-                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.CLOSE_FRIEND_REMOVED.name(),
-                        Map.of("userId", dto.getReceiverId() ,"relationId" ,closeFriendRel.getId()))
-        );
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/user." + currentUserId, new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.CLOSE_FRIEND_REMOVED.name(),
+                        Map.of("userId", dto.getReceiverId() ,"relationId" ,closeFriendRel.getId()))));
         closeFriendsRepository.delete(closeFriendRel);
     }
 
@@ -339,44 +304,38 @@ public class UserSocialServiceImpl implements UserSocialService {
 
     @Transactional(readOnly = true)
     @Override
-    public PagedModel<UserRelationResponseDto> getIncomingRequests(Long currentUserId, Pageable pageable) {
+    public Slice<UserRelationResponseDto> getIncomingRequests(Long currentUserId, Pageable pageable) {
 
-        var page = friendRepository.findByReceiverIdAndStatus(currentUserId, RelationStatus.PENDING, pageable)
+        return friendRepository.findByReceiverIdAndStatus(currentUserId, RelationStatus.PENDING, pageable)
                 .map(friend -> convertFriendToDto(friend, friend.getSender()));
-
-        return new PagedModel<>(page);
     }
     @Override
     @Transactional(readOnly = true)
-    public PagedModel<UserRelationResponseDto> getOutgoingRequests(Long currentUserId, Pageable pageable) {
-        var page = friendRepository.findBySenderIdAndStatus(currentUserId, RelationStatus.PENDING, pageable)
+    public Slice<UserRelationResponseDto> getOutgoingRequests(Long currentUserId, Pageable pageable) {
+        return friendRepository.findBySenderIdAndStatus(currentUserId, RelationStatus.PENDING, pageable)
                 .map(friend -> convertFriendToDto(friend, friend.getReceiver()));
-        return new PagedModel<>(page);
     }
 
     @Transactional(readOnly = true)
     @Override
-    public PagedModel<UserRelationResponseDto> getFollowers(Long currentUserId, Pageable pageable) {
-        var page = followerRepository.findByReceiverId(currentUserId, pageable)
+    public Slice<UserRelationResponseDto> getFollowers(Long currentUserId, Pageable pageable) {
+        return followerRepository.findByReceiverId(currentUserId, pageable)
                 .map(follower -> convertFollowerToDto(follower, follower.getSender()));
-        return new PagedModel<>(page);
     }
     @Transactional(readOnly = true)
     @Override
-    public PagedModel<UserRelationResponseDto> getFollowingMe(Long currentUserId, Pageable pageable) {
-        var page = followerRepository.findBySenderId(currentUserId, pageable)
+    public Slice<UserRelationResponseDto> getFollowingMe(Long currentUserId, Pageable pageable) {
+        return followerRepository.findBySenderId(currentUserId, pageable)
                 .map(follower -> convertFollowerToDto(follower, follower.getReceiver()));
-        return new PagedModel<>(page);
     }
     @Transactional(readOnly = true)
     @Override
-    public PagedModel<UserRelationResponseDto> getFriends(Long currentUserId, Pageable pageable) {
-        var page = friendRepository.findAllFriendsByUserId(currentUserId,RelationStatus.FRIEND,pageable)
+    public Slice<UserRelationResponseDto> getFriends(Long currentUserId, Pageable pageable) {
+        return friendRepository.findAllFriendsByUserId(currentUserId,RelationStatus.FRIEND,pageable)
                 .map(friend ->{
                     AppUserEntity user =  friend.getReceiver().getId().equals(currentUserId) ? friend.getSender() : friend.getReceiver();
                     return convertFriendToDto(friend, user);
                 });
-        return new PagedModel<>(page);
     }
 
     @Transactional(readOnly = true)
@@ -410,11 +369,8 @@ public class UserSocialServiceImpl implements UserSocialService {
         entity.setBlocked(blocked);
         entity.setCreatedAt(OffsetDateTime.now());
         var response = convertBlockToDto(blockRepository.save(entity),blocked);
-        messagingTemplate.convertAndSend(
-                "/topic/user." + currentUserId ,
-                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.USER_BLOCKED.name(),
-                        Map.of("userId", dto.getReceiverId() ,"relationId" ,entity.getId()))
-        );
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/user." + currentUserId, new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.USER_BLOCKED.name(),
+                        Map.of("userId", dto.getReceiverId() ,"relationId" ,entity.getId()))));
         return response;
     }
 
@@ -432,19 +388,14 @@ public class UserSocialServiceImpl implements UserSocialService {
         }
         blockRepository.delete(blockEntity);
 
-        messagingTemplate.convertAndSend(
-                "/topic/user." + currentUserId ,
-                new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.USER_UNBLOCKED.name(),
-                        Map.of("userId", dto.getReceiverId() ,"relationId" ,blockEntity.getId()))
-        );
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, "/topic/user." + currentUserId, new WsEventDto<>(WsDomain.SOCIAL,SocialEventType.USER_UNBLOCKED.name(),
+                        Map.of("userId", dto.getReceiverId() ,"relationId" ,blockEntity.getId()))));
 
     }
     @Transactional(readOnly = true)
     @Override
-    public PagedModel<UserRelationResponseDto> getMyBlacklist(Long currentUserId , Pageable pageable) {
-
-        var page = blockRepository.findAllByBlockerId(currentUserId,pageable).map(entity ->convertBlockToDto(entity,entity.getBlocked()));
-        return new PagedModel<>(page);
+    public Slice<UserRelationResponseDto> getMyBlacklist(Long currentUserId , Pageable pageable) {
+        return blockRepository.findAllByBlockerId(currentUserId,pageable).map(entity ->convertBlockToDto(entity,entity.getBlocked()));
     }
 
     @Override

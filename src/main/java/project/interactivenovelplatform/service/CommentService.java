@@ -2,6 +2,7 @@ package project.interactivenovelplatform.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.dto.request.CommentRequestDto;
 import project.interactivenovelplatform.dto.request.RatingRequestDto;
@@ -19,6 +20,6 @@ public interface CommentService {
     CommentResponseDto deleteComment(Long commentId , String userName);
     CommentResponseDto createComment(List<MultipartFile> files, CommentRequestDto dto, Long currentId);
 
-    Page<CommentResponseDto> getComments(CommentRequestDto filter, Pageable pageable);
+    Slice<CommentResponseDto> getComments(CommentRequestDto filter, Pageable pageable);
 
 }

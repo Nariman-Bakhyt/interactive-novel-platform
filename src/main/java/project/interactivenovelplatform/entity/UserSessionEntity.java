@@ -9,7 +9,6 @@ import java.time.OffsetDateTime;
 @Table(name = "user_sessions")
 @Getter@Setter
 @NoArgsConstructor @AllArgsConstructor
-@Builder
 public class UserSessionEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

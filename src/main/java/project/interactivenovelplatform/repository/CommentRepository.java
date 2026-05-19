@@ -1,6 +1,6 @@
 package project.interactivenovelplatform.repository;
 
-import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,11 +12,11 @@ import java.util.Optional;
 @Repository
 public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
     @EntityGraph(attributePaths = {"user"})
-    Page<CommentEntity> findByBlock_Id(Long blockId, Pageable pageable);
+    Slice<CommentEntity> findByBlock_Id(Long blockId, Pageable pageable);
     @EntityGraph(attributePaths = {"user"})
-    Page<CommentEntity> findByChapter_Id(Long chapterId, Pageable pageable);
+    Slice<CommentEntity> findByChapter_Id(Long chapterId, Pageable pageable);
     @EntityGraph(attributePaths = {"user"})
-    Page<CommentEntity> findByNovel_Id(Long novelId, Pageable pageable);
+    Slice<CommentEntity> findByNovel_Id(Long novelId, Pageable pageable);
     @EntityGraph(attributePaths = {"user"})
     Optional<CommentEntity> findById(Long commentId);
 }

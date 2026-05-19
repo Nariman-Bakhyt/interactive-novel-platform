@@ -13,6 +13,7 @@ import project.interactivenovelplatform.entity.NovelEntity;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+
 @Repository
 public interface NovelRepository extends JpaRepository<NovelEntity,Long>, JpaSpecificationExecutor<NovelEntity> {
     @Modifying
@@ -20,16 +21,23 @@ public interface NovelRepository extends JpaRepository<NovelEntity,Long>, JpaSpe
     @Query("UPDATE NovelEntity n SET n.viewCount = n.viewCount + :delta WHERE n.id = :novelId")
     void incrementViewCount(@Param("novelId") Long novelId, @Param("delta") Long delta);
 
-    Page<NovelEntity> findByStatusNotIn(Collection<Novel> status, Pageable pageable);
+    Page<NovelEntity> findByStatusNotInAndIsDeletedFalse(Collection<Novel> status, Pageable pageable);
+
     @EntityGraph(attributePaths = {"author"})
-    Page<NovelEntity>  findAllByStatusNotInOrderByPublicationDateDesc (Collection<Novel> status, Pageable pageable);    Page<NovelEntity> findAllByAuthor_Id(Long id, Pageable pageable);
-    Optional<NovelEntity> findByAuthor_IdAndId(Long authorId, Long id);
+    Page<NovelEntity> findAllByStatusNotInAndIsDeletedFalseOrderByPublicationDateDesc(Collection<Novel> status, Pageable pageable);
+
+    Page<NovelEntity> findAllByAuthor_IdAndIsDeletedFalse(Long id, Pageable pageable);
+
+    Optional<NovelEntity> findByAuthor_IdAndIdAndIsDeletedFalse(Long authorId, Long id);
+
     Page<NovelEntity> findAll(Specification<NovelEntity> spec, Pageable pageable);
 
     @EntityGraph(attributePaths = {"tags", "genres", "author"})
     List<NovelEntity> findAllByIdIn(Collection<Long> ids);
 
-
-    boolean existsByIdAndAuthorId(Long id, Long authorId);
-
+    boolean existsByIdAndAuthorIdAndIsDeletedFalse(Long id, Long authorId);
+    
+    interface NovelIdOnly {
+        Long getId();
+    }
 }

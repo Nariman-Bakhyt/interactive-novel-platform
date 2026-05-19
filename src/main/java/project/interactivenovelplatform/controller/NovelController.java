@@ -179,6 +179,17 @@ public class NovelController {
         novelService.deleteChapter(novelId,chapterId);
         return ResponseEntity.ok().build();
     }
+    @RateLimited(capacity = 5, minutes = 1)
+    @PutMapping("/{novelId}/chapter/{chapterId}/publish")
+    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId,authentication.principal)or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN) ")
+    public ResponseEntity<ChapterResponseDto> updateChapterPublishTime(
+            @PathVariable Long novelId,
+            @PathVariable Long chapterId,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.OffsetDateTime publishTime
+    ) {
+        var chapter = novelService.updateChapterPublishTime(novelId, chapterId, publishTime);
+        return ResponseEntity.ok().body(chapter);
+    }
     @RateLimited(capacity = 40, minutes = 1)
     @GetMapping("/public/search")
     public ResponseEntity<PagedModel<NovelResponseDto>> searchNovels(
@@ -193,10 +204,11 @@ public class NovelController {
 
 
 
-//    @DeleteMapping("/{id}")
-//    @PreAuthorize("hasRole('ADMIN')")
-//    public ResponseEntity<Void> deleteNovel(@PathVariable Long id) {
-//        novelService.delete(id);
-//        return ResponseEntity.noContent().build();
-//    }
+    @RateLimited(capacity = 5, minutes = 10)
+    @DeleteMapping("/{id}")
+    @PreAuthorize("@novelServiceImpl.isAuthor(#id, authentication.principal) or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN)")
+    public ResponseEntity<Void> deleteNovel(@PathVariable Long id) {
+        novelService.delete(id);
+        return ResponseEntity.ok().build();
+    }
 }

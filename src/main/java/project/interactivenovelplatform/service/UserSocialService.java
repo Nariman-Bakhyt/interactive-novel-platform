@@ -1,7 +1,7 @@
 package project.interactivenovelplatform.service;
 
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PagedModel;
+import org.springframework.data.domain.Slice;
 import project.interactivenovelplatform.dto.request.UserRelationRequestDto;
 import project.interactivenovelplatform.dto.response.SocialGraphResponseDto;
 import project.interactivenovelplatform.dto.response.UserRelationResponseDto;
@@ -20,18 +20,18 @@ public interface UserSocialService {
     void removeCloseFriend(Long currentUserId, UserRelationRequestDto dto);
 
 
-    PagedModel<UserRelationResponseDto> getIncomingRequests(Long currentUserId, Pageable pageable);
+    Slice<UserRelationResponseDto> getIncomingRequests(Long currentUserId, Pageable pageable);
 
-    PagedModel<UserRelationResponseDto> getOutgoingRequests(Long currentUserId, Pageable pageable);
+    Slice<UserRelationResponseDto> getOutgoingRequests(Long currentUserId, Pageable pageable);
 
-    PagedModel<UserRelationResponseDto> getFollowers(Long currentUserId, Pageable pageable);
-    PagedModel<UserRelationResponseDto> getFollowingMe(Long currentUserId, Pageable pageable);
-    PagedModel<UserRelationResponseDto> getFriends(Long currentUserId, Pageable pageable);
+    Slice<UserRelationResponseDto> getFollowers(Long currentUserId, Pageable pageable);
+    Slice<UserRelationResponseDto> getFollowingMe(Long currentUserId, Pageable pageable);
+    Slice<UserRelationResponseDto> getFriends(Long currentUserId, Pageable pageable);
     List<UserRelationResponseDto> getCloseFriends(Long currentUserId);
 
     UserRelationResponseDto blockUser(Long currentUserId, UserRelationRequestDto dto);
     void unblockUser(Long currentUserId,UserRelationRequestDto dto );
-    PagedModel<UserRelationResponseDto> getMyBlacklist(Long currentUserId ,Pageable pageable);
+    Slice<UserRelationResponseDto> getMyBlacklist(Long currentUserId ,Pageable pageable);
 
     Boolean checkFollower(Long currentUserId , Long followerId);
     Boolean checkFriend(Long currentUserId , Long friendId);

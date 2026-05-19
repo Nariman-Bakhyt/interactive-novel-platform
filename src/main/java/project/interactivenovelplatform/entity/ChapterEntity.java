@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.SQLRestriction;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -19,7 +18,6 @@ import java.util.List;
             )
         }
 )
-@SQLRestriction("is_deleted = false")
 @Getter @Setter
 @NoArgsConstructor
 public class ChapterEntity {
@@ -36,8 +34,15 @@ public class ChapterEntity {
     @Column(name = "is_deleted")
     private Boolean isDeleted = false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private ChapterStatus status = ChapterStatus.DRAFT;
+
     @Column(name = "created_at",nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    @Column(name = "published_at")
+    private OffsetDateTime publishedAt;
 
     @OneToMany(mappedBy = "chapter", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sequenceOrder ASC")

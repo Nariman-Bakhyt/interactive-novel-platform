@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
@@ -41,7 +42,7 @@ public class ChatController {
 
     // 2. Получить историю сообщений конкретного чата
     @GetMapping("/{conversationId}/messages")
-    public ResponseEntity<PagedModel<MessageResponseDto>> getChatMessages(
+    public ResponseEntity<Slice<MessageResponseDto>> getChatMessages(
             @AuthenticationPrincipal UserPrincipal user,
             @PathVariable Long conversationId,
             @PageableDefault(size = 50, sort = "timestamp",
@@ -49,7 +50,7 @@ public class ChatController {
         if (pageable.getPageSize() > 100) {
             pageable = PageRequest.of(pageable.getPageNumber(), 100, pageable.getSort());
         }
-        return ResponseEntity.ok(new PagedModel<>(chatService.getChatMessages(user.getId(), conversationId, pageable)));
+        return ResponseEntity.ok(chatService.getChatMessages(user.getId(), conversationId, pageable));
     }
 
     // 3. Начать приватный чат (или получить существующий)

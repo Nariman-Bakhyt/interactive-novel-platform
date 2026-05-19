@@ -6,12 +6,13 @@ import org.apache.coyote.BadRequestException;
 import org.apache.tika.mime.MimeTypes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.security.access.AccessDeniedException;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,6 +22,7 @@ import project.interactivenovelplatform.dto.request.CreateGroupRequest;
 import project.interactivenovelplatform.dto.request.SendMessageRequestDto;
 import project.interactivenovelplatform.dto.response.*;
 import project.interactivenovelplatform.entity.*;
+import project.interactivenovelplatform.event.SocialWebsocketEvent;
 import project.interactivenovelplatform.error.GlobalExceptionHandler;
 import project.interactivenovelplatform.repository.ConversationMemberRepository;
 import project.interactivenovelplatform.repository.ConversationRepository;
@@ -47,7 +49,7 @@ public class ChatServiceImpl implements ChatService {
 
     private final StorageService storageService;
     private final TransactionTemplate transactionTemplate;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final StorageHelper storageHelper;
     private final static Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
@@ -408,16 +410,18 @@ public class ChatServiceImpl implements ChatService {
 
             MessageResponseDto response = convertToMessageResponse(message);
 
-            messagingTemplate.convertAndSend(
+            applicationEventPublisher.publishEvent(new SocialWebsocketEvent(
+                    this,
                     "/topic/chat." + dto.getConversationId(),
                     new WsEventDto<>(WsDomain.CHAT,WsEventType.NEW_MESSAGE.name(), response)
-            );
+            ));
 
             for (Long memberId : memberIds) {
-                messagingTemplate.convertAndSend(
+                applicationEventPublisher.publishEvent(new SocialWebsocketEvent(
+                        this,
                         "/topic/user." + memberId ,
                         new WsEventDto<>(WsDomain.CHAT,WsEventType.CHAT_UPDATED.name(), response)
-                );
+                ));
             }
             return new FinalizedMessageData(message,memberIds);
         });
@@ -537,7 +541,7 @@ public class ChatServiceImpl implements ChatService {
     // ==========================================
     @Transactional(readOnly = true)
     @Override
-    public Page<MessageResponseDto> getChatMessages(Long userId, Long conversationId, Pageable pageable) {
+    public Slice<MessageResponseDto> getChatMessages(Long userId, Long conversationId, Pageable pageable) {
         // Проверяем, есть ли у юзера доступ к этому чату
         var conversationMember = memberRepo.findByConversationIdAndUserId(conversationId, userId)
                 .filter(m -> !m.isDeleted()
@@ -557,10 +561,11 @@ public class ChatServiceImpl implements ChatService {
                 "username", user.getUsername()
         );
 
-        messagingTemplate.convertAndSend(
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(
+                this,
                 "/topic/chat." + conversationId,
                 new WsEventDto<>(WsDomain.CHAT,WsEventType.USER_TYPING.name(), payload)
-        );
+        ));
     }
 
     // ==========================================
@@ -585,10 +590,11 @@ public class ChatServiceImpl implements ChatService {
 
         messageRepo.save(message);
 
-        messagingTemplate.convertAndSend(
+        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(
+                this,
                 "/topic/chat." + message.getConversation().getId(),
                 new WsEventDto<>(WsDomain.CHAT,WsEventType.MESSAGE_DELETED.name(), Map.of("messageId", messageId))
-        );
+        ));
     }
 
     // ==========================================
@@ -736,14 +742,15 @@ public class ChatServiceImpl implements ChatService {
             membership.setLastReadAt(now);
             memberRepo.save(membership);
 
-            messagingTemplate.convertAndSend(
+            applicationEventPublisher.publishEvent(new SocialWebsocketEvent(
+                    this,
                     "/topic/user." + userId,
                     new WsEventDto<>(
                             WsDomain.CHAT,
                             WsEventType.READ_UPDATE.name(),
                             Map.of("conversationId", conversationId, "lastReadAt", now)
                     )
-            );
+            ));
         });
     }
 

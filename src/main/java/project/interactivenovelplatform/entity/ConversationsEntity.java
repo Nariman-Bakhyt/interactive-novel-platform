@@ -13,7 +13,6 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class ConversationsEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,7 +35,6 @@ public class ConversationsEntity {
     private List<MessageEntity> messages;
 
     @OneToMany(mappedBy = "conversation",cascade = CascadeType.ALL , orphanRemoval = true)
-    @Builder.Default
     private List<ConversationMembersEntity> members = new ArrayList<>();
 
     @Column(name = "last_message_at")

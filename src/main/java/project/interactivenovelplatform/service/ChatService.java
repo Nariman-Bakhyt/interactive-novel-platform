@@ -2,6 +2,7 @@ package project.interactivenovelplatform.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import project.interactivenovelplatform.dto.request.ChatSettingsRequestDto;
@@ -17,7 +18,7 @@ public interface ChatService {
     ConversationResponseDto createGroupChat(Long creatorId, CreateGroupRequest request);
     void sendMessage(Long senderId, SendMessageRequestDto dto, List<MultipartFile> files);
     Page<ConversationResponseDto> getUserChats(Long userId, Pageable pageable);
-    Page<MessageResponseDto> getChatMessages(Long userId, Long conversationId, Pageable pageable);
+    Slice<MessageResponseDto> getChatMessages(Long userId, Long conversationId, Pageable pageable);
     void sendTypingStatus(Long userId, Long conversationId);
     void deleteMessage(Long requesterId, Long messageId);
     void deleteChatForUser(Long userId, Long conversationId);

@@ -1,4 +1,4 @@
-package project.interactivenovelplatform.service;
+package project.interactivenovelplatform.service.scheduler;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

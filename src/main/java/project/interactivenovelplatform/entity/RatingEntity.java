@@ -1,10 +1,11 @@
 package project.interactivenovelplatform.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.Check;
 
 import java.time.OffsetDateTime;
 
@@ -18,12 +19,13 @@ import java.time.OffsetDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-@Check(constraints = "score >= 1 AND score <= 5")
 public class RatingEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Min(value = 1, message = "Оценка не может быть меньше 1")
+    @Max(value = 5, message = "Оценка не может быть больше 5")
     @Column(name = "score",nullable = false)
     private int score;
 

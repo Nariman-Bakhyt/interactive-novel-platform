@@ -108,7 +108,6 @@ public class WebSecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS,"/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/", "/error", "/static/**").permitAll()
-                        .requestMatchers("/api/users/search").permitAll()
                         .requestMatchers("/api/*/public/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/ws/**").permitAll()

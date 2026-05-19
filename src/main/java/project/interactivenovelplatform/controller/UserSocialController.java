@@ -5,7 +5,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.data.web.PagedModel;
+import org.springframework.data.domain.Slice;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -46,7 +46,7 @@ public class UserSocialController {
     @RateLimited(capacity = 20, minutes = 1)
     @GetMapping("/followers")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<PagedModel<UserRelationResponseDto>> getFollowers(
+    public ResponseEntity<Slice<UserRelationResponseDto>> getFollowers(
             @AuthenticationPrincipal UserPrincipal principal,
             @PageableDefault(size = 20, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
         if (pageable.getPageSize() > 50) {
@@ -57,7 +57,7 @@ public class UserSocialController {
     @RateLimited(capacity = 20, minutes = 1)
     @GetMapping("/following")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<PagedModel<UserRelationResponseDto>> getFollowing(
+    public ResponseEntity<Slice<UserRelationResponseDto>> getFollowing(
             @AuthenticationPrincipal UserPrincipal principal,
             @PageableDefault(size = 20, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
         if (pageable.getPageSize() > 50) {
@@ -98,7 +98,7 @@ public class UserSocialController {
     @RateLimited(capacity = 20, minutes = 1)
     @GetMapping("/friends/requests/incoming")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<PagedModel<UserRelationResponseDto>> getIncomingRequests(
+    public ResponseEntity<Slice<UserRelationResponseDto>> getIncomingRequests(
             @AuthenticationPrincipal UserPrincipal principal,
             @PageableDefault(size = 20, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
         if (pageable.getPageSize() > 50) {
@@ -109,7 +109,7 @@ public class UserSocialController {
     @RateLimited(capacity = 20, minutes = 1)
     @GetMapping("/friends/requests/outgoing")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<PagedModel<UserRelationResponseDto>> getOutgoingRequests(
+    public ResponseEntity<Slice<UserRelationResponseDto>> getOutgoingRequests(
             @AuthenticationPrincipal UserPrincipal principal,
             @PageableDefault(size = 20, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
         if (pageable.getPageSize() > 50) {
@@ -120,7 +120,7 @@ public class UserSocialController {
     @RateLimited(capacity = 20, minutes = 1)
     @GetMapping("/friends")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<PagedModel<UserRelationResponseDto>> getFriends(
+    public ResponseEntity<Slice<UserRelationResponseDto>> getFriends(
             @AuthenticationPrincipal UserPrincipal principal,
             @PageableDefault(size = 20, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
         if (pageable.getPageSize() > 50) {
@@ -179,7 +179,7 @@ public class UserSocialController {
     @RateLimited(capacity = 20, minutes = 1)
     @GetMapping("/blocks")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<PagedModel<UserRelationResponseDto>> getMyBlackList(
+    public ResponseEntity<Slice<UserRelationResponseDto>> getMyBlackList(
             @AuthenticationPrincipal UserPrincipal principal,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         if (pageable.getPageSize() > 50) {

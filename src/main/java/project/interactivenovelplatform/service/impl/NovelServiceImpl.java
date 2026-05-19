@@ -87,7 +87,10 @@ public class NovelServiceImpl implements NovelService {
                   blockEntity.getSequenceOrder(),
                   blockEntity.getType(),
                   blockEntity.getContent()
-          )).toList()
+          )).toList(),
+          chapter.getStatus(),
+          chapter.getCreatedAt(),
+          chapter.getPublishedAt()
         );
     }
 
@@ -102,7 +105,7 @@ public class NovelServiceImpl implements NovelService {
     @Transactional(readOnly = true)
     public boolean isAuthor(Long novelId, UserPrincipal userPrincipal) {
         if(userPrincipal == null) return false;
-        return novelRepository.existsByIdAndAuthorId(novelId, userPrincipal.getId());
+        return novelRepository.existsByIdAndAuthorIdAndIsDeletedFalse(novelId, userPrincipal.getId());
     }
 
     @Override
@@ -158,12 +161,18 @@ public class NovelServiceImpl implements NovelService {
     @Transactional(readOnly = true)
     public NovelAndChapterShortResponseDto findById(Long id,Long userId ) {
         var novel = novelRepository.findById(id)
+                .filter(n -> !n.getIsDeleted())
                 .orElseThrow(() -> new EntityNotFoundException("Роман не найден."));
         if(NON_PUBLIC_STATUSES.contains(novel.getStatus())) {
             if(!novel.getAuthor().getId().equals(userId)) throw new EntityNotFoundException("Роман не найден.");
 
         }
-        var chapters =chapterRepository.findAllByNovelIdShort(novel.getId());
+        List<ChapterShortResponseDto> chapters;
+        if (novel.getAuthor().getId().equals(userId)) {
+            chapters = chapterRepository.findAllByNovelIdShort(novel.getId());
+        } else {
+            chapters = chapterRepository.findAllPublishedByNovelIdShort(novel.getId());
+        }
         return convertToDtoFull(novel,chapters);
     }
 
@@ -182,7 +191,10 @@ public class NovelServiceImpl implements NovelService {
         // 1. Базовая спецификация (отсекаем удаленные и скрытые новеллы)
         Specification<NovelEntity> spec = (root, query, cb) -> {
             query.distinct(true);
-            return cb.not(root.get("status").in(NON_PUBLIC_STATUSES));
+            return cb.and(
+                    cb.not(root.get("status").in(NON_PUBLIC_STATUSES)),
+                    cb.equal(root.get("isDeleted"), false)
+            );
         };
 
         for (Sort.Order order : pageable.getSort()) {
@@ -220,7 +232,8 @@ public class NovelServiceImpl implements NovelService {
         }
 
         // 3. Шаг "Thin Page": Вытаскиваем и сортируем ТОЛЬКО идентификаторы (id)
-        Page<NovelEntity> thinPage = novelRepository.findAll(spec, effectivePageable);
+        Pageable finalEffectivePageable = effectivePageable;
+        Page<NovelRepository.NovelIdOnly> thinPage = novelRepository.findBy(spec, q -> q.as(NovelRepository.NovelIdOnly.class).page(finalEffectivePageable));
 
         if (thinPage.isEmpty()) {
             // Возвращаем пустую страницу с ОРИГИНАЛЬНЫМ pageable, чтобы фронт получил правильные метаданные
@@ -228,7 +241,7 @@ public class NovelServiceImpl implements NovelService {
         }
 
         List<Long> ids = thinPage.getContent().stream()
-                .map(NovelEntity::getId)
+                .map(NovelRepository.NovelIdOnly::getId)
                 .toList();
 
         List<NovelEntity> richNovels = novelRepository.findAllByIdIn(ids);
@@ -246,6 +259,7 @@ public class NovelServiceImpl implements NovelService {
     @Transactional
     public NovelResponseDto update(Long id, NovelUpdateRequestDto dto) {
         NovelEntity novel = novelRepository.findById(id)
+                .filter(n -> !n.getIsDeleted())
                 .orElseThrow(() -> new EntityNotFoundException("Роман с id: " + id + " не найден"));
         if(novel.getStatus() == Novel.RETRACTED) {
             throw new IllegalStateException("Нельзя редактировать роман, отозванный автором.");
@@ -283,6 +297,7 @@ public class NovelServiceImpl implements NovelService {
     @Override
     public NovelResponseDto updateCoverUrl(Long id, MultipartFile file, Principal principal){
         var novel = novelRepository.findById(id)
+                .filter(n -> !n.getIsDeleted())
                 .orElseThrow(() -> new EntityNotFoundException("новелла не найдена"));
         String oldUrl = novel.getCoverUrl();
 
@@ -321,6 +336,7 @@ public class NovelServiceImpl implements NovelService {
     public NovelEntity saveNewCoverUrl( Long novelId,String newCoverUrl){
         try {
             var novel = novelRepository.findById(novelId)
+                    .filter(n -> !n.getIsDeleted())
                     .orElseThrow(()->new EntityNotFoundException("новелла с ID: " + novelId + " не найден"));
             novel.setCoverUrl(newCoverUrl);
             return novelRepository.save(novel);
@@ -335,18 +351,18 @@ public class NovelServiceImpl implements NovelService {
     @Transactional(readOnly = true)
     public Page<NovelResponseDto> findNewNovels(int page , int size){
         Pageable pageable = PageRequest.of(page, size);
-        return novelRepository.findAllByStatusNotInOrderByPublicationDateDesc(NON_PUBLIC_STATUSES,pageable).map(this::convertToDto);
+        return novelRepository.findAllByStatusNotInAndIsDeletedFalseOrderByPublicationDateDesc(NON_PUBLIC_STATUSES,pageable).map(this::convertToDto);
     }
     @Override
     @Transactional(readOnly = true)
     public Page<NovelResponseDto> findMyNovels(int page , int size,Long authorId){
         Pageable pageable = PageRequest.of(page, size);
-        return novelRepository.findAllByAuthor_Id(authorId, pageable).map(this::convertToDto);
+        return novelRepository.findAllByAuthor_IdAndIsDeletedFalse(authorId, pageable).map(this::convertToDto);
     }
     @Override
     @Transactional(readOnly = true)
     public NovelAndChapterShortResponseDto findMyNovel(Long id,Long authorId){
-        var novel = novelRepository.findByAuthor_IdAndId(authorId,id).orElseThrow(
+        var novel = novelRepository.findByAuthor_IdAndIdAndIsDeletedFalse(authorId,id).orElseThrow(
                 ()->new EntityNotFoundException("новелла с ID: " + id + " не найден"));
         var chapters =chapterRepository.findAllByNovelIdShort(novel.getId());
         return convertToDtoFull(novel,chapters);
@@ -355,15 +371,13 @@ public class NovelServiceImpl implements NovelService {
     @Transactional
     @Override
     public ChapterResponseDto addChapter(Long novelId, ChapterRequestDto dto){
-        var novel = novelRepository.findById(novelId).orElseThrow(
-                ()->new EntityNotFoundException("Роман с id: " + novelId + " не найден"));
+        var novel = novelRepository.findById(novelId)
+                .filter(n -> !n.getIsDeleted())
+                .orElseThrow(()->new EntityNotFoundException("Роман с id: " + novelId + " не найден"));
 
-        if(chapterRepository.findByNovel_IdAndTitleIgnoreCase(novelId, dto.getTitle()).isPresent()) {
+        if(chapterRepository.findByNovel_IdAndTitleIgnoreCaseAndIsDeletedFalse(novelId, dto.getTitle()).isPresent()) {
             throw new IllegalStateException("Глава с таким именем существует");
         }
-        novel.setChapterCount(novel.getChapterCount()+1);
-        novel.setLastChapterAddedAt(OffsetDateTime.now());
-        novelRepository.save(novel);
         ChapterEntity chapter= new ChapterEntity();
         chapter.setNovel(novel);
         Double chapterNumber = chapterRepository.findMaxChapterNumberByNovelId(novelId)
@@ -371,6 +385,14 @@ public class NovelServiceImpl implements NovelService {
                 .orElse(1.0);
         chapter.setChapterNumber(chapterNumber);
         chapter.setTitle(dto.getTitle());
+        chapter.setPublishedAt(dto.getPublishedAt());
+        if (dto.getPublishedAt() == null) {
+            chapter.setStatus(ChapterStatus.DRAFT);
+        } else if (dto.getPublishedAt().isAfter(OffsetDateTime.now())) {
+            chapter.setStatus(ChapterStatus.SCHEDULED);
+        } else {
+            chapter.setStatus(ChapterStatus.PUBLISHED);
+        }
         List<ChapterBlockEntity> blocks = dto.getBlocks().stream().map(blockDto -> {
             ChapterBlockEntity block = new ChapterBlockEntity();
             block.setSequenceOrder(blockDto.getSequenceOrder());
@@ -381,16 +403,27 @@ public class NovelServiceImpl implements NovelService {
         }).toList();
         chapter.setBlocks(blocks);
         chapterRepository.save(chapter);
+
+        if (chapter.getStatus() == ChapterStatus.PUBLISHED) {
+            novel.setChapterCount(novel.getChapterCount() + 1);
+            if (novel.getLastChapterAddedAt() == null || chapter.getPublishedAt().isAfter(novel.getLastChapterAddedAt())) {
+                novel.setLastChapterAddedAt(chapter.getPublishedAt());
+            }
+            novelRepository.save(novel);
+        }
+
         return ChapterConvertToDto(chapter);
     }
     @Transactional
     @Override
     public ChapterResponseDto updateChapter(Long novelId, Long chapterId, ChapterRequestDto dto){
-        novelRepository.findById(novelId).orElseThrow(
-                ()->new EntityNotFoundException("Роман с id: " + novelId + " не найден"));
+        novelRepository.findById(novelId)
+                .filter(n -> !n.getIsDeleted())
+                .orElseThrow(()->new EntityNotFoundException("Роман с id: " + novelId + " не найден"));
 
-        var chapter= chapterRepository.findById(chapterId).orElseThrow(
-                ()->new EntityNotFoundException("глава с ID: " + chapterId + " не найден"));
+        var chapter= chapterRepository.findById(chapterId)
+                .filter(c -> !c.getIsDeleted())
+                .orElseThrow(()->new EntityNotFoundException("глава с ID: " + chapterId + " не найден"));
         chapter.setTitle(dto.getTitle());
         Map<Long, ChapterBlockEntity> existingBlocksMap = chapter.getBlocks().stream()
                 .filter(b->b.getId() != null)
@@ -422,30 +455,53 @@ public class NovelServiceImpl implements NovelService {
         chapter.getBlocks().clear();
         chapter.getBlocks().addAll(finalBlocks);
 
+        boolean publishTimeChanged = false;
+        if (dto.getPublishedAt() != null) {
+            OffsetDateTime oldPublishTime = chapter.getPublishedAt();
+            OffsetDateTime newPublishTime = dto.getPublishedAt();
+            if (!Objects.equals(oldPublishTime, newPublishTime)) {
+                chapter.setPublishedAt(newPublishTime);
+                if (newPublishTime.isAfter(OffsetDateTime.now())) {
+                    chapter.setStatus(ChapterStatus.SCHEDULED);
+                } else {
+                    chapter.setStatus(ChapterStatus.PUBLISHED);
+                }
+                publishTimeChanged = true;
+            }
+        }
+
         chapterRepository.save(chapter);
+
+        if (publishTimeChanged) {
+            recalculateNovelStats(novelId);
+        }
+
         return ChapterConvertToDto(chapter);
     }
 
     @Transactional
     @Override
     public void deleteChapter(Long novelId, Long chapterId){
-        var novel = novelRepository.findById(novelId)
+        novelRepository.findById(novelId)
+                .filter(n -> !n.getIsDeleted())
                 .orElseThrow(() -> new EntityNotFoundException("Роман с id: " + novelId + " не найден"));
         ChapterEntity chapter = chapterRepository.findById(chapterId)
+                .filter(c -> !c.getIsDeleted())
                 .orElseThrow(() -> new EntityNotFoundException("Глава с id: " + chapterId + " не найден в романе id: " + novelId));
         if(!chapter.getNovel().getId().equals(novelId)) {
             throw new IllegalArgumentException("Глава с id: " + chapterId + "не связана с новеллой с id: " + novelId);
         }
-        chapterRepository.delete(chapter);
-        novel.setChapterCount(Math.max(0,novel.getChapterCount() - 1));
-        novelRepository.save(novel);
+        chapter.setIsDeleted(true);
+        chapterRepository.save(chapter);
+        recalculateNovelStats(novelId);
     }
 
     @Override
     @Transactional
     public void updateChapterNumber(Long novelId, List<ChapterOrderUpdateRequestDto> chapterIds){
-        novelRepository.findById(novelId).orElseThrow(
-                ()->new EntityNotFoundException("Роман с id: " + novelId + " не найден"));
+        novelRepository.findById(novelId)
+                .filter(n -> !n.getIsDeleted())
+                .orElseThrow(()->new EntityNotFoundException("Роман с id: " + novelId + " не найден"));
         for(var chapterId : chapterIds){
             chapterRepository.updatePositionSecurely(chapterId.getChapterId(),novelId,chapterId.getNewChapterNumber());
         }
@@ -455,6 +511,7 @@ public class NovelServiceImpl implements NovelService {
     @Transactional
     public ChapterResponseDto findChapter(Long chapterId, Long novelId, Long currentUserId, boolean isLocallyViewed, String guestId) {
         var novel = novelRepository.findById(novelId)
+                .filter(n -> !n.getIsDeleted())
                 .orElseThrow(() -> new EntityNotFoundException("Новеллы с id: " + novelId + " нет"));
 
         if (NON_PUBLIC_STATUSES.contains(novel.getStatus())) {
@@ -463,8 +520,14 @@ public class NovelServiceImpl implements NovelService {
             }
         }
 
-        var chapter = chapterRepository.findByNovelIdAndId(novelId, chapterId)
+        var chapter = chapterRepository.findByNovelIdAndIdAndIsDeletedFalse(novelId, chapterId)
                 .orElseThrow(() -> new EntityNotFoundException("Главы не существует"));
+
+        if (chapter.getStatus() != ChapterStatus.PUBLISHED) {
+            if (!Objects.equals(currentUserId, novel.getAuthor().getId())) {
+                throw new EntityNotFoundException("Глава не найдена или еще не опубликована.");
+            }
+        }
 
         if (!isLocallyViewed) {
             if (currentUserId != null) {
@@ -506,17 +569,23 @@ public class NovelServiceImpl implements NovelService {
 
     @Override
     public NovelEntity getNovelReference(Long id) {
-        if (!novelRepository.existsById(id)) throw new EntityNotFoundException("Роман с Id:"+ id +" не найден.");
+        var novel = novelRepository.findById(id)
+                .filter(n -> !n.getIsDeleted())
+                .orElseThrow(() -> new EntityNotFoundException("Роман с Id:" + id + " не найден."));
         return entityManager.getReference(NovelEntity.class, id);
     }
     @Transactional(readOnly = true)
     @Override
     public NovelResponseDto getNovelById(Long novelId) {
-        return convertToDto(novelRepository.findById(novelId).orElseThrow(() -> new EntityNotFoundException("Роман с Id:"+ novelId +" не найден.")));
+        return convertToDto(novelRepository.findById(novelId)
+                .filter(n -> !n.getIsDeleted())
+                .orElseThrow(() -> new EntityNotFoundException("Роман с Id:"+ novelId +" не найден.")));
     }
     @Override
     public ChapterEntity getChapterReference(Long id) {
-        if(!chapterRepository.existsById(id)) throw new EntityNotFoundException("Глава с Id:"+ id +" не найден.");
+        var chapter = chapterRepository.findById(id)
+                .filter(c -> !c.getIsDeleted())
+                .orElseThrow(() -> new EntityNotFoundException("Глава с Id:" + id + " не найден."));
         return entityManager.getReference(ChapterEntity.class, id);
     }
     @Override
@@ -527,12 +596,16 @@ public class NovelServiceImpl implements NovelService {
     @Transactional(readOnly = true)
     @Override
     public NovelEntity getNovelEntity(Long id) {
-        return novelRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Роман с Id:"+ id +" не найден."));
+        return novelRepository.findById(id)
+                .filter(n -> !n.getIsDeleted())
+                .orElseThrow(() -> new EntityNotFoundException("Роман с Id:"+ id +" не найден."));
     }
     @Transactional(readOnly = true)
     @Override
     public ChapterEntity getChapterEntity(Long id) {
-        return chapterRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Глава с Id:"+ id +" не найден."));
+        return chapterRepository.findById(id)
+                .filter(c -> !c.getIsDeleted())
+                .orElseThrow(() -> new EntityNotFoundException("Глава с Id:" + id + " не найден."));
     }
     @Transactional(readOnly = true)
     @Override
@@ -544,9 +617,59 @@ public class NovelServiceImpl implements NovelService {
     @Override
     public Page<NovelResponseDto> searchNovels(int page, int size, String title) {
         Pageable pageable = PageRequest.of(page, size);
-        Specification<NovelEntity> spec = NovelSpecifications.titleLike(title);
+        Specification<NovelEntity> spec = Specification.where(NovelSpecifications.titleLike(title))
+                .and(NovelSpecifications.isNotDeleted());
         return novelRepository.findAll(spec, pageable)
                 .map(this::convertToDto);
     }
 
+    @Transactional
+    @Override
+    public ChapterResponseDto updateChapterPublishTime(Long novelId, Long chapterId, OffsetDateTime publishTime) {
+        novelRepository.findById(novelId)
+                .filter(n -> !n.getIsDeleted())
+                .orElseThrow(()->new EntityNotFoundException("Роман с id: " + novelId + " не найден"));
+
+        ChapterEntity chapter = chapterRepository.findById(chapterId)
+                .filter(c -> !c.getIsDeleted())
+                .orElseThrow(()->new EntityNotFoundException("Глава с ID: " + chapterId + " не найдена"));
+
+        if (!chapter.getNovel().getId().equals(novelId)) {
+            throw new IllegalArgumentException("Глава с id: " + chapterId + " не связана с новеллой с id: " + novelId);
+        }
+
+        chapter.setPublishedAt(publishTime);
+        if (publishTime == null) {
+            chapter.setStatus(ChapterStatus.DRAFT);
+        } else if (publishTime.isAfter(OffsetDateTime.now())) {
+            chapter.setStatus(ChapterStatus.SCHEDULED);
+        } else {
+            chapter.setStatus(ChapterStatus.PUBLISHED);
+        }
+        chapterRepository.save(chapter);
+
+        recalculateNovelStats(novelId);
+
+        return ChapterConvertToDto(chapter);
+    }
+
+    private void recalculateNovelStats(Long novelId) {
+        NovelEntity novel = novelRepository.findById(novelId).orElse(null);
+        if (novel != null) {
+            long count = chapterRepository.countPublishedChapters(novelId);
+            OffsetDateTime lastPub = chapterRepository.findLatestPublishedDate(novelId).orElse(null);
+            novel.setChapterCount((int) count);
+            novel.setLastChapterAddedAt(lastPub);
+            novelRepository.save(novel);
+        }
+    }
+
+    @Transactional
+    @Override
+    public void delete(Long id) {
+        NovelEntity novel = novelRepository.findById(id)
+                .filter(n -> !n.getIsDeleted())
+                .orElseThrow(() -> new EntityNotFoundException("Роман с Id:" + id + " не найден."));
+        novelRepository.delete(novel);
+    }
 }

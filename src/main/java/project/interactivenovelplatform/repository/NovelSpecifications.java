@@ -144,4 +144,8 @@ public class NovelSpecifications {
         } );
     }
 
+    public static Specification<NovelEntity> isNotDeleted() {
+        return (root, query, cb) -> cb.equal(root.get("isDeleted"), false);
+    }
+
 }

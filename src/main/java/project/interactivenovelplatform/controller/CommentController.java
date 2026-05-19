@@ -6,10 +6,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.data.web.PagedModel;
+import org.springframework.data.domain.Slice;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -22,9 +21,7 @@ import project.interactivenovelplatform.service.CommentService;
 import project.interactivenovelplatform.service.NovelService;
 
 import java.security.Principal;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -32,19 +29,18 @@ import java.util.Map;
 public class CommentController {
     private final CommentService commentService;
     private final NovelService novelService;
-    private final SimpMessagingTemplate messagingTemplate;
 
     @RateLimited(capacity = 100, minutes = 1)
     @GetMapping("/public")
-    public ResponseEntity<PagedModel<CommentResponseDto>> getComments(CommentRequestDto commentRequestDto,
+    public ResponseEntity<Slice<CommentResponseDto>> getComments(CommentRequestDto commentRequestDto,
                                                                         @PageableDefault(size = 20, sort = "timestamp",
                                                                         direction = Sort.Direction.DESC) Pageable pageable)
     {
         if (pageable.getPageSize() > 50) {
             pageable = PageRequest.of(pageable.getPageNumber(), 50, pageable.getSort());
         }
-        Page<CommentResponseDto> page = commentService.getComments(commentRequestDto, pageable);
-        return ResponseEntity.ok(new PagedModel<>(page));
+        Slice<CommentResponseDto> page = commentService.getComments(commentRequestDto, pageable);
+        return ResponseEntity.ok(page);
     }
 
     @RateLimited(capacity = 10, minutes = 1)
@@ -53,29 +49,13 @@ public class CommentController {
     public ResponseEntity<CommentResponseDto> createComment(@RequestPart(value = "files", required = false) List<MultipartFile> files
             ,@RequestPart("comment") CommentRequestDto commentRequestDto, @AuthenticationPrincipal UserPrincipal principal){
         CommentResponseDto response = commentService.createComment(files,commentRequestDto, principal.getId());
-        String topic = determineTopic(response);
-        messagingTemplate.convertAndSend(topic, (Object) response);
         return ResponseEntity.ok(response);
-    }
-
-    private String determineTopic(CommentResponseDto response) {
-        if (response.getBlockId() != null) return "/topic/block." + response.getBlockId();
-        if (response.getChapterId() != null) return "/topic/chapter." + response.getChapterId();
-        if (response.getNovelId() != null) return "/topic/novel." + response.getNovelId();
-        return "/topic/global";
     }
     @RateLimited(capacity = 10, minutes = 1)
     @DeleteMapping("/{commentId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> deleteComment(@PathVariable Long commentId, Principal principal){
         CommentResponseDto deletedComment = commentService.deleteComment(commentId, principal.getName());
-
-        String destination = determineTopic(deletedComment);
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("id", commentId);
-        payload.put("deleted", true);
-
-        messagingTemplate.convertAndSend(destination, (Object)payload);
         return ResponseEntity.ok().build();
     }
 

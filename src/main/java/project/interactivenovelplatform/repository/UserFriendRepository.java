@@ -1,6 +1,6 @@
 package project.interactivenovelplatform.repository;
 
-import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -41,14 +41,14 @@ public interface UserFriendRepository extends JpaRepository<UserFriendEntity, Lo
     Optional<UserFriendEntity> findUserFriendByIdAndStatusAndReceiverId(Long id, RelationStatus status, Long receiverId);
 
     @EntityGraph(attributePaths = {"sender"}) // Качаем тех, кто кинул заявку МНЕ
-    Page<UserFriendEntity> findByReceiverIdAndStatus(Long receiverId, RelationStatus status, Pageable pageable);
+    Slice<UserFriendEntity> findByReceiverIdAndStatus(Long receiverId, RelationStatus status, Pageable pageable);
 
     @EntityGraph(attributePaths = {"receiver"})
-    Page<UserFriendEntity> findBySenderIdAndStatus(Long senderId, RelationStatus status, Pageable pageable);
+    Slice<UserFriendEntity> findBySenderIdAndStatus(Long senderId, RelationStatus status, Pageable pageable);
 
     @EntityGraph(attributePaths = {"sender", "receiver"}) // Качаем друзей (обе стороны)
     @Query("SELECT f FROM UserFriendEntity f WHERE (f.sender.id = :userId OR f.receiver.id = :userId) AND f.status = :status")
-    Page<UserFriendEntity> findAllFriendsByUserId(@Param("userId") Long userId, @Param("status") RelationStatus status, Pageable pageable);
+    Slice<UserFriendEntity> findAllFriendsByUserId(@Param("userId") Long userId, @Param("status") RelationStatus status, Pageable pageable);
 
     @Query("""
         SELECT CASE WHEN f.sender.id = :userId THEN f.receiver.id ELSE f.sender.id  END , f.id
