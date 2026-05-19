@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import {ref, onMounted, onUnmounted, nextTick, inject} from "vue";
+import {inject, nextTick, onMounted, onUnmounted, ref} from "vue";
 import RelationshipButton from "@/components/social/RelationshipButton.vue";
-import { DEFAULT_AVATAR } from "@/utils/media.ts";
+import {DEFAULT_AVATAR} from "@/utils/media.ts";
 
 const props = defineProps<{
   fetchFn: (page: number, size: number) => Promise<any>;
@@ -16,7 +16,7 @@ const observerTarget = ref<HTMLElement | null>(null);
 const openUserMenu = inject('openUserMenu') as (event: MouseEvent, userId: number, username: string) => void;
 const openUserProfile = inject('openUserProfile') as (userId: number) => void;
 const loadMore = async () => {
-  // 1. Проверка блокировки
+  
   if (isLoading.value || isLast.value) return;
 
   isLoading.value = true;
@@ -31,9 +31,9 @@ const loadMore = async () => {
     }
   } catch (error) {
     console.error("Ошибка загрузки списка:", error);
-    isLast.value = true; // Останавливаем при ошибке
+    isLast.value = true; 
   } finally {
-    // 2. Сбрасываем флаг ДО того, как проверять видимость дива
+    
     isLoading.value = false;
   }
 
@@ -101,7 +101,7 @@ onUnmounted(() => observer?.disconnect());
 }
 
 .user-item:hover {
-  background: var(--hover-dropdowb); /* Подсвечиваем при наведении */
+  background: var(--hover-dropdowb); 
   border-color: var(--border-color);
 }
 
@@ -158,7 +158,7 @@ onUnmounted(() => observer?.disconnect());
   to { transform: rotate(360deg); }
 }
 
-/* Настройки RelationshipButton для списка */
+
 :deep(.relationship-actions) {
   display: flex !important;
   flex-direction: column !important;

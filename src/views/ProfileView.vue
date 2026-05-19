@@ -58,8 +58,8 @@ const loadProfile = async () => {
 };
 
 onMounted(loadProfile);
-// ВАЖНО: Следим за URL. Если пользователь перейдет с чужого профиля
-// на другой чужой профиль, страница должна обновиться
+
+
 watch(() => route.params.id, loadProfile);
 
 const avatarDisplayUrl = computed(() => {
@@ -194,7 +194,7 @@ const openFollowing = () => {
 
 .profile-page {
   max-width: 1000px;
-  margin: 100px auto 60px; /* Отступ сверху под фиксированный хедер */
+  margin: 100px auto 60px; 
   padding: 0 24px;
   color: var(--text-header);
 }
@@ -205,7 +205,7 @@ const openFollowing = () => {
   gap: 32px;
 }
 
-/* Сайдбар с аватаром */
+
 .profile-sidebar {
   background: var(--bg-dropdown);
   padding: 32px;
@@ -249,9 +249,9 @@ const openFollowing = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px; /* Зазор между иконкой и текстом внутри кнопки */
+  gap: 12px; 
   padding: 12px 20px;
-  background-color: var(--bg-main); /* Или тот цвет, что на скрине */
+  background-color: var(--bg-main); 
   border: 1px solid var(--border-color);
   border-radius: 8px;
   color: var(--text-header);
@@ -263,15 +263,15 @@ const openFollowing = () => {
 }
 
 .btn-edit-full:hover {
-  background-color: var(--hover-dropdowb); /* Подсветка при наведении */
+  background-color: var(--hover-dropdowb); 
   border-color: var(--text-muted);
 }
 
 .btn-edit-full span {
-  font-size: 1.25rem; /* Иконка чуть покрупнее текста */
+  font-size: 1.25rem; 
 }
 
-/* Основной контент */
+
 .info-card {
   background: var(--bg-dropdown);
   padding: 32px;
@@ -311,7 +311,7 @@ const openFollowing = () => {
   font-size: 1.1rem;
 }
 
-/* Секция статистики */
+
 .stats-row {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -354,10 +354,10 @@ const openFollowing = () => {
 .profile-actions {
   display: flex;
   flex-direction: column;
-  gap: 12px; /* Тот самый зазор между кнопками */
+  gap: 12px; 
 }
 
-/* Адаптивность для мобилок */
+
 @media (max-width: 768px) {
   .profile-layout {
     grid-template-columns: 1fr;

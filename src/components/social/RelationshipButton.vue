@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useSocialStore } from "@/components/social/socialStore.ts"
+import {useSocialStore} from "@/components/social/socialStore.ts"
 
 
-const props = defineProps<{
+defineProps<{
   userId: number;
 }>();
 
@@ -93,10 +93,10 @@ const social = useSocialStore();
   width: 100%;
 }
 
-/* ОБЩИЙ СТИЛЬ ДЛЯ ВСЕХ КНОПОК */
+
 button {
   width: 100%;
-  height: 44px; /* Фиксированная высота для идеальной одинаковости */
+  height: 44px; 
   padding: 0 16px;
   border-radius: 8px;
   font-weight: 600;
@@ -114,14 +114,14 @@ button:hover {
   transform: translateY(-1px);
 }
 
-/* СИНЯЯ (ГЛАВНАЯ) */
+
 .btn-primary {
   background-color: var(--btn-plus);
   color: white;
 }
 .btn-primary:hover { background-color: var(--btn-plus-hover); }
 
-/* СЕРАЯ (ВТОРИЧНАЯ) */
+
 .btn-secondary {
   background-color: var(--bg-dropdown);
   color: var(--text-header);
@@ -129,7 +129,7 @@ button:hover {
 }
 .btn-secondary:hover { background-color: var(--hover-dropdowb); border-color: var(--text-muted); }
 
-/* КОНТУРНАЯ */
+
 .btn-outline {
   background-color: transparent;
   border: 1px solid var(--btn-plus);
@@ -137,26 +137,26 @@ button:hover {
 }
 .btn-outline:hover { background-color: rgba(99, 102, 241, 0.1); }
 
-/* КНОПКА БЛОКИРОВКИ (ОПАСНОСТЬ) */
+
 .btn-block-action {
   background-color: transparent;
-  color: #ef4444; /* red-500 */
+  color: #ef4444; 
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 .btn-block-action:hover {
   background-color: rgba(239, 68, 68, 0.1);
 }
 
-/* КНОПКА РАЗБЛОКИРОВКИ (АКТИВНАЯ БЛОКИРОВКА) */
+
 .btn-block.active {
   background-color: #ef4444;
   color: white;
 }
 .btn-block.active:hover { background-color: #dc2626; }
 
-/* ЗВЕЗДОЧКА */
+
 .btn-star-minimal {
-  width: 44px; /* Фиксированная ширина, чтобы не растягивалась */
+  width: 44px; 
   min-width: 44px;
   padding: 0;
   background: var(--bg-dropdown);
@@ -171,7 +171,7 @@ button:hover {
 .star-empty { color: #f59e0b; opacity: 0.7; }
 .star-filled { color: #f59e0b; filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.4)); }
 
-/* ЗАГРУЗКА */
+
 .loading-actions {
   display: flex;
   flex-direction: column;

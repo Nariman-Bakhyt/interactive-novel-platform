@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue';
+import {computed, nextTick, onMounted, onUnmounted, ref} from 'vue';
 import {useRouter} from 'vue-router';
 import {
   createChapter,
@@ -7,30 +7,29 @@ import {
   updateChapter,
   updateChapterPublishTime
 } from '@/api/novelService';
-import {unsubscribeFromTopic} from "@/api/stompService.ts";
 import type {ChapterRequestDto} from '@/types/novel';
-import type {CommentResponseDto} from "@/types/comment.ts";
 import {useCommentStore} from "@/components/chat/commentStore.ts";
 
 
 const props = defineProps<{ novelId: string | number; chapterId?: string | number; }>();
 const router = useRouter();
-const chatStore = useCommentStore(); // Используем тот же стор, что и в читалке
+const chatStore = useCommentStore(); 
 
-// Состояние формы редактора
+
 const form = ref<ChapterRequestDto>({ title: '', blocks: [] });
 const activeBlockIndex = ref<number | null>(null);
 const showMenuIndex = ref<number | null>(null);
 
-// Открытие чата (используем МОЩНУЮ логику стора)
+
 const toggleComments = (blockId: number | null) => {
   if (!blockId) return;
-  // Просто вызываем openChat из стора — он сам всё подпишет и загрузит
+  
   chatStore.openChat(blockId, 'BLOCK');
   window.dispatchEvent(new CustomEvent('open-messenger'));
 };
 
 
+// Vue Router передает параметры маршрута в строковом формате. Кастим к Number для соответствия типам данных API бэкенда.
 const nId = computed(() => Number(props.novelId));
 const cId = computed(() => props.chapterId ? Number(props.chapterId) : null);
 const isEditMode = computed(() => !!cId.value);
@@ -38,74 +37,16 @@ const isLoading = ref(false);
 const isSaving = ref(false);
 const draggedItemIndex = ref<number | null>(null);
 
-// Публикация
+
 const showDatePicker = ref(false);
 const selectedPublishDate = ref('');
 const currentStatus = ref('DRAFT');
 const isPublishing = ref(false);
 
 
-const activeCommentsBlockId = ref<number | null>(null);
-const comments = ref<CommentResponseDto[]>([]);
-const newCommentText = ref('');
-const commentsListRef = chatStore.commentsListRef;
-const contextMenu = ref({
-  show: false,
-  x: 0,
-  y: 0,
-  targetId: null as number | null
-});
 
-const unsubscribeFromCurrentBlock = () => {
-  if (activeCommentsBlockId.value !== null) {
-    const block = form.value.blocks[activeCommentsBlockId.value];
-    if (block && block.id) {
-      const topic = `/topic/block.${block.id}`;
-      unsubscribeFromTopic(topic);
-    }
-    comments.value = [];
-  }
-};
 
-const submitComment = async () => {
-  if (!newCommentText.value.trim()) return;
 
-  await chatStore.send({
-    content: newCommentText.value
-  });
-
-  newCommentText.value = '';
-  await chatStore.scrollToBottom();
-};
-const handleDelete = async () => {
-  if (!contextMenu.value.targetId) return;
-  try {
-    await chatStore.removeComment(contextMenu.value.targetId);
-    contextMenu.value.show = false;
-  } catch (error) {
-    alert("Ошибка удаления");
-  }
-};
-
-const initStickyObserver = async () => {
-  await nextTick(); // Ждем, пока v-if отрисует сайдбар
-
-  const container = chatStore.commentsListRef; // Берем напрямую из стора
-  if (!container) {
-    console.warn("Container not found for observer");
-    return;
-  }
-
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      const header = entry.target.nextElementSibling;
-      const badge = header?.querySelector('.date-badge');
-      if (badge) badge.toggleAttribute('data-in-text', entry.isIntersecting);
-    });
-  }, { root: container, threshold: [0, 1] });
-
-  container.querySelectorAll('.sticky-sentinel').forEach((el) => observer.observe(el));
-};
 
 onMounted(async () => {
   if (isEditMode.value) {
@@ -115,11 +56,12 @@ onMounted(async () => {
       form.value.title = data.title;
       currentStatus.value = data.status || 'DRAFT';
       if (data.publishedAt) {
-        selectedPublishDate.value = data.publishedAt.slice(0, 16); // format for datetime-local
+        selectedPublishDate.value = data.publishedAt.slice(0, 16); 
       }
       form.value.blocks = (data.blocks || []).sort((a, b) => a.sequenceOrder - b.sequenceOrder);
 
-      // Даем время DOM отрисоваться и подгоняем высоту всех textarea
+      
+      // Vue обновляет DOM асинхронно. Используем nextTick, чтобы дождаться перерисовки элементов textarea и корректно рассчитать их высоту на основе scrollHeight.
       await nextTick();
       document.querySelectorAll('textarea.block-textarea').forEach(el => {
         adjustHeight({ target: el });
@@ -130,7 +72,7 @@ onMounted(async () => {
       isLoading.value = false;
     }
   } else {
-    // Начальный пустой блок для новой главы
+    
     form.value.blocks.push({ id: null, type: 'TEXT', content: '', sequenceOrder: 1 });
   }
 });
@@ -166,7 +108,7 @@ const reorderBlocks = () => {
 };
 
 const handleEnter = (index: number, event: KeyboardEvent) => {
-  if (event.shiftKey) return; // Позволяем перенос строки через Shift+Enter
+  if (event.shiftKey) return; 
 
   event.preventDefault();
   const newBlock = {
@@ -179,6 +121,7 @@ const handleEnter = (index: number, event: KeyboardEvent) => {
   form.value.blocks.splice(index + 1, 0, newBlock);
   reorderBlocks();
 
+  // Vue обновит DOM только в конце тика. Вызываем focus() внутри nextTick, так как новый textarea еще физически не отрендерен на странице.
   nextTick(() => {
     const allTextareas = document.querySelectorAll('.block-textarea');
     (allTextareas[index + 1] as HTMLElement)?.focus();
@@ -192,12 +135,13 @@ const handleBackspace = (index: number, event: KeyboardEvent) => {
     form.value.blocks.splice(index, 1);
     reorderBlocks();
 
+    // Аналогично, переводим фокус на предыдущий элемент в nextTick и перемещаем курсор ввода в конец существующего текста.
     nextTick(() => {
       const allTextareas = document.querySelectorAll('.block-textarea');
       const prevEl = allTextareas[index - 1] as HTMLElement;
       if (prevEl) {
         prevEl.focus();
-        // Ставим курсор в конец текста предыдущего блока
+        
         if (prevEl instanceof HTMLTextAreaElement) {
           prevEl.setSelectionRange(prevEl.value.length, prevEl.value.length);
         }
@@ -214,8 +158,9 @@ const changeBlockType = (index: number, type: 'TEXT' | 'IMAGE') => {
   showMenuIndex.value = null;
 };
 
-// --- DRAG AND DROP (Только за handle) ---
 
+
+// Используем нативный HTML5 Drag and Drop API для переупорядочивания реактивного массива блоков во избежание подключения тяжелых внешних библиотек.
 const onDragStart = (index: number) => {
   draggedItemIndex.value = index;
 };
@@ -242,7 +187,7 @@ const handleSave = async () => {
       router.push(`/novels/${nId.value}/edit`);
     }
 
-  } catch (e) {
+  } catch {
     alert("Ошибка сохранения");
   } finally {
     isSaving.value = false;
@@ -292,37 +237,40 @@ const handlePublishAction = async (action: 'NOW' | 'DRAFT' | 'SCHEDULE') => {
 
 const isToolbarVisible = ref(true);
 let lastScrollTop = 0;
-const scrollThreshold = 8; // Чуть уменьшил порог для лучшей отзывчивости
+const scrollThreshold = 8; 
 
+// Алгоритм скрытия/отображения плавающего тулбара при скролле.
+// scrollThreshold защищает от дребезга (jitter) при микроколебаниях тачпада или мыши.
+// Проверка на TEXTAREA предотвращает скрытие тулбара при вертикальном скролле длинного текста внутри текстового блока.
 const handleScroll = (event: Event) => {
-  // Магия: берем скролл ИМЕННО того элемента, который сейчас прокручивается
+  
   const target = event.target as HTMLElement;
 
-  // Если скроллится текстовое поле (textarea) внутри блока, игнорируем, чтобы тулбар не прыгал
+  
   if (target && target.tagName === 'TEXTAREA') return;
 
-  // Достаем точное значение прокрутки из любого источника
+  
   const currentScroll = window.pageYOffset
     || document.documentElement.scrollTop
     || document.body.scrollTop
     || (target ? target.scrollTop : 0);
 
-  // Защита от дребезга у самого верха
+  
   if (currentScroll <= 30) {
     isToolbarVisible.value = true;
     return;
   }
 
-  // Проверяем порог прокрутки
+  
   if (Math.abs(currentScroll - lastScrollTop) <= scrollThreshold) {
     return;
   }
 
   if (currentScroll > lastScrollTop) {
-    // Скролл вниз — скрываем тулбар
+    
     isToolbarVisible.value = false;
   } else {
-    // Скролл вверх — показываем тулбар
+    
     isToolbarVisible.value = true;
   }
 
@@ -330,8 +278,7 @@ const handleScroll = (event: Event) => {
 };
 
 onMounted(() => {
-  // ТРЕТИЙ АРГУМЕНТ true (capture mode) — заставляет Spring/Vue ловить
-  // скролл, даже если скроллится внутренний невидимый div твоего шаблона!
+  
   window.addEventListener('scroll', handleScroll, true);
 });
 
@@ -339,7 +286,6 @@ onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll, true);
 });
 
-watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, { deep: true });
 </script>
 
 <template>
@@ -443,7 +389,7 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
           <div class="side-control right">
             <div class="block-controls-right" v-if="activeBlockIndex === index || chatStore.activeTargetId === block.id">
 
-              <!-- Кнопка комментария. При клике на неё откроется сайдбар. -->
+              
               <button
                 v-if="block.id"
                 class="comment-trigger-small"
@@ -473,7 +419,7 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
 <style scoped>
 .editor-page-wrapper {
   min-height: 100vh;
-  background-color: var(--bg-editor-page); /* Используем переменную страницы */
+  background-color: var(--bg-editor-page); 
   padding: 80px 24px 100px;
   display: flex;
   flex-direction: column;
@@ -485,7 +431,7 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
   width: 100%;
   max-width: 860px;
   background-color: var(--bg-editor-sheet);
-  /* Возвращаем нормальный отступ сверху, так как тулбар больше не занимает тут место */
+  
   padding: 48px 64px 64px;
   border-radius: 24px;
   box-shadow: 0 4px 12px var(--shadow-color);
@@ -497,8 +443,7 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
 .editor-toolbar {
   position: sticky;
   top: 0;
-  /* Цвет фона обязательно должен совпадать с цветом листа,
-     чтобы перекрывать заезжающий под него текст при скролле */
+  
   background: var(--bg-editor-sheet);
   z-index: 100;
 
@@ -507,13 +452,13 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
   justify-content: space-between;
   align-items: center;
 
-  /* Фиксируем начальную высоту и отступы для плавной анимации */
+  
   height: 56px;
   padding: 16px 0;
   margin-bottom: 32px;
   border-bottom: 1px solid var(--border-color);
 
-  /* Анимируем свойства схлопывания */
+  
   transition:
     height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
     padding 0.25s cubic-bezier(0.4, 0, 0.2, 1),
@@ -521,20 +466,20 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
     opacity 0.2s ease,
     border-color 0.2s ease;
 
-  overflow: hidden; /* Прячет кнопки, когда высота сжимается в 0 */
+  overflow: hidden; 
   opacity: 1;
 }
 
-/* ИДЕАЛЬНОЕ ИСЧЕЗНОВЕНИЕ В ЦЕНТРЕ */
+
 .editor-toolbar.toolbar-hidden {
-  height: 0;                 /* Сжимаем высоту в ноль */
-  padding-top: 0;            /* Убираем паддинги, чтобы не было зазоров */
+  height: 0;                 
+  padding-top: 0;            
   padding-bottom: 0;
-  margin-bottom: 0;          /* Обнуляем отступ, чтобы текст плавно поехал выше */
-  opacity: 0;                /* Растворяем кнопки */
-  border-color: transparent; /* Убираем разделительную линию */
-  pointer-events: none;      /* Отключаем случайные клики по скрытым кнопкам */
-  transform: none;           /* ТРАНСФОРМ БОЛЬШЕ НЕ НУЖЕН, он не ломает sticky! */
+  margin-bottom: 0;          
+  opacity: 0;                
+  border-color: transparent; 
+  pointer-events: none;      
+  transform: none;           
 }
 
 .toolbar-left, .toolbar-right {
@@ -545,7 +490,7 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
 
 .publish-controls {
   display: flex;
-  flex-direction: row; /* СТРОГО в ряд, никаких колонок */
+  flex-direction: row; 
   align-items: center;
   gap: 16px;
   background: var(--bg-main);
@@ -630,7 +575,7 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
   color: var(--text-header);
   outline: none;
   margin-bottom: 32px;
-  text-align: left; /* В Notion заголовки слева, так удобнее читать! */
+  text-align: left; 
   letter-spacing: -0.02em;
 }
 .main-title-input::placeholder {
@@ -652,7 +597,7 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
 }
 
 .block-row:hover {
-  background-color: rgba(161, 161, 170, 0.05); /* Очень слабый фон при наведении */
+  background-color: rgba(161, 161, 170, 0.05); 
 }
 
 .block-row.is-dragging {
@@ -717,8 +662,8 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
   background: none;
   border: none;
   color: var(--text-header);
-  font-size: 1.25rem; /* Как .chapter-content в читалке */
-  line-height: 1.8;   /* Как .chapter-content в читалке */
+  font-size: 1.25rem; 
+  line-height: 1.8;   
   resize: none;
   outline: none;
   padding: 8px 0;
@@ -758,7 +703,7 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
   border: 1px solid var(--border-color);
 }
 
-/* Всплывающее меню */
+
 .type-selector-menu {
   position: absolute;
   top: 100%;
@@ -830,9 +775,9 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
   background: var(--hover-dropdowb);
 }
 
-/* --- ПРАВАЯ ПАНЕЛЬ УПРАВЛЕНИЯ БЛОКОМ --- */
+
 .side-control.right {
-  width: 80px; /* Увеличили ширину, чтобы влезли две кнопки */
+  width: 80px; 
   display: flex;
   justify-content: flex-end;
   align-items: center;

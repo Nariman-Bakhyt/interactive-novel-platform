@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import {onMounted, onUnmounted, ref} from "vue";
 import RelationshipButton from "@/components/social/RelationshipButton.vue";
-import { DEFAULT_AVATAR } from "@/utils/media.ts";
+import {DEFAULT_AVATAR} from "@/utils/media.ts";
 
 const props = defineProps<{
   title: string;
-  // Функция-запрос, которую мы передадим сверху
+  
   fetchFn: (page: number, size: number) => Promise<any>;
 }>();
 
-const emit = defineEmits(['close']);
+defineEmits(['close']);
 
 const users = ref<any[]>([]);
 const page = ref(0);
@@ -24,7 +24,7 @@ const loadMore = async () => {
   isLoading.value = true;
   try {
     const data = await props.fetchFn(page.value, size);
-    users.value.push(...data.content); // В Spring Data обычно данные в поле .content
+    users.value.push(...data.content); 
     isLast.value = data.last;
     page.value++;
   } finally {
@@ -32,11 +32,11 @@ const loadMore = async () => {
   }
 };
 
-// Intersection Observer для бесконечного скролла
+
 let observer: IntersectionObserver;
 
 onMounted(() => {
-  loadMore(); // Первая загрузка
+  loadMore(); 
 
   observer = new IntersectionObserver(([entry]) => {
     if (entry && entry.isIntersecting) {
@@ -81,7 +81,7 @@ onUnmounted(() => observer.disconnect());
 </template>
 
 <style scoped>
-/* Затемнение фона с эффектом размытия */
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -94,7 +94,7 @@ onUnmounted(() => observer.disconnect());
   padding: 24px;
 }
 
-/* Контейнер самого окна */
+
 .modal-content {
   background: var(--bg-dropdown);
   width: 100%;
@@ -105,10 +105,10 @@ onUnmounted(() => observer.disconnect());
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-  overflow: hidden; /* Чтобы скролл был только внутри списка */
+  overflow: hidden; 
 }
 
-/* Шапка модалки */
+
 header {
   padding: 24px;
   border-bottom: 1px solid var(--border-color);
@@ -141,17 +141,17 @@ header h3 {
   background: var(--hover-dropdowb);
 }
 
-/* Область списка со скроллом */
+
 .list-container {
   flex: 1;
   overflow-y: auto;
   padding: 16px 24px;
 }
 
-/* Элемент пользователя в списке */
+
 .user-item {
   display: flex;
-  align-items: center; /* Центрируем аватарку относительно контента */
+  align-items: center; 
   gap: 16px;
   padding: 16px;
   border-radius: 12px;
@@ -166,14 +166,14 @@ header h3 {
 
 .user-content {
   display: flex;
-  flex-direction: row; /* Имя и кнопки в одной строке */
+  flex-direction: row; 
   align-items: center;
-  justify-content: space-between; /* Имя влево, кнопки вправо */
+  justify-content: space-between; 
   flex: 1;
 }
 
 .username {
-  flex: 1; /* Занимает оставшееся место слева */
+  flex: 1; 
   font-size: 1.05rem;
   font-weight: 600;
   min-width: 0;
@@ -182,7 +182,7 @@ header h3 {
   color: var(--text-header);
 }
 
-/* Обертка для кнопок */
+
 .actions-wrapper {
   width: 200px;
   display: flex;
@@ -198,14 +198,14 @@ header h3 {
 }
 :deep(.relationship-actions) {
   display: flex !important;
-  flex-direction: column !important; /* Кнопки всё еще друг под другом (линии) */
+  flex-direction: column !important; 
   gap: 8px !important;
   width: 100% !important;
 }
 
 :deep(.relationship-actions button) {
   width: 100% !important;
-  height: 32px !important;    /* Компактная высота */
+  height: 32px !important;    
   font-size: 0.85rem !important;
   padding: 0 12px !important;
   justify-content: center !important;
@@ -228,7 +228,7 @@ header h3 {
   background: rgba(239, 68, 68, 0.1) !important;
 }
 
-/* Секция загрузки внизу */
+
 .scroll-trigger {
   padding: 24px;
   display: flex;
@@ -247,7 +247,7 @@ header h3 {
   to { transform: rotate(360deg); }
 }
 
-/* Адаптив под мобилки */
+
 @media (max-width: 480px) {
   .modal-content {
     max-height: 90vh;

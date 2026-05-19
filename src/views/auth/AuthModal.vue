@@ -7,24 +7,24 @@ import {VerificationTokenType} from "@/types/auth.ts";
 const emit = defineEmits(['close']);
 const authStore = useAuthStore();
 
-// --- СОСТОЯНИЕ ВКЛАДОК И ШАГОВ ---
+
 const activeTab = ref<'login' | 'register'>('login');
 const loginStep = ref<'DEFAULT' | 'EMAIL_INPUT' | 'CODE_VERIFY'>('DEFAULT');
 const registerStep = ref<'DEFAULT' | 'CODE_VERIFY'>('DEFAULT');
 
-// --- ДАННЫЕ ФОРМЫ ---
+
 const username = ref('');
 const password = ref('');
 const email = ref('');
-const code = ref(''); // Поле для 6-значного кода
-const pendingUserId = ref<number | null>(null); // ID для подтверждения регистрации
+const code = ref(''); 
+const pendingUserId = ref<number | null>(null); 
 
-// --- UI СОСТОЯНИЯ ---
+
 const successMessage = ref('');
 const errorMessage = ref('');
 const isLoading = ref(false);
 
-// Очистка при переключении вкладок
+
 watch(activeTab, () => {
   loginStep.value = 'DEFAULT';
   registerStep.value = 'DEFAULT';
@@ -33,16 +33,16 @@ watch(activeTab, () => {
   code.value = '';
 });
 
-// ==========================================
-// ЛОГИКА ВХОДА (LOGIN)
-// ==========================================
 
-// 1. Обычный вход по паролю
+
+
+
+
 const handleLogin = async () => {
   errorMessage.value = '';
   isLoading.value = true;
   try {
-    // В authStore.login передаем username (он может быть и email-ом на бэке) и пароль
+    
     await authStore.login({ username: username.value, password: password.value });
     emit('close');
   } catch (err: any) {
@@ -52,7 +52,7 @@ const handleLogin = async () => {
   }
 };
 
-// 2. Запрос кода для входа по Email
+
 const handleRequestLoginCode = async () => {
   errorMessage.value = '';
   isLoading.value = true;
@@ -67,7 +67,7 @@ const handleRequestLoginCode = async () => {
   }
 };
 
-// 3. Подтверждение входа по коду
+
 const handleVerifyLoginCode = async () => {
   errorMessage.value = '';
   isLoading.value = true;
@@ -81,11 +81,11 @@ const handleVerifyLoginCode = async () => {
   }
 };
 
-// ==========================================
-// ЛОГИКА РЕГИСТРАЦИИ (REGISTER)
-// ==========================================
 
-// 1. Отправка данных регистрации
+
+
+
+
 const handleRegister = async () => {
   successMessage.value = '';
   errorMessage.value = '';
@@ -97,8 +97,8 @@ const handleRegister = async () => {
       password: password.value,
       email: email.value
     });
-    pendingUserId.value = userId; // Сохраняем ID, который вернул бэкенд
-    registerStep.value = 'CODE_VERIFY'; // Переключаем на шаг ввода кода
+    pendingUserId.value = userId; 
+    registerStep.value = 'CODE_VERIFY'; 
     successMessage.value = 'Код подтверждения отправлен на почту!';
   } catch (err: any) {
     errorMessage.value = err.response?.data?.message || 'Ошибка при регистрации.';
@@ -107,7 +107,7 @@ const handleRegister = async () => {
   }
 };
 
-// 2. Подтверждение регистрации кодом
+
 const handleVerifyRegister = async () => {
   errorMessage.value = '';
   isLoading.value = true;
@@ -118,10 +118,10 @@ const handleVerifyRegister = async () => {
       code: code.value
     });
 
-    // После успешной верификации перекидываем на вкладку входа
+    
     successMessage.value = 'Регистрация завершена! Теперь войдите в аккаунт.';
     activeTab.value = 'login';
-    username.value = email.value; // Подставляем email для удобства
+    username.value = email.value; 
     password.value = '';
   } catch (err: any) {
     errorMessage.value = err.response?.data?.message || 'Неверный код';
@@ -215,7 +215,7 @@ const handleVerifyRegister = async () => {
 }
 
 .modal-window {
-  background: var(--bg-dropdown); /* Твоя CSS переменная */
+  background: var(--bg-dropdown); 
   padding: 32px;
   border-radius: 16px;
   width: 100%;

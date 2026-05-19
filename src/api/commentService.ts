@@ -33,7 +33,7 @@ export async function createComment(file:File|null , commentRequestDto:CommentRe
     formData,
     {
       headers: {
-        // Axios сам подставит правильный Boundary, если передать FormData
+        
         'Content-Type': 'multipart/form-data',
       }
     }
@@ -44,15 +44,12 @@ export async function createComment(file:File|null , commentRequestDto:CommentRe
 export function useSmartScroll() {
   const route = useRoute();
 
-  /**
-   * Вспомогательная функция для поиска текста внутри конкретного DOM-узла.
-   * Возвращает массив объектов Range, которые можно подсветить.
-   */
+  
   const findTextInRange = (container: HTMLElement, textToFind: string): Range[] => {
     const ranges: Range[] = [];
     const searchLower = textToFind.toLowerCase();
 
-    // Создаем навигатор по текстовым узлам, исключая служебные элементы
+    
     const treeWalker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
       acceptNode: (node) => {
         const parent = node.parentElement;
@@ -91,11 +88,11 @@ export function useSmartScroll() {
   const scrollToTarget = async () => {
     await nextTick();
 
-    // Извлекаем параметры из URL
-    const textToFind = route.query.q as string; // Текст цитаты
-    const selfClass = route.query.c as string;  // Класс самого элемента
-    const prevClass = route.query.p as string;  // Класс соседа сверху (контекст)
-    const index = Number(route.query.i || 0);   // Индекс в этом контексте
+    
+    const textToFind = route.query.q as string; 
+    const selfClass = route.query.c as string;  
+    const prevClass = route.query.p as string;  
+    const index = Number(route.query.i || 0);   
 
     if (!textToFind) {
       if (typeof CSS !== 'undefined' && CSS.highlights) {
@@ -108,11 +105,11 @@ export function useSmartScroll() {
     const interval = setInterval(() => {
       let ranges: Range[] = [];
 
-      // ЭТАП 1: Прицельный поиск (Свой класс + Класс соседа + Индекс)
+      
       if (selfClass && prevClass) {
         const allPotential = Array.from(document.querySelectorAll(`.${selfClass}`));
 
-        // Фильтруем элементы, проверяя их окружение (соседа или родителя)
+        
         const contextMatches = allPotential.filter(el => {
           const prevEl = el.previousElementSibling;
           return prevEl
@@ -126,7 +123,7 @@ export function useSmartScroll() {
         }
       }
 
-      // ЭТАП 2: Если контекст изменился (текст переехал), ищем просто по классу
+      
       if (ranges.length === 0 && selfClass) {
         const elements = document.querySelectorAll(`.${selfClass}`);
         for (const el of elements) {
@@ -138,12 +135,12 @@ export function useSmartScroll() {
         }
       }
 
-      // ЭТАП 3: Глобальный поиск по всей странице (крайний случай)
+      
       if (ranges.length === 0) {
         ranges = findTextInRange(document.body, textToFind);
       }
 
-      // Если нашли совпадения — скроллим и подсвечиваем
+      
       if (ranges.length > 0) {
         clearInterval(interval);
 
@@ -161,18 +158,18 @@ export function useSmartScroll() {
           }
         }
 
-        // CSS Custom Highlight API
+        
         if (typeof CSS !== 'undefined' && CSS.highlights) {
           const highlight = new Highlight(...ranges);
           CSS.highlights.set("search-results", highlight);
 
-          // Удаляем подсветку через 5 секунд
+          
           setTimeout(() => {
             CSS.highlights.delete("search-results");
           }, 5000);
         }
       } else if (attempts >= 15) {
-        // Прекращаем попытки через ~4.5 сек
+        
         clearInterval(interval);
       }
       attempts++;

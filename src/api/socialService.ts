@@ -4,7 +4,7 @@ import type {
   UserRelationResponseDto
 } from "@/types/social.ts";
 import apiClient from "@/api/axios.ts";
-import type {PagedModel, SliceModel} from "@/types/PagedModel.ts";
+import type {SliceModel} from "@/types/PagedModel.ts";
 
 
 export async function follow(dto: UserRelationRequestDto): Promise<UserRelationResponseDto> {

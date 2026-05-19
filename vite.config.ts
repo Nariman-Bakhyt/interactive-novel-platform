@@ -1,6 +1,6 @@
-import { fileURLToPath, URL } from 'node:url'
+import {fileURLToPath, URL} from 'node:url'
 
-import { defineConfig, loadEnv } from 'vite'
+import {defineConfig, loadEnv} from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     define: {
-      global: 'window', 
+      global: 'window',
     },
     plugins: [
       vue(),
@@ -27,8 +27,8 @@ export default defineConfig(({ mode }) => {
         // Все запросы, начинающиеся с /api, будут перенаправлены на backend
         '/api': {
           target: `http://${env.VITE_API_IP}:8080`,
-          changeOrigin: true, 
-          rewrite: (path) => path.replace(/^\/api/, '/api'), 
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, '/api'),
         }
       }
     }

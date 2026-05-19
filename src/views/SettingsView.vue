@@ -1,27 +1,27 @@
 <script setup lang="ts">
-import { ref, onMounted, reactive, watch } from 'vue';
-import { useAuthStore } from '@/api/auth';
-import { PrivacyLevel } from '@/types/user';
+import {onMounted, reactive, ref} from 'vue';
+import {useAuthStore} from '@/api/auth';
+import {PrivacyLevel} from '@/types/user';
 
 const authStore = useAuthStore();
 
-// Состояние активной вкладки
+
 const activeTab = ref('privacy');
 
-// Локальная копия настроек для редактирования (чтобы не менять глобальный стор до нажатия "Сохранить")
+
 const form = reactive({
   canSendMessage: PrivacyLevel.NOBODY,
   libraryPrivacy: PrivacyLevel.NOBODY,
-  // Сюда легко добавить новые поля в будущем:
-  // emailNotifications: true,
-  // language: 'ru'
+  
+  
+  
 });
 
-// Флаги состояния
+
 const isSaving = ref(false);
 const saveMessage = ref({ text: '', type: '' });
 
-// Загрузка данных при монтировании
+
 onMounted(async () => {
   await authStore.fetchUserSettings();
   if (authStore.userSettings) {
@@ -29,7 +29,7 @@ onMounted(async () => {
   }
 });
 
-// Синхронизация формы с данными из стора
+
 const syncFormWithStore = () => {
   if (authStore.userSettings) {
     form.canSendMessage = authStore.userSettings.canSendMessage;
@@ -37,24 +37,24 @@ const syncFormWithStore = () => {
   }
 };
 
-// Сохранение настроек
+
 const handleSave = async () => {
   isSaving.value = true;
   saveMessage.value = { text: '', type: '' };
 
   try {
-    // Вызываем твой метод из стора
+    
     await authStore.updateUserSettings({
-      canSendMessage: form.canSendMessage, // Маппинг на твой RequestDto
+      canSendMessage: form.canSendMessage, 
       libraryPrivacy: form.libraryPrivacy
     });
 
     saveMessage.value = { text: 'Настройки успешно сохранены!', type: 'success' };
-  } catch (error) {
+  } catch {
     saveMessage.value = { text: 'Ошибка при сохранении настроек', type: 'error' };
   } finally {
     isSaving.value = false;
-    // Скрываем сообщение через 3 секунды
+    
     setTimeout(() => { saveMessage.value.text = ''; }, 3000);
   }
 };
@@ -253,7 +253,7 @@ const handleSave = async () => {
   line-height: 1.4;
 }
 
-/* Стили для Select */
+
 .custom-select {
   padding: 10px 36px 10px 16px;
   border-radius: 8px;
@@ -276,38 +276,8 @@ const handleSave = async () => {
   outline: none;
 }
 
-/* Стили для Switch */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 48px;
-  height: 24px;
-}
 
-.switch input { opacity: 0; width: 0; height: 0; }
 
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: var(--border-color);
-  transition: .3s;
-  border-radius: 24px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 18px; width: 18px;
-  left: 3px; bottom: 3px;
-  background-color: white;
-  transition: .3s;
-  border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-input:checked + .slider { background-color: var(--btn-plus); }
-input:checked + .slider:before { transform: translateX(24px); }
 
 .settings-footer {
   margin-top: auto;
@@ -340,8 +310,8 @@ input:checked + .slider:before { transform: translateX(24px); }
 }
 
 .status-msg { font-size: 0.95rem; font-weight: 500; }
-.status-msg.success { color: #10b981; } /* emerald-500 */
-.status-msg.error { color: #ef4444; } /* red-500 */
+.status-msg.success { color: #10b981; } 
+.status-msg.error { color: #ef4444; } 
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }

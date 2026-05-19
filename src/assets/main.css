@@ -1,6 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400..700&display=swap'); /* src/assets/main.css */
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400..700&display=swap'); 
 
-/* 1. Сброс стандартных отступов */
+
 body, html {
   margin: 0;
   padding: 0;
@@ -12,56 +12,56 @@ body, html {
 }
 
 :root {
-  /* Modern Dark Theme (Zinc/Indigo based) */
-  --bg-header: #18181b;       /* zinc-900 */
-  --text-header: #f4f4f5;     /* zinc-100 */
-  --bg-dropdown: #27272a;     /* zinc-800 */
-  --border-color: #3f3f46;    /* zinc-700 */
-  --btn-plus: #6366f1;        /* indigo-500 */
-  --btn-plus-hover: #4f46e5;  /* indigo-600 */
-  --bg-main: #09090b;         /* zinc-950 */
-  --hover-dropdowb: #3f3f46;  /* zinc-700 */
-  --bg-app: #18181b;          /* zinc-900 */
-  --bg-profile: #27272a;      /* zinc-800 */
-  --text-muted: #a1a1aa;      /* zinc-400 */
+  
+  --bg-header: #18181b;       
+  --text-header: #f4f4f5;     
+  --bg-dropdown: #27272a;     
+  --border-color: #3f3f46;    
+  --btn-plus: #6366f1;        
+  --btn-plus-hover: #4f46e5;  
+  --bg-main: #09090b;         
+  --hover-dropdowb: #3f3f46;  
+  --bg-app: #18181b;          
+  --bg-profile: #27272a;      
+  --text-muted: #a1a1aa;      
   --border-subtle: rgba(255, 255, 255, 0.08);
   --bg-editor-page: #09090b;
   --bg-editor-sheet: #18181b;
   --shadow-color: rgba(0, 0, 0, 0.6);
-  --input-placeholder: #71717a; /* zinc-500 */
+  --input-placeholder: #71717a; 
 
   --avatar-text: #ffffff;
   --aura-opacity: 0.5;
   --aura-blur: 16px;
-  --unread-dot: #ef4444;      /* red-500 */
+  --unread-dot: #ef4444;      
 
   --main-font: 'Onest', system-ui, -apple-system, sans-serif;
 }
 
 [data-theme="light"] {
-  /* Modern Light Theme */
+  
   --bg-header: #ffffff;
-  --text-header: #09090b;     /* zinc-950 */
+  --text-header: #09090b;     
   --bg-dropdown: #ffffff;
-  --border-color: #e4e4e7;    /* zinc-200 */
-  --btn-plus: #4f46e5;        /* indigo-600 */
-  --btn-plus-hover: #4338ca;  /* indigo-700 */
-  --bg-main: #fafafa;         /* zinc-50 */
-  --hover-dropdowb: #f4f4f5;  /* zinc-100 */
-  --bg-app: #f4f4f5;          /* zinc-100 */
+  --border-color: #e4e4e7;    
+  --btn-plus: #4f46e5;        
+  --btn-plus-hover: #4338ca;  
+  --bg-main: #fafafa;         
+  --hover-dropdowb: #f4f4f5;  
+  --bg-app: #f4f4f5;          
   --bg-profile: #ffffff;
   --text-inverse: #ffffff;
-  --text-muted: #71717a;      /* zinc-500 */
+  --text-muted: #71717a;      
   --border-subtle: rgba(0, 0, 0, 0.06);
   --bg-editor-page: #f4f4f5;
   --bg-editor-sheet: #ffffff;
   --shadow-color: rgba(0, 0, 0, 0.08);
-  --input-placeholder: #a1a1aa; /* zinc-400 */
+  --input-placeholder: #a1a1aa; 
 
   --avatar-text: #ffffff;
   --aura-opacity: 0.15;
   --aura-blur: 12px;
-  --unread-dot: #dc2626;      /* red-600 */
+  --unread-dot: #dc2626;      
 }
 
 body {
@@ -74,19 +74,19 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Это магический селектор для твоего JS-кода */
+
 ::highlight(search-results) {
-  background-color: #fcd34d !important; /* Яркий желтый */
-  color: #000 !important;              /* Черный текст для контраста */
+  background-color: #fcd34d !important; 
+  color: #000 !important;              
   border-radius: 2px;
 }
 
-/* Добавим плавности, чтобы не резало глаза */
+
 ::highlight(search-results) {
   transition: background-color 0.5s ease;
 }
 
-/* Стилизация скроллбара */
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -102,7 +102,7 @@ body {
   background-color: var(--text-muted);
 }
 
-/* Общие стили для красивых карточек и элементов */
+
 button {
   font-family: var(--main-font);
 }

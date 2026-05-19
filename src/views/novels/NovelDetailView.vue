@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue';
+import {computed, nextTick, onUnmounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {getNovelById} from "@/api/novelService.ts";
 import type {ChapterShortResponseDto, NovelResponseDto} from "@/types/novel.ts";
@@ -14,6 +14,7 @@ import {
   subscribeToTopic,
   unsubscribeFromTopic
 } from "@/api/stompService.ts";
+
 const route = useRoute();
 const router = useRouter();
 const novel = ref<NovelResponseDto | null>(null);
@@ -81,7 +82,7 @@ const fetchComments = async () => {
 };
 
 const setupBottomObserver = (targetRef: HTMLElement | null, loadMoreFn: () => void, isLoadingRef: any, isLastRef: any) => {
-  // Отключаем старого наблюдателя, если перешли на другую вкладку
+  
   if (bottomObserver) bottomObserver.disconnect();
   if (!targetRef) return;
 
@@ -112,30 +113,23 @@ const commentsMap = ref<Record<string, CommentResponseDto[]>>({});
 const ratingsPage = ref(0);
 const isRatingsLastPage = ref(false);
 const isRatingsLoading = ref(false);
-const ratingsTrigger = ref<HTMLElement | null>(null); // Невидимый див рейтингов
+const ratingsTrigger = ref<HTMLElement | null>(null); 
 
-// --- Состояние для Комментариев ---
+
 const commentsPage = ref(0);
 const isCommentsLastPage = ref(false);
 const isCommentsLoading = ref(false);
-const commentsTrigger = ref<HTMLElement | null>(null); // Невидимый див комментариев
+const commentsTrigger = ref<HTMLElement | null>(null); 
 
-// --- Общий Observer ---
+
 let bottomObserver: IntersectionObserver | null = null;
-const PAGE_SIZE = 20; // Удобно для дебага (поставь 3 для проверки автозаполнения)
+const PAGE_SIZE = 20; 
 
-const checkTriggerVisibility = (triggerEl: HTMLElement | null, fetchFn: () => void, isLast: boolean) => {
-  if (!isLast && triggerEl) {
-    const rect = triggerEl.getBoundingClientRect();
-    if (rect.top <= window.innerHeight) {
-      setTimeout(fetchFn, 100);
-    }
-  }
-};
+
 
 
 const fetchRatings = async () => {
-  // КРИТИЧЕСКАЯ БЛОКИРОВКА: если уже грузим или страниц больше нет - СТОП
+  
   if (isRatingsLoading.value || isRatingsLastPage.value || !novel.value) return;
 
   isRatingsLoading.value = true;
@@ -146,23 +140,23 @@ const fetchRatings = async () => {
 
     if (newItems.length > 0) {
       ratingsList.value.push(...newItems);
-      // Проверяем: это реально последняя страница?
-      // Сравниваем текущую страницу с общим количеством страниц
+      
+      
       isRatingsLastPage.value = (response.allRatings.number + 1) >= response.allRatings.totalPages;
 
       if (!isRatingsLastPage.value) {
         ratingsPage.value++;
       }
     } else {
-      // Если контент пустой - это точно конец
+      
       isRatingsLastPage.value = true;
     }
 
   } catch (error) {
     console.error("Ошибка:", error);
-    isRatingsLastPage.value = true; // Останавливаем при ошибке, чтобы не спамить
+    isRatingsLastPage.value = true; 
   } finally {
-    // Даем небольшую задержку перед разблокировкой, чтобы DOM успел "отдвинуть" триггер
+    
     setTimeout(() => {
       isRatingsLoading.value = false;
     }, 200);
@@ -246,7 +240,7 @@ const handleTabChange = async (tab: Tab) => {
     if (ratingsList.value.length === 0) {
       await fetchRatings();
     }
-    // Вешаем обсервер на див рейтингов
+    
     setupBottomObserver(ratingsTrigger.value, fetchRatings, isRatingsLoading, isRatingsLastPage);
   }
 
@@ -269,17 +263,17 @@ const submitRating = async () => {
       commentText: newRating.value.commentText
     });
 
-    // Обновляем статистику новеллы на лету
+    
     novel.value.totalScore = stats.totalScore;
     novel.value.ratingCount = stats.ratingCount;
 
-    // Очищаем форму и закрываем
+    
     newRating.value = { score: 5, commentText: '' };
     isRatingModalOpen.value = false;
 
     ratingsList.value = [];
-    ratingsPage.value = 0; // было currentPage
-    isRatingsLastPage.value = false; // было isLastPage
+    ratingsPage.value = 0; 
+    isRatingsLastPage.value = false; 
     await fetchRatings();
 
   } catch (error) {
@@ -290,7 +284,7 @@ const submitRating = async () => {
 };
 
 const newCommentText = ref('');
-const isCommenting = ref(false);
+
 
 const currentComments = computed(() => {
   if (!novel.value) return [];
@@ -299,13 +293,13 @@ const currentComments = computed(() => {
 });
 const submitComment = () => {
   if (!novel.value || !newCommentText.value.trim()) return;
-  // Отправляем через наш универсальный метод в stompService
+  
   sendMessage('/app/comment.send', {
     novelId: novel.value.id,
     content: newCommentText.value
   });
 
-  // Очищаем поле
+  
   newCommentText.value = '';
 };
 
@@ -326,7 +320,7 @@ const averageRating = computed(() => {
   return (novel.value.totalScore / novel.value.ratingCount).toFixed(1);
 });
 const startReading = () => {
-  const currentNovel = novel.value; // сохраняем ссылку для стабильности типов
+  const currentNovel = novel.value; 
   const firstChapter = chaptersList.value[0];
 
   if (currentNovel && firstChapter) {
@@ -349,14 +343,14 @@ const handlePaste = (e: ClipboardEvent, target: 'rating' | 'comment') => {
 };
 
 const handleKeydown = (e: KeyboardEvent, type: 'comment' | 'rating') => {
-  // 1. Если нажат Shift + Enter — ничего не делаем, браузер просто перенесет строку
+  
   if (e.shiftKey) return;
 
-  // 2. Если нажат Enter БЕЗ Shift
+  
   if (e.key === 'Enter') {
-    // Проверяем ширину экрана (обычно 768px - порог для планшетов/телефонов)
+    
     if (window.innerWidth > 400) {
-      e.preventDefault(); // Запрещаем перенос строки
+      e.preventDefault(); 
 
       if (type === 'comment') {
         submitComment();
@@ -377,7 +371,7 @@ const contextMenu = ref({
 
 const openContextMenu = (e: MouseEvent, id: number, type: 'comment' | 'rating') => {
   e.preventDefault();
-  e.stopPropagation(); // Критически важно
+  e.stopPropagation(); 
 
   contextMenu.value = {
     show: true,
@@ -392,7 +386,7 @@ const openContextMenu = (e: MouseEvent, id: number, type: 'comment' | 'rating') 
     document.removeEventListener('click', close);
   };
 
-  // Небольшая задержка перед регистрацией клика на закрытие
+  
   setTimeout(() => {
     document.addEventListener('click', close);
   }, 50);
@@ -741,7 +735,7 @@ const handleDelete = async () => {
 }
 
 .stat-item { display: flex; align-items: center; gap: 6px; }
-.rating .icon { color: #f59e0b; } /* amber-500 */
+.rating .icon { color: #f59e0b; } 
 
 .pop-metadata {
   margin-bottom: 24px;
@@ -866,7 +860,7 @@ const handleDelete = async () => {
   color: var(--text-header);
 }
 
-/* --- Кнопка "Начать читать" (Основная/Акцентная) --- */
+
 .btn-save-notion {
   background-color: var(--btn-plus);
   color: white;
@@ -889,7 +883,7 @@ const handleDelete = async () => {
   cursor: not-allowed;
 }
 
-/* --- Кнопка "В библиотеку" (Второстепенная) --- */
+
 .btn-edit-main {
   background-color: var(--bg-main);
   color: var(--text-header);
@@ -908,7 +902,7 @@ const handleDelete = async () => {
 }
 
 
-/* Спиннер загрузки */
+
 .spinner {
   width: 40px;
   height: 40px;
@@ -962,7 +956,7 @@ const handleDelete = async () => {
   opacity: 0.8;
 }
 
-/* Линия под активным табом */
+
 .tab-btn.active::after {
   content: "";
   position: absolute;
@@ -997,7 +991,7 @@ const handleDelete = async () => {
 .average-big {
   font-size: 4rem;
   font-weight: 800;
-  color: #f59e0b; /* amber-500 */
+  color: #f59e0b; 
   line-height: 1;
   letter-spacing: -0.05em;
 }
@@ -1039,7 +1033,7 @@ const handleDelete = async () => {
   margin: 0;
 }
 
-/* Стили для бесконечной загрузки */
+
 .loading-anchor {
   padding: 40px 0;
   display: flex;
@@ -1060,7 +1054,7 @@ const handleDelete = async () => {
   color: var(--text-muted);
   font-size: 0.9rem;
 }
-/* Модальное окно */
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1099,7 +1093,7 @@ const handleDelete = async () => {
 }
 .close-btn:hover { background: var(--hover-dropdowb); color: var(--text-header); }
 
-/* Выбор звезд */
+
 .rating-selector {
   margin-bottom: 24px;
 }
@@ -1131,7 +1125,7 @@ const handleDelete = async () => {
   transform: scale(1.1);
 }
 
-/* Поле ввода */
+
 .rating-textarea {
   width: 100%;
   height: 120px;
@@ -1158,7 +1152,7 @@ const handleDelete = async () => {
   justify-content: flex-end;
   gap: 16px;
 }
-/* Поле ввода комментария */
+
 .comment-input-area {
   margin-bottom: 32px;
   background: var(--bg-main);
@@ -1194,7 +1188,7 @@ const handleDelete = async () => {
   font-size: 0.95rem;
 }
 
-/* Элементы списка комментариев */
+
 .comment-item {
   padding: 20px;
   border-bottom: 1px solid var(--border-color);
@@ -1228,7 +1222,7 @@ const handleDelete = async () => {
   font-size: 0.95rem;
 }
 
-/* Контекстное меню */
+
 .context-menu {
   position: fixed;
   background: var(--bg-dropdown);
@@ -1250,16 +1244,16 @@ const handleDelete = async () => {
 }
 
 .menu-item.delete {
-  color: #ef4444; /* red-500 */
+  color: #ef4444; 
 }
 
 .menu-item:hover {
   background: var(--hover-dropdowb);
 }
 
-/* Кнопка для мобильных */
+
 .mobile-action-btn {
-  display: none; /* Скрыта по умолчанию */
+  display: none; 
   background: none;
   border: none;
   color: var(--text-muted);
@@ -1279,10 +1273,10 @@ const handleDelete = async () => {
   position: relative;
 }
 
-/* На мобильных устройствах (ширина < 768px) */
+
 @media (max-width: 768px) {
   .mobile-action-btn {
-    display: block; /* Показываем только на мобилках */
+    display: block; 
   }
 }
 .empty-state {

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref, onUnmounted } from 'vue';
-import { getNewNovels } from "@/api/novelService.ts";
-import type { NovelResponseDto } from "@/types/novel.ts";
+import {onMounted, onUnmounted, ref} from 'vue';
+import {getNewNovels} from "@/api/novelService.ts";
+import type {NovelResponseDto} from "@/types/novel.ts";
 import NovelCard from "@/components/NovelCard.vue";
-import router from "@/router"; // Импортируем нашу карточку!
+import router from "@/router"; 
 
 const novels = ref<NovelResponseDto[]>([]);
 const isLoading = ref(true);
@@ -91,7 +91,7 @@ onUnmounted(() => {
   align-items: stretch;
 }
 
-/* --- HERO СЕКЦИЯ (ГЛАВНЫЙ ЭКРАН) --- */
+
 .hero-section {
   position: relative;
   height: 80vh;
@@ -135,7 +135,7 @@ onUnmounted(() => {
   font-size: 1.1rem;
   cursor: pointer;
   transition: background 0.2s, transform 0.2s;
-  /* Добавлено для корректного отображения ссылки как кнопки */
+  
   text-decoration: none;
   display: inline-block;
 }
@@ -144,7 +144,7 @@ onUnmounted(() => {
   transform: translateY(-2px);
 }
 
-/* --- UI ЭЛЕМЕНТЫ --- */
+
 .section-header {
   display: flex;
   justify-content: space-between;

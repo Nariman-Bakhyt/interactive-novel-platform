@@ -52,14 +52,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { getMyNovels } from '@/api/novelService';
-import type { NovelResponseDto } from '@/types/novel';
-import { DEFAULT_COVER } from '@/utils/media';
+import {onMounted, ref} from 'vue';
+import {useRouter} from 'vue-router';
+import {getMyNovels} from '@/api/novelService';
+import type {NovelResponseDto} from '@/types/novel';
+import {DEFAULT_COVER} from '@/utils/media';
 
 const router = useRouter();
-const novels = ref<NovelResponseDto[]>([]); // Указываем тип массива
+const novels = ref<NovelResponseDto[]>([]); 
 const isLoading = ref(true);
 
 const truncateText = (text: string, length: number) => {
@@ -198,8 +198,8 @@ h1 {
   letter-spacing: 0.05em;
 }
 
-.status-badge.published { color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); } /* emerald-500 */
-.status-badge.draft { color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); } /* amber-500 */
+.status-badge.published { color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); } 
+.status-badge.draft { color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); } 
 .status-badge.in_progress{color: #e4e4e7 ; border: 1px solid rgba(228, 228, 231, 0.3); }
 .card-content {
   padding: 20px;

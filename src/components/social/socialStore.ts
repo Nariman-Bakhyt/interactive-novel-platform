@@ -3,9 +3,12 @@ import {ref} from "vue";
 import {
   acceptFriendRequest,
   addCloseFriend,
-  blockUser, declineFriendRequest,
+  blockUser,
+  declineFriendRequest,
   follow,
-  getSocialGraph, removeCloseFriend, sendFriendRequest,
+  getSocialGraph,
+  removeCloseFriend,
+  sendFriendRequest,
   unblockUser,
   unfollow
 } from "@/api/socialService.ts";
@@ -17,7 +20,7 @@ const getErrorMessage = (error: any, defaultMsg: string) => {
 };
 
 export const useSocialStore = defineStore('social', () => {
-  // 1. STATE (Состояние). Используем Set для мгновенного поиска.
+  
   const followingIds = ref<Map<number, number>>(new Map());
   const followerIds = ref<Map<number, number>>(new Map());
   const friendIds = ref<Map<number, number>>(new Map());
@@ -33,7 +36,7 @@ export const useSocialStore = defineStore('social', () => {
     if (isLoaded.value && !force) return;
     try {
       const data = await getSocialGraph();
-      // Превращаем массивы из DTO в Set-коллекции
+      
       followingIds.value = new Map(Object.entries(data.followingIds).map(([k, v]) => [Number(k), Number(v)]));
       followerIds.value = new Map(Object.entries(data.followerIds).map(([k, v]) => [Number(k), Number(v)]));
       friendIds.value = new Map(Object.entries(data.friendIds).map(([k, v]) => [Number(k), Number(v)]));
@@ -64,7 +67,7 @@ export const useSocialStore = defineStore('social', () => {
     if (isFollowing(userId)) {
       try {
         await unfollow(dto);
-        followingIds.value.delete(userId); // Обновляем UI мгновенно
+        followingIds.value.delete(userId); 
       }catch (error :any) {
         toastStore.error(getErrorMessage(error, 'Не удалось отписаться'));
       }
@@ -98,7 +101,7 @@ export const useSocialStore = defineStore('social', () => {
       try {
         const res = await blockUser(dto);
         blockIds.value.set(userId,res.id);
-        // Очищаем остальные связи, так как человек заблокирован
+        
         followingIds.value.delete(userId);
         friendIds.value.delete(userId);
         closeFriendIds.value.delete(userId);
@@ -116,7 +119,7 @@ export const useSocialStore = defineStore('social', () => {
     const dto: UserRelationRequestDto = { receiverId: userId, relationId: relationId };
     const wasCloseFriend = isCloseFriend(userId);
 
-    // Мгновенное обновление UI
+    
     if (wasCloseFriend){
       try {
         await removeCloseFriend(dto);
@@ -178,7 +181,7 @@ export const useSocialStore = defineStore('social', () => {
       friendIds.value.delete(userId);
       incomingRequestIds.value.delete(userId);
       outgoingRequestIds.value.delete(userId);
-      closeFriendIds.value.delete(userId); // Из лучших друзей тоже убираем
+      closeFriendIds.value.delete(userId); 
     } catch (error: any) {
       toastStore.error(getErrorMessage(error, 'Не удалось удалить пользователя/заявку'));
     }
@@ -199,7 +202,7 @@ export const useSocialStore = defineStore('social', () => {
     const { userId, relationId } = event.payload;
 
     switch (event.type) {
-      // ПОДПИСКИ
+      
       case SocialEventType.FOLLOW_SUCCESS:
         followingIds.value.set(userId, relationId);
         break;
@@ -207,7 +210,7 @@ export const useSocialStore = defineStore('social', () => {
         followingIds.value.delete(userId);
         break;
 
-      // ДРУЗЬЯ
+      
       case SocialEventType.FRIEND_REQUEST_SENT:
         outgoingRequestIds.value.set(userId, relationId);
         break;
@@ -226,7 +229,7 @@ export const useSocialStore = defineStore('social', () => {
         closeFriendIds.value.delete(userId);
         break;
 
-      // БЛИЗКИЕ И БЛОКИРОВКА
+      
       case SocialEventType.CLOSE_FRIEND_ADDED:
         closeFriendIds.value.set(userId, relationId);
         break;
@@ -235,7 +238,7 @@ export const useSocialStore = defineStore('social', () => {
         break;
       case SocialEventType.USER_BLOCKED:
         blockIds.value.set(userId, relationId);
-        // При блоке чистим всё остальное
+        
         followingIds.value.delete(userId);
         followerIds.value.delete(userId);
         friendIds.value.delete(userId);

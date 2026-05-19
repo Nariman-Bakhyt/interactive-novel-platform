@@ -1,13 +1,15 @@
 import apiClient from "./axios.ts";
 import type {
-  ChapterRequestDto, ChapterResponseDto,
-  NovelAndChapterShortResponseDto, NovelRequestDto,
-  NovelResponseDto, NovelSearchRequestDto,
+  ChapterRequestDto,
+  ChapterResponseDto,
+  NovelAndChapterShortResponseDto,
+  NovelRequestDto,
+  NovelResponseDto,
+  NovelSearchRequestDto,
   NovelUpdateRequestDto,
   TagOrGenreResponseDto
 } from "@/types/novel";
-import axios, { type AxiosResponse } from "axios";
-import type {UserResponseDto} from "@/types/auth.ts";
+import {type AxiosResponse} from "axios";
 import type {PagedModel} from "@/types/PagedModel.ts";
 
 export const createNovel = async (payload: NovelRequestDto) => {
@@ -18,7 +20,7 @@ export const createNovel = async (payload: NovelRequestDto) => {
   formData.append('status', payload.status);
 
   if (payload.coverImage) {
-    formData.append('coverImage', payload.coverImage); // Важно: имя 'file' для Java
+    formData.append('coverImage', payload.coverImage); 
   }
 
   payload.genres.forEach(id => formData.append('genres', id.toString()));

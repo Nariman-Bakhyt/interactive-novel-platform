@@ -1,56 +1,54 @@
 <script setup lang="ts">
-import {ref, computed, onMounted, onUnmounted, nextTick} from 'vue';
-import { useSocialStore } from "@/components/social/socialStore.ts";
-import { useRouter } from "vue-router";
+import {nextTick, onMounted, onUnmounted, ref} from 'vue';
+import {useSocialStore} from "@/components/social/socialStore.ts";
 import {useMessengerStore} from "@/components/chat/messengerStore.ts";
 
 const social = useSocialStore();
 const messenger = useMessengerStore();
-const router = useRouter();
 const menuElement = ref<HTMLElement | null>(null);
 
-// Глобальное состояние меню
+
 const isVisible = ref(false);
 const x = ref(0);
 const y = ref(0);
 const targetUserId = ref<number | null>(null);
 const targetUsername = ref<string>("");
 
-// Экспортируем метод открытия, чтобы его можно было вызывать из любого места
+
 const openMenu = async (event: MouseEvent, userId: number, username: string) => {
   event.preventDefault();
   targetUserId.value = userId;
   targetUsername.value = username;
   isVisible.value = true;
 
-  // Ждем, пока Vue добавит элемент в DOM
+  
   await nextTick();
 
   if (menuElement.value) {
     const menuWidth = menuElement.value.offsetWidth;
     const menuHeight = menuElement.value.offsetHeight;
-    const padding = 10; // Отступ от края экрана
+    const padding = 10; 
 
     let posX = event.clientX;
     let posY = event.clientY;
 
-    // Проверка правой границы: если меню выходит за край, сдвигаем его влево
+    
     if (posX + menuWidth > window.innerWidth) {
       posX = window.innerWidth - menuWidth - padding;
     }
 
-    // Проверка нижней границы: если меню выходит вниз, сдвигаем его вверх
+    
     if (posY + menuHeight > window.innerHeight) {
       posY = window.innerHeight - menuHeight - padding;
     }
 
-    // Дополнительная защита: если кликнули слишком близко к левому или верхнему краю
+    
     x.value = Math.max(padding, posX);
     y.value = Math.max(padding, posY);
   }
 };
 
-// Закрытие по клику куда угодно
+
 const closeMenu = () => {
   isVisible.value = false;
   targetUserId.value = null;
@@ -65,14 +63,14 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleEsc, { capture: true });
 });
 
-// --- ДЕЙСТВИЯ ---
+
 
 const handleWriteMessage = async () => {
   if (!targetUserId.value) return;
-  // Используем твой готовый метод из messengerStore
+  
   await messenger.startPrivateChat(targetUserId.value);
   closeMenu();
-  // Если у тебя чат на отдельной странице, можно сделать: router.push('/chat')
+  
 };
 
 const handleEsc = (e: KeyboardEvent) => {
@@ -81,8 +79,8 @@ const handleEsc = (e: KeyboardEvent) => {
     e.stopImmediatePropagation();
   }
 };
-// Чтобы сделать этот компонент доступным глобально,
-// мы прокидываем openMenu наружу
+
+
 defineExpose({ openMenu });
 </script>
 
@@ -100,14 +98,14 @@ defineExpose({ openMenu });
           <span>{{ targetUsername }}</span>
         </div>
 
-        <!-- 1. Написать сообщение -->
+        
         <button class="menu-item highlight" @click="handleWriteMessage">
           💬 Написать сообщение
         </button>
 
         <div class="menu-divider"></div>
 
-        <!-- 2. Блокировка (Если заблокирован, показываем только разблокировку) -->
+        
         <template v-if="social.isBlocked(targetUserId)">
           <button class="menu-item danger" @click="social.toggleBlock(targetUserId)">
             🔓 Разблокировать

@@ -1,22 +1,20 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import type { NovelResponseDto } from "@/types/novel.ts";
+import {ref} from 'vue';
+import type {NovelResponseDto} from "@/types/novel.ts";
 import LibraryButton from "@/components/library/LibraryButton.vue";
-import { DEFAULT_COVER } from "@/utils/media.ts";
+import {DEFAULT_COVER} from "@/utils/media.ts";
 
 const props = defineProps<{
   novel: NovelResponseDto;
-  isMobile: boolean; // Получаем из родителя, чтобы не вешать 20 слушателей окна
+  isMobile: boolean; 
 }>();
 
 const emit = defineEmits<{
   (e: 'click', id: number): void
 }>();
 
-const router = useRouter();
 
-// Локальное состояние для конкретной карточки
+
 const isHovered = ref(false);
 let hoverTimeout: number | null = null;
 let closeTimeout: number | null = null;
@@ -171,7 +169,7 @@ const toggleInfo = (event: Event) => {
   overflow: hidden;
 }
 
-/* --- ВСПЛЫВАЮЩЕЕ ОКНО (POPOVER) --- */
+
 .novel-popover {
   position: absolute;
   top: 0;
@@ -195,7 +193,7 @@ const toggleInfo = (event: Event) => {
 
 .pop-stats { display: flex; gap: 16px; margin-bottom: 12px; font-size: 0.85rem; color: var(--text-header); font-weight: 600; }
 .stat-item { display: flex; align-items: center; gap: 4px; }
-.rating { color: #f59e0b; } /* amber-500 */
+.rating { color: #f59e0b; } 
 
 .pop-metadata { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
 .chips-row { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -205,7 +203,7 @@ const toggleInfo = (event: Event) => {
 .pop-desc { font-size: 0.9rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 16px; color: var(--text-muted); }
 .pop-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 
-/* --- ЭЛЕМЕНТЫ ВНУТРИ POPOVER --- */
+
 .status-badge { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 4px 8px; border-radius: 4px; font-weight: 700; }
 .status-badge.completed { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2);}
 .status-badge.in_progress { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2);}
@@ -214,7 +212,7 @@ const toggleInfo = (event: Event) => {
 .btn-read-now { padding: 8px 16px; background: var(--btn-plus); border: none; color: white; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: background 0.2s, transform 0.2s; white-space: nowrap; }
 .btn-read-now:hover { background: var(--btn-plus-hover); transform: translateY(-1px); }
 
-/* --- АДАПТИВ И АНИМАЦИИ --- */
+
 @media (max-width: 768px) {
   .novel-popover { position: fixed; top: 50%; left: 50% !important; transform: translate(-50%, -50%); width: 85%; max-height: 70vh; overflow-y: auto; }
   .novel-popover::before, .novel-popover::after { display: none; }

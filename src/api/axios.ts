@@ -10,11 +10,12 @@ const apiClient = axios.create({
   }
 });
 
+// Инжектируем фингерпринт X-Visitor-Id для неавторизованных (гостевых) пользователей и Bearer JWT для авторизованных.
 apiClient.interceptors.request.use(
   (config) => {
     const vId = getCachedVisitorId();
 
-    // Если ID еще не готов (мало ли), не вешаем запрос, а шлем что есть
+    
     if (vId) {
       config.headers['X-Visitor-Id'] = vId;
     }
@@ -29,6 +30,9 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// failedQueue и isRefreshing реализуют слияние (concurrency pooling) параллельных запросов обновления токена. 
+// Если одновременно падает несколько параллельных запросов с 401, выполняется ровно один запрос /auth/refresh, 
+// а остальные ждут его завершения в очереди. Это защищает бэкенд от спама рефрешами и предотвращает race conditions.
 let isRefreshing = false;
 let failedQueue: any[] = [];
 
@@ -46,11 +50,11 @@ const processQueue = (error: any, token: string | null = null) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // ВАЖНО: Вызываем хук здесь, чтобы избежать циклических зависимостей при старте приложения
+    
     const authStore = useAuthStore();
     const originalRequest = error.config;
 
-    // КРИТИЧНО: Не пытаемся рефрешить, если сам запрос на рефреш упал
+    
     if (error.response?.status === 401 && originalRequest.url === '/auth/refresh') {
       authStore.logout();
       return Promise.reject(error);
@@ -59,7 +63,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      // Если рефреш УЖЕ идет, ставим этот запрос в очередь ожидания
+      
       if (isRefreshing) {
         return new Promise(function(resolve, reject) {
           failedQueue.push({ resolve, reject });
@@ -71,25 +75,25 @@ apiClient.interceptors.response.use(
         });
       }
 
-      // Если мы первые получили 401, блокируем очередь и делаем рефреш
+      
       isRefreshing = true;
 
       try {
         const newToken = await authStore.refreshToken();
 
-        // Разблокируем очередь: говорим всем ждущим запросам "Токен обновлен, летите!"
+        
         processQueue(null, newToken);
 
-        // Повторяем наш оригинальный запрос
+        
         originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
-        // Рефреш не удался (прошло 30 дней или сессия убита)
+        
         processQueue(refreshError, null);
         authStore.logout();
         return Promise.reject(refreshError);
       } finally {
-        // В любом случае снимаем блокировку
+        
         isRefreshing = false;
       }
     }

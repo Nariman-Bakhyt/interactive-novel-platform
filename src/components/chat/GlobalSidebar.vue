@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useCommentStore } from "@/components/chat/commentStore.ts";
-import router from "@/router";
-import { useMessengerStore } from "@/components/chat/messengerStore.ts";
-import { type ConversationResponseDto, ConversationType } from "@/types/chat.ts";
-import { useAuthStore } from "@/api/auth.ts";
+import {computed, inject, nextTick, onMounted, onUnmounted, ref, watch} from 'vue';
+import {useCommentStore} from "@/components/chat/commentStore.ts";
+import {useMessengerStore} from "@/components/chat/messengerStore.ts";
+import {type ConversationResponseDto, ConversationType} from "@/types/chat.ts";
+import {useAuthStore} from "@/api/auth.ts";
 import ChatCreationModal from './ChatCreationModal.vue';
-import { useToastStore } from "@/components/toast/toastStore.ts";
+import {useToastStore} from "@/components/toast/toastStore.ts";
 
 const commentStore = useCommentStore();
 const messengerStore = useMessengerStore();
@@ -58,7 +57,7 @@ const handleChatClick = (conversationId: number) => {
 
 const menu = (event: MouseEvent, chat: ConversationResponseDto) => {
   if (chat.type !== ConversationType.GROUP) {
-    let user = chat.members.find(c => c.userId !== authStore.userDetails?.id);
+    const user = chat.members.find(c => c.userId !== authStore.userDetails?.id);
     if (user) openUserMenu(event, user.userId, user.username);
   }
 };
@@ -536,7 +535,7 @@ onUnmounted(() => {
   height: 100%;
 }
 
-/* MINIBAR STYLES */
+
 .mini-sidebar {
   width: 76px;
   background-color: var(--bg-dropdown);
@@ -705,7 +704,7 @@ onUnmounted(() => {
 .chat-list-title { font-size: 0.95rem; color: var(--text-header); font-weight: 600; text-overflow: ellipsis; overflow: hidden; }
 .pin-indicator { font-size: 0.8rem; margin-top: 2px; }
 
-/* GLOBAL SIDEBAR STYLES */
+
 .global-sidebar {
   width: 360px;
   height: 100%;
@@ -816,7 +815,7 @@ onUnmounted(() => {
 }
 .leave-btn-outline:hover { background: #ef4444; color: white; }
 
-/* MESSAGES LIST */
+
 .comments-list {
   flex: 1;
   overflow-y: auto;
@@ -933,7 +932,7 @@ onUnmounted(() => {
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
-/* LIGHTBOX STYLES */
+
 .image-lightbox {
   position: fixed;
   top: 0;

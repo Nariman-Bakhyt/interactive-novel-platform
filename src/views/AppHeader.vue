@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { useAuthStore } from '@/api/auth.ts'; // Используем ваш Pinia Store
-import { useRouter } from 'vue-router';
+import {useAuthStore} from '@/api/auth.ts'; 
+import {useRouter} from 'vue-router';
 
-import {computed, inject, onMounted, ref, watch, onUnmounted, nextTick} from "vue";
+import {computed, inject, nextTick, onMounted, onUnmounted, ref, watch} from "vue";
 import {useThemeStore} from "@/api/theme.ts";
 import {searchNovels} from "@/api/novelService.ts";
 import {searchUsers} from "@/api/profileService.ts";
-import { DEFAULT_COVER, DEFAULT_AVATAR } from "@/utils/media.ts";
+import {DEFAULT_AVATAR, DEFAULT_COVER} from "@/utils/media.ts";
 import AuthModal from "@/views/auth/AuthModal.vue";
 
 const router = useRouter();
@@ -63,7 +63,7 @@ const fetchSearchResults = async (page: number, append = false) => {
   try {
     let data;
     if (searchType.value === 'novels') {
-      // УВЕЛИЧИЛИ ДО 12, чтобы контейнер в 300px точно переполнялся и появлялся скролл
+      
       data = await searchNovels(searchQuery.value, page, 12);
     } else {
       data = await searchUsers(searchQuery.value, page, 12);
@@ -73,14 +73,14 @@ const fetchSearchResults = async (page: number, append = false) => {
       searchResults.value = [...searchResults.value, ...data.content];
     } else {
       searchResults.value = data.content;
-      // При новом поиске прокручиваем наверх
+      
       await nextTick();
       if (searchResultsRef.value) {
         searchResultsRef.value.scrollTop = 0;
       }
     }
 
-    // БЕЗОПАСНАЯ ПРОВЕРКА (как в Catalog.vue)
+    
     const totalPages = data.page?.totalPages ||  1;
     searchIsLastPage.value = page >= totalPages - 1;
 
@@ -93,7 +93,7 @@ const fetchSearchResults = async (page: number, append = false) => {
 };
 
 
-// Живой поиск
+
 watch(searchQuery, (newQuery) => {
   clearTimeout(searchTimeout);
   if (newQuery.length < 2) {
@@ -116,7 +116,7 @@ watch(searchType, () => {
 
 const handleSearchScroll = async (e: Event) => {
   const target = e.target as HTMLElement;
-  // Скролл может быть не до самого пикселя из-за масштабирования, поэтому используем небольшую погрешность
+  
   const bottom = Math.abs(target.scrollHeight - target.scrollTop - target.clientHeight) < 20;
 
   if (bottom && !isSearching.value && !searchIsLastPage.value) {
@@ -138,17 +138,17 @@ const handleResultClick = (id: number) => {
 };
 
 
-// Функция для выхода
+
 const handleLogout = () => {
   authStore.logout();
   showDropdown.value = false;
-  router.push('/'); // Перенаправляем на главную страницу после выхода
+  router.push('/'); 
 };
 if (!authStore.userDetails ) {
   authStore.fetchUserDetails();
 }
 
-// Функция для перехода в профиль
+
 const goToProfile = () => {
   showDropdown.value = false;
   router.push('/profile');
@@ -313,7 +313,7 @@ const menu = (event: MouseEvent,res:any) => {
 }
 
 .menu-wrapper{
-  position: relative; /* Чтобы меню знало, где лево/право кнопки */
+  position: relative; 
   display: flex;
   align-items: center;
   height: 60px;
@@ -335,7 +335,7 @@ const menu = (event: MouseEvent,res:any) => {
 }
 
 .plus-btn{
-  background: var(--btn-plus); /* Красивый синий цвет */
+  background: var(--btn-plus); 
   color: #fff;
   border: none;
   width: 32px;
@@ -497,7 +497,7 @@ const menu = (event: MouseEvent,res:any) => {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 4px 12px;
-  width: 400px; /* Ширина развернутого поиска */
+  width: 400px; 
   position: relative;
   animation: slideIn 0.3s ease;
 }

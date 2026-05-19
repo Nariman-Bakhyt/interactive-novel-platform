@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, nextTick, onUnmounted } from 'vue';
-import { useRouter } from "vue-router";
-import { findAllNovels } from "@/api/novelService.ts";
-import { searchUsers } from "@/api/profileService.ts";
-import type { NovelResponseDto, NovelSearchRequestDto, TagOrGenreResponseDto } from "@/types/novel.ts";
+import {computed, onMounted, onUnmounted, ref, watch} from 'vue';
+import {useRouter} from "vue-router";
+import {findAllNovels} from "@/api/novelService.ts";
+import {searchUsers} from "@/api/profileService.ts";
+import type {
+  NovelResponseDto,
+  NovelSearchRequestDto,
+  TagOrGenreResponseDto
+} from "@/types/novel.ts";
 import NovelCard from "@/components/NovelCard.vue";
-import { DEFAULT_AVATAR } from "@/utils/media.ts";
+import {DEFAULT_AVATAR} from "@/utils/media.ts";
 
 const router = useRouter();
 const novels = ref<NovelResponseDto[]>([]);
@@ -34,7 +38,7 @@ const isGenreModalOpen = ref(false);
 const isTagModalOpen = ref(false);
 const pagesCache = ref<Record<number, NovelResponseDto[]>>({});
 
-// --- ПОИСК АВТОРА С ПАГИНАЦИЕЙ ---
+
 const authorSearchQuery = ref('');
 const authorSearchResults = ref<any[]>([]);
 const isAuthorSearching = ref(false);
@@ -59,9 +63,9 @@ const fetchAuthors = async (page: number, append = false) => {
       authorSearchResults.value = data.content;
     }
 
-    // РЕШЕНИЕ: Вычисляем является ли страница последней вручную
+    
     const totalPages = data.page?.totalPages || 1;
-    authorSearchIsLastPage.value = page >= totalPages - 1; // Если текущая страница (с 0) >= всего страниц - 1
+    authorSearchIsLastPage.value = page >= totalPages - 1; 
 
     authorSearchPage.value = page;
   } catch (e) {
@@ -107,13 +111,13 @@ const selectAuthor = (author: any) => {
   authorSearchResults.value = [];
 };
 
-// --- МЕТАДАННЫЕ ---
+
 const fetchMetadata = () => {
   genres.value = JSON.parse(localStorage.getItem('genres') || '[]');
   tags.value = JSON.parse(localStorage.getItem('tags') || '[]');
 };
 
-// --- ЛОГИКА ФИЛЬТРАЦИИ ---
+
 const prepareFilters = (rawFilters: NovelSearchRequestDto) => {
   const cleanFilters: any = {};
   const keys: (keyof NovelSearchRequestDto)[] = [
@@ -190,7 +194,7 @@ const resetFilters = () => {
   applyFilters();
 };
 
-// --- ТРОЙНОЙ КЛИК И ПОИСК В МОДАЛКАХ ---
+
 const toggleMetadata = (id: number, type: 'genre' | 'tag') => {
   const incKey = type === 'genre' ? 'includedGenreIds' : 'includedTagIds';
   const excKey = type === 'genre' ? 'excludedGenreIds' : 'excludedTagIds';
@@ -440,7 +444,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* --- 1. ГЛОБАЛЬНЫЙ МАКЕТ (Сайдбар слева, контент справа) --- */
+
 .catalog-page {
   min-height: 100vh;
   background: var(--bg-main);
@@ -484,7 +488,7 @@ onUnmounted(() => {
   flex-grow: 1;
 }
 
-/* --- 2. КАРТОЧКА ФИЛЬТРОВ В САЙДБАРЕ --- */
+
 .filter-card {
   background: var(--bg-dropdown);
   border-radius: 16px;
@@ -555,7 +559,7 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-/* Автокомплит для автора */
+
 .relative-wrapper {
   position: relative;
 }
@@ -602,7 +606,7 @@ onUnmounted(() => {
 }
 
 
-/* Кнопки вызова модалок в сайдбаре */
+
 .modal-trigger-btn {
   width: 100%;
   padding: 12px 16px;
@@ -622,7 +626,7 @@ onUnmounted(() => {
   background: var(--hover-dropdowb);
 }
 
-/* --- 3. МОДАЛЬНОЕ ОКНО --- */
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -688,7 +692,7 @@ onUnmounted(() => {
   flex-grow: 1;
 }
 
-/* --- 4. ТРОЙНЫЕ ЧИПЫ (Внутри модалки) --- */
+
 .triple-chip {
   padding: 8px 16px;
   border-radius: 20px;
@@ -705,18 +709,18 @@ onUnmounted(() => {
 }
 
 .triple-chip.included {
-  background: rgba(16, 185, 129, 0.15); /* emerald */
+  background: rgba(16, 185, 129, 0.15); 
   border-color: #10b981;
   color: #10b981;
 }
 
 .triple-chip.excluded {
-  background: rgba(239, 68, 68, 0.15); /* red */
+  background: rgba(239, 68, 68, 0.15); 
   border-color: #ef4444;
   color: #ef4444;
 }
 
-/* --- 5. КНОПКИ И УТИЛИТЫ --- */
+
 .btn-apply {
   width: 100%;
   padding: 14px;
@@ -757,7 +761,7 @@ onUnmounted(() => {
 }
 .btn-text:hover { background: var(--hover-dropdowb); }
 
-/* --- 6. СЕТКА НОВЕЛЛ И ПАГИНАЦИЯ --- */
+
 .novels-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -808,7 +812,7 @@ onUnmounted(() => {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* --- 7. АДАПТИВ --- */
+
 @media (max-width: 900px) {
   .catalog-layout { flex-direction: column; }
   .sidebar { width: 100%; position: static; }

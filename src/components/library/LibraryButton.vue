@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useLibraryStore } from '@/components/library/libraryStore.ts';
-import { useAuthStore } from '@/api/auth.ts';
-import { LibraryStatus } from '@/types/library.ts';
-import { PrivacyLevel } from '@/types/user.ts'; // Твой Enum приватности
+import {computed, onMounted, onUnmounted, ref} from 'vue';
+import {useLibraryStore} from '@/components/library/libraryStore.ts';
+import {useAuthStore} from '@/api/auth.ts';
+import {LibraryStatus} from '@/types/library.ts';
+import {PrivacyLevel} from '@/types/user.ts'; 
 
 const props = defineProps<{
   novelId: number;
@@ -15,14 +15,14 @@ const authStore = useAuthStore();
 
 const isDropdownOpen = ref(false);
 const isLoading = ref(false);
-const widgetRef = ref<HTMLElement | null>(null); // Ссылка на наш DOM-элемент
+const widgetRef = ref<HTMLElement | null>(null); 
 
-// Выбранный уровень приватности (по умолчанию 'Все')
+
 const selectedPrivacy = ref<PrivacyLevel>(PrivacyLevel.NOBODY);
 
 const currentStatus = computed(() => libraryStore.novelStatuses[props.novelId]);
 
-// --- СЛОВАРИ ДЛЯ ИНТЕРФЕЙСА ---
+
 const statusLabels: Record<LibraryStatus, string> = {
   [LibraryStatus.READING]: '📖 Читаю',
   [LibraryStatus.PLANNING]: '🕒 В планах',
@@ -44,7 +44,7 @@ const buttonText = computed(() => {
   return '+ В библиотеку';
 });
 
-// --- ЛОГИКА СОХРАНЕНИЯ ---
+
 const changeStatus = async (newStatus: LibraryStatus) => {
   if (!authStore.isAuthenticated) {
     authStore.showAuthModal = true;
@@ -56,14 +56,14 @@ const changeStatus = async (newStatus: LibraryStatus) => {
   isDropdownOpen.value = false;
 
   try {
-    // Передаем статус и выбранную приватность!
+    
     await libraryStore.updateStatus(props.novelId, newStatus, selectedPrivacy.value);
   } finally {
     isLoading.value = false;
   }
 };
 
-// Если пользователь просто меняет приватность у УЖЕ добавленной книги
+
 const handlePrivacyChange = async () => {
   if (currentStatus.value) {
     isLoading.value = true;
@@ -85,9 +85,9 @@ const removeStatus = async () => {
   }
 };
 
-// --- ЗАКРЫТИЕ ПО КЛИКУ ВНЕ МЕНЮ ---
+
 const handleClickOutside = (event: MouseEvent) => {
-  // Если кликнули не внутри нашего виджета - закрываем меню
+  
   if (widgetRef.value && !widgetRef.value.contains(event.target as Node)) {
     isDropdownOpen.value = false;
   }
@@ -214,7 +214,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
   padding: 8px 0;
 }
 
-/* Стили для секций внутри меню */
+
 .dropdown-section {
   display: flex;
   flex-direction: column;
@@ -252,7 +252,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
   font-weight: 600;
 }
 
-/* Стили для селекта приватности */
+
 .privacy-select {
   margin: 4px 16px 8px;
   padding: 8px 12px;
@@ -277,7 +277,7 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
 }
 
 .remove-btn {
-  color: #ef4444; /* red-500 */
+  color: #ef4444; 
   padding: 12px 16px;
   display: flex;
   align-items: center;

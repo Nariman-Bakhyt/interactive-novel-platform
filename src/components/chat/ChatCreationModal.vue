@@ -1,23 +1,22 @@
 <script setup lang="ts">
-import {ref, computed, watch, onMounted, inject, onUnmounted} from 'vue';
-import { useSocialStore } from "@/components/social/socialStore.ts";
-import { useMessengerStore } from "@/components/chat/messengerStore.ts";
-import { useToastStore } from "@/components/toast/toastStore.ts";
-import { searchUsers } from "@/api/profileService.ts";
-import { getCloseFriends, getFollowers, getFollowing, getFriends } from "@/api/socialService.ts";
+import {computed, onMounted, onUnmounted, ref, watch} from 'vue';
+import {useSocialStore} from "@/components/social/socialStore.ts";
+import {useMessengerStore} from "@/components/chat/messengerStore.ts";
+import {useToastStore} from "@/components/toast/toastStore.ts";
+import {searchUsers} from "@/api/profileService.ts";
+import {getCloseFriends, getFollowers, getFollowing, getFriends} from "@/api/socialService.ts";
 
 const emit = defineEmits(['close', 'add-members']);
 const socialStore = useSocialStore();
 const messengerStore = useMessengerStore();
 const toastStore = useToastStore();
-const openUserMenu = inject('openUserMenu') as (event: MouseEvent, userId: number, username: string) => void;
 
 const props = defineProps<{
-  purpose?: 'CREATE' | 'ADD_MEMBERS'; // НОВЫЙ ПРОП
-  excludeIds?: number[]; // Чтобы не показывать тех, кто уже в группе
+  purpose?: 'CREATE' | 'ADD_MEMBERS'; 
+  excludeIds?: number[]; 
 }>();
 
-// --- РЕЖИМЫ И СОСТОЯНИЕ ГРУППЫ ---
+
 const mode = ref<'PRIVATE' | 'GROUP'>(props.purpose === 'ADD_MEMBERS' ? 'GROUP' : 'PRIVATE');
 const groupName = ref('');
 const selectedUserIds = ref<Set<number>>(new Set());
@@ -26,7 +25,7 @@ const groupAvatarFile = ref<File | null>(null);
 const groupAvatarPreview = ref<string>('');
 const fileInput = ref<HTMLInputElement | null>(null);
 
-// --- ПОИСК И ВКЛАДКИ ---
+
 const searchQuery = ref('');
 const activeTab = ref('friends');
 
@@ -61,7 +60,7 @@ const handleAvatarUpload = (event: Event) => {
 
 
 const switchMode = (newMode: 'PRIVATE' | 'GROUP') => {
-  if (props.purpose === 'ADD_MEMBERS') return; // Запрещаем смену режима
+  if (props.purpose === 'ADD_MEMBERS') return; 
   mode.value = newMode;
   selectedUserIds.value.clear();
   if (newMode === 'PRIVATE') { groupName.value = ''; groupAvatarFile.value = null; groupAvatarPreview.value = ''; }
@@ -101,7 +100,7 @@ const loadGlobalData = async (force = false) => {
 
 const isAllowedUser = (user: any) => {
   const id = getUserId(user);
-  return !socialStore.isBlocked(id) && !(props.excludeIds?.includes(id)); // Скрываем тех, кто уже в чате
+  return !socialStore.isBlocked(id) && !(props.excludeIds?.includes(id)); 
 };
 
 const filteredLocalItems = computed(() => {
@@ -131,7 +130,7 @@ const getUserId = (user: any): number => Number(user.userId !== undefined ? user
 const toggleSelection = async (user: any) => {
   const userId = getUserId(user);
   if (mode.value === 'PRIVATE') {
-    try { await messengerStore.startPrivateChat(userId); emit('close'); } catch (e) {}
+    try { await messengerStore.startPrivateChat(userId); emit('close'); } catch {}
   } else {
     const newSet = new Set(selectedUserIds.value);
     newSet.has(userId) ? newSet.delete(userId) : newSet.add(userId);
@@ -143,7 +142,7 @@ const handleSubmit = async () => {
   if (selectedUserIds.value.size === 0) return;
 
   if (props.purpose === 'ADD_MEMBERS') {
-    // Просто отдаем список ID наружу
+    
     emit('add-members', Array.from(selectedUserIds.value));
     emit('close');
   } else {
@@ -154,7 +153,7 @@ const handleSubmit = async () => {
       });
       toastStore.success("Группа создана!");
       emit('close');
-    } catch (e) {}
+    } catch {}
   }
 };
 
@@ -265,7 +264,7 @@ const handleSubmit = async () => {
 .mode-tabs button:hover { background: var(--hover-dropdowb); color: var(--text-header); }
 .mode-tabs button.active { background: var(--btn-plus); color: white; border-color: var(--btn-plus); font-weight: 600;}
 
-/* --- НОВЫЕ СТИЛИ ДЛЯ ШАПКИ СОЗДАНИЯ ГРУППЫ --- */
+
 .group-creation-header {
   display: flex;
   align-items: center;

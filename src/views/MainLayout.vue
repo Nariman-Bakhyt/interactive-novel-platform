@@ -9,7 +9,7 @@ import {useSmartScroll} from "@/api/commentService.ts";
 const route = useRoute();
 const { scrollToTarget } = useSmartScroll();
 watch(
-  () => route.fullPath, // Следим за всем путем, включая все параметры
+  () => route.fullPath, 
   async () => {
     if (!route.query.q) {
       if (typeof CSS !== 'undefined' && CSS.highlights) {
@@ -18,7 +18,7 @@ watch(
       return;
     }
 
-    // Принудительно удаляем старую подсветку перед новым поиском
+    
     if (typeof CSS !== 'undefined' && CSS.highlights) {
       CSS.highlights.delete("search-results");
     }
@@ -32,18 +32,18 @@ watch(
 
 <template>
   <div class="app-layout">
-    <!-- Шапка всегда сверху, фиксирована по высоте -->
+    
     <header class="app-header">
       <AppHeader />
     </header>
 
-    <!-- Основная область под шапкой -->
+    
     <main class="main-container">
       <div class="router-view-container">
         <RouterView />
       </div>
 
-      <!-- Сайдбар теперь просто колонка справа -->
+      
       <GlobalSidebar />
 
       <QuoteTooltip />
@@ -52,34 +52,34 @@ watch(
 </template>
 
 <style scoped>
-/* Главный контейнер на весь экран */
+
 .app-layout {
   display: flex;
   flex-direction: column;
-  height: 100vh; /* Ровно высота окна */
-  overflow: hidden; /* Запрещаем общий скролл страницы */
+  height: 100vh; 
+  overflow: hidden; 
   background-color: var(--bg-main);
 }
 
 .app-header {
   height: 60px;
-  flex-shrink: 0; /* Шапка не сжимается */
+  flex-shrink: 0; 
   background: var(--bg-header);
   border-bottom: 1px solid var(--border-color);
-  z-index: 100; /* Чтобы тень падала поверх контента */
+  z-index: 100; 
 }
 
 .main-container {
   display: flex;
-  flex: 1; /* Занимает всё пространство от 60px до низа экрана */
-  overflow: hidden; /* Скролл будет только внутри колонок */
+  flex: 1; 
+  overflow: hidden; 
 }
 
 .router-view-container {
-  flex: 1; /* Основной контент (новелла) занимает максимум места */
-  overflow-y: auto; /* Скролл только здесь */
+  flex: 1; 
+  overflow-y: auto; 
   position: relative;
-  /* Плавный скролл */
+  
   scroll-behavior: smooth;
 }
 </style>

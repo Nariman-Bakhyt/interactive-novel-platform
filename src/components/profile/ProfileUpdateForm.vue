@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { updateProfileApi,changePasswordApi } from '@/api/profileService.ts';
-import type {UserUpdateRequestDto, ChangePasswordRequestDto } from '@/types/user';
-import type {ProfileResponseDto, UserResponseDto} from '@/types/auth';
-import { reactive, ref } from 'vue';
+import {changePasswordApi, updateProfileApi} from '@/api/profileService.ts';
+import type {ChangePasswordRequestDto, UserUpdateRequestDto} from '@/types/user';
+import type {ProfileResponseDto} from '@/types/auth';
+import {reactive, ref} from 'vue';
 import {useAuthStore} from "@/api/auth.ts";
 
-// --- PROPS и ЭМИТЫ ---
+
 const props = defineProps<{
   initialUsername: string;
   initialEmail: string;
@@ -215,11 +215,11 @@ const changePassword = async () => {
 }
 
 .btn-warning {
-  background-color: #f59e0b; /* amber-500 */
+  background-color: #f59e0b; 
   color: white;
 }
 .btn-warning:hover:not(:disabled) {
-  background-color: #d97706; /* amber-600 */
+  background-color: #d97706; 
   transform: translateY(-1px);
 }
 
@@ -231,12 +231,12 @@ const changePassword = async () => {
   border-radius: 8px;
 }
 .error {
-  color: #ef4444; /* red-500 */
+  color: #ef4444; 
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 .success {
-  color: #10b981; /* emerald-500 */
+  color: #10b981; 
   background: rgba(16, 185, 129, 0.1);
   border: 1px solid rgba(16, 185, 129, 0.2);
 }

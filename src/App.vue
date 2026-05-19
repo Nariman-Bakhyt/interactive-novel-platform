@@ -6,15 +6,14 @@ import {useLibraryStore} from "@/components/library/libraryStore.ts";
 import {onMounted, onUnmounted, provide, ref, watch} from "vue";
 import {useSocialStore} from "@/components/social/socialStore.ts";
 import {useMessengerStore} from "@/components/chat/messengerStore.ts";
+import UserContextMenu from "@/components/menu/UserContextMenu.vue"
+import router from "@/router";
+import {getAllGenres, getAllTags} from "@/api/novelService.ts";
 
 const authStore = useAuthStore();
 const libraryStore = useLibraryStore();
 const socialStore = useSocialStore();
 const messengerStore = useMessengerStore();
-
-import UserContextMenu from "@/components/menu/UserContextMenu.vue"
-import router from "@/router";
-import { getAllGenres, getAllTags } from "@/api/novelService.ts";
 
 type UserContextMenuInstance = InstanceType<typeof UserContextMenu>;
 
@@ -77,7 +76,7 @@ onUnmounted(() => {
 </template>
 
 <style>
-/* Глобальные стили можно писать здесь или в assets/main.css */
+
 body, html {
   background-color: var(--bg-main);
   color: var(--text-header);

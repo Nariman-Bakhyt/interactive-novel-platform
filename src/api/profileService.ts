@@ -1,6 +1,6 @@
 import apiClient from "./axios.ts";
 import type {ProfileResponseDto, UserResponseDto} from "@/types/auth.ts";
-import type {UserUpdateRequestDto, ChangePasswordRequestDto} from "@/types/user.ts";
+import type {ChangePasswordRequestDto, UserUpdateRequestDto} from "@/types/user.ts";
 import type {AxiosError, AxiosResponse} from "axios";
 import type {PagedModel} from "@/types/PagedModel.ts";
 

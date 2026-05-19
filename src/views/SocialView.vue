@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import {ref} from 'vue';
 import {
+  getCloseFriends,
   getFollowers,
   getFollowing,
   getFriends,
-  getCloseFriends,
   getIncomingRequest,
-  getOutgoingRequests,
-  getMyBlackList
+  getMyBlackList,
+  getOutgoingRequests
 } from "@/api/socialService";
 
 import SocialList from "@/components/social/SocialList.vue";
@@ -18,7 +18,7 @@ interface SocialTab {
   fn: (page: number, size: number) => Promise<any>;
 }
 
-// Добавили все функции и логично отсортировали вкладки
+
 const tabs: SocialTab[] = [
   { id: 'friends', label: 'Друзья', fn: getFriends },
   {

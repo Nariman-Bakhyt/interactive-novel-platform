@@ -33,7 +33,7 @@ export interface ConversationResponseDto{
 export interface SendMessageRequestDto {
   conversationId: number;
   content?: string;
-  type?: string;        // 'PLAIN', 'IMAGE', 'QUOTE'
+  type?: string;        
   quoteText?: string;
   anchorUrl?: string;
 }

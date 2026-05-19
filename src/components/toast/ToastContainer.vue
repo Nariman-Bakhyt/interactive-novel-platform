@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useToastStore } from '@/components/toast/toastStore.ts';
+import {useToastStore} from '@/components/toast/toastStore.ts';
 
 const toastStore = useToastStore();
 </script>
@@ -25,7 +25,7 @@ const toastStore = useToastStore();
 </template>
 
 <style scoped>
-/* Контейнер фиксируем в правом нижнем (или верхнем) углу поверх всего сайта */
+
 .toast-container {
   position: fixed;
   bottom: 24px;
@@ -34,11 +34,11 @@ const toastStore = useToastStore();
   display: flex;
   flex-direction: column;
   gap: 12px;
-  pointer-events: none; /* Чтобы клики проходили сквозь пустой контейнер */
+  pointer-events: none; 
 }
 
 .toast-message {
-  pointer-events: auto; /* Сами тосты кликабельны (для закрытия) */
+  pointer-events: auto; 
   min-width: 280px;
   padding: 16px 20px;
   border-radius: 12px;
@@ -59,24 +59,24 @@ const toastStore = useToastStore();
   line-height: 1;
 }
 
-/* Цвета для разных типов */
-.toast-message.success { background-color: rgba(16, 185, 129, 0.9); border-color: rgba(16, 185, 129, 1); } /* emerald */
-.toast-message.error { background-color: rgba(239, 68, 68, 0.9); border-color: rgba(239, 68, 68, 1); } /* red */
-.toast-message.info { background-color: rgba(59, 130, 246, 0.9); border-color: rgba(59, 130, 246, 1); } /* blue */
+
+.toast-message.success { background-color: rgba(16, 185, 129, 0.9); border-color: rgba(16, 185, 129, 1); } 
+.toast-message.error { background-color: rgba(239, 68, 68, 0.9); border-color: rgba(239, 68, 68, 1); } 
+.toast-message.info { background-color: rgba(59, 130, 246, 0.9); border-color: rgba(59, 130, 246, 1); } 
 
 .toast-message p { margin: 0; line-height: 1.4; }
 
-/* Анимация (TransitionGroup) */
+
 .toast-anim-enter-active,
 .toast-anim-leave-active {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .toast-anim-enter-from {
   opacity: 0;
-  transform: translateX(100%) scale(0.95); /* Выезжает справа с небольшим скейлом */
+  transform: translateX(100%) scale(0.95); 
 }
 .toast-anim-leave-to {
   opacity: 0;
-  transform: translateX(100%); /* Уезжает вправо */
+  transform: translateX(100%); 
 }
 </style>

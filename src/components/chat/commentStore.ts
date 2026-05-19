@@ -1,12 +1,8 @@
-import { defineStore } from 'pinia';
-import { ref, computed, nextTick } from 'vue';
-import { getComments, deleteComment, createComment } from "@/api/commentService.ts"; // Импортируем createComment
-import {
-  subscribeToTopic,
-  unsubscribeFromTopic,
-  activeSubscriptions
-} from "@/api/stompService.ts";
-import type { CommentResponseDto, CommentRequestDto } from "@/types/comment.ts";
+import {defineStore} from 'pinia';
+import {computed, nextTick, ref} from 'vue';
+import {createComment, deleteComment, getComments} from "@/api/commentService.ts"; 
+import {activeSubscriptions, subscribeToTopic, unsubscribeFromTopic} from "@/api/stompService.ts";
+import type {CommentResponseDto} from "@/types/comment.ts";
 
 export const useCommentStore = defineStore('chat', () => {
   const isOpen = ref(false);
@@ -14,13 +10,13 @@ export const useCommentStore = defineStore('chat', () => {
   const activeTargetId = ref<number | null>(null);
   const targetType = ref<'BLOCK' | 'CHAPTER' | 'NOVEL'>('NOVEL');
   const commentsListRef = ref<HTMLElement | null>(null);
-  const isSending = ref(false); // Индикатор загрузки
+  const isSending = ref(false); 
   const pendingQuote = ref<{ text: string, url: string } | null>(null);
   const savedQuote = localStorage.getItem('pending_quote');
 
   const currentPage = ref(0);
   const isLastPage = ref(false);
-  const isLoadingMore = ref(false); // Индикатор загрузки старых сообщений
+  const isLoadingMore = ref(false); 
   const size = 3;
   const setQuoteMode = (quote: { text: string, url: string }) => {
     pendingQuote.value = quote;
@@ -65,11 +61,11 @@ export const useCommentStore = defineStore('chat', () => {
     targetType.value = type;
     isOpen.value = true;
 
-    // Сбрасываем пагинацию при открытии нового чата (ТЕПЕРЬ ПО-НАСТОЯЩЕМУ!)
+    
     currentPage.value = 0;
     isLastPage.value = false;
     isLoadingMore.value = false;
-    comments.value = []; // На всякий случай жестко чистим массив перед загрузкой
+    comments.value = []; 
 
     const topic = `/topic/${type.toLowerCase()}.${id}`;
 
@@ -96,18 +92,18 @@ export const useCommentStore = defineStore('chat', () => {
       else if (type === 'CHAPTER') commentFilters.chapterId = id;
       else if (type === 'NOVEL') commentFilters.novelId = id;
 
-// 2. Вызываем функцию, передавая аргументы на свои места
+
       const history = await getComments(
-        commentFilters,    // 1-й аргумент (params)
-        currentPage.value,                 // 2-й аргумент (page)
-        size,                // 3-й аргумент (size)
-        'timestamp,desc'   // 4-й аргумент (sort) - ОБЯЗАТЕЛЬНО desc для чата
+        commentFilters,    
+        currentPage.value,                 
+        size,                
+        'timestamp,desc'   
       );
 
-      // РАЗВОРАЧИВАЕМ МАССИВ, чтобы новые сообщения были внизу
+      
       comments.value = history.content ? [...history.content].reverse() : [];
 
-      // Проверяем, последняя ли это страница
+      
       isLastPage.value = history.last;
       scrollToBottom();
     } catch (e) {
@@ -126,30 +122,28 @@ export const useCommentStore = defineStore('chat', () => {
       else if (targetType.value === 'CHAPTER') commentFilters.chapterId = activeTargetId.value;
       else if (targetType.value  === 'NOVEL') commentFilters.novelId = activeTargetId.value;
 
-// 2. Вызываем функцию, передавая аргументы на свои места
+
       const history = await getComments(
-        commentFilters,    // 1-й аргумент (params)
-        currentPage.value,                 // 2-й аргумент (page)
-        size,                // 3-й аргумент (size)
-        'timestamp,desc'   // 4-й аргумент (sort) - ОБЯЗАТЕЛЬНО desc для чата
+        commentFilters,    
+        currentPage.value,                 
+        size,                
+        'timestamp,desc'   
       );
 
       if (history && history.content) {
-        // Разворачиваем старые сообщения и ставим их В НАЧАЛО массива
+        
         comments.value = [...history.content.reverse(), ...comments.value];
 
         isLastPage.value = history.last;
       }
     } catch (e) {
       console.error("Ошибка подгрузки истории:", e);
-      currentPage.value--; // Откат страницы при ошибке
+      currentPage.value--; 
     } finally {
       isLoadingMore.value = false;
     }
   };
-  /**
-   * Универсальный метод отправки (Текст, Фото, Цитата)
-   */
+  
   const send = async (payload: {
     content: string,
     file?: File | null,
@@ -159,31 +153,31 @@ export const useCommentStore = defineStore('chat', () => {
 
     isSending.value = true;
 
-    // 1. Собираем DTO для бэкенда
+    
     const dto: any = {
       content: payload.content,
       type: 'PLAIN'
     };
 
-    // Определяем цель (Target)
+    
     if (targetType.value === 'BLOCK') dto.blockId = activeTargetId.value;
     else if (targetType.value === 'CHAPTER') dto.chapterId = activeTargetId.value;
     else if (targetType.value === 'NOVEL') dto.novelId = activeTargetId.value;
 
-    const currentQuote = pendingQuote.value; // Кешируем значение
+    const currentQuote = pendingQuote.value; 
     if (currentQuote) {
       dto.type = 'QUOTE';
       dto.quoteText = currentQuote.text;
       dto.anchorUrl = currentQuote.url;
     }
-    // 2. Если цитаты нет, проверяем файл
+    
     else if (payload.file) {
       dto.type = 'IMAGE';
     }
 
     try {
-      // 2. Вызываем API сервис (Multipart POST)
-      // Мы не пушим результат в массив вручную, так как он прилетит через WebSocket
+      
+      
       await createComment(payload.file || null, dto);
       pendingQuote.value = null;
     } catch (e: any) {

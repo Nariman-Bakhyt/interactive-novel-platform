@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, nextTick } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { getChapter, getNovelById } from "@/api/novelService.ts";
-import type { ChapterResponseDto, ChapterShortResponseDto } from "@/types/novel.ts";
-import { useSmartScroll } from "@/api/commentService.ts";
+import {computed, nextTick, onMounted, ref, watch} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
+import {getChapter, getNovelById} from "@/api/novelService.ts";
+import type {ChapterResponseDto, ChapterShortResponseDto} from "@/types/novel.ts";
+import {useSmartScroll} from "@/api/commentService.ts";
 import {useCommentStore} from "@/components/chat/commentStore.ts";
-import type {CommentResponseDto} from "@/types/comment.ts";
-import QuoteTooltip from "@/components/QuoteTooltip.vue";
+
 const route = useRoute();
 const router = useRouter();
-const chatStore = useCommentStore(); // Инициализируем стор
+const chatStore = useCommentStore(); 
 
 const chapter = ref<ChapterResponseDto | null>(null);
 const chaptersList = ref<ChapterShortResponseDto[]>([]);
@@ -19,7 +18,7 @@ const nId = computed(() => Number(route.params.novelId));
 const cId = computed(() => Number(route.params.chapterId));
 const { scrollToTarget } = useSmartScroll();
 
-// Поиск по тексту (оставляем, это логика читки)
+
 watch(() => route.query.q, async (newText) => {
   if (!newText) return;
   await nextTick();
@@ -42,11 +41,11 @@ const fetchData = async () => {
   }
 };
 
-// Функция открытия чата теперь — это просто вызов стора
+
 const toggleComments = (blockId: number | null) => {
   if (!blockId) return;
   chatStore.openChat(blockId, 'BLOCK');
-  // Открываем сайдбар если он был скрыт
+  
   window.dispatchEvent(new CustomEvent('open-messenger'));
 };
 
@@ -54,7 +53,7 @@ watch(() => route.params.chapterId, (newId) => { if (newId) fetchData(); });
 
 onMounted(fetchData);
 
-// Вычисляемые свойства для навигации
+
 const chapterNumber = computed(() => {
   const index = chaptersList.value.findIndex(c => c.id === cId.value);
   return index !== -1 ? index + 1 : '';
@@ -77,7 +76,7 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
       <p>Загрузка страницы...</p>
     </div>
 
-    <!-- Убрали класс "with-sidebar" и логику сдвига текста -->
+    
     <div v-else-if="chapter" class="reader-container">
       <nav class="reader-nav">
         <button @click="router.push(`/novel/${nId}`)" class="btn-back">
@@ -132,7 +131,7 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
 
 <style scoped>
 ::highlight(search-results) {
-  background-color: #fcd34d !important; /* Яркий желтый (tailwind) */
+  background-color: #fcd34d !important; 
   color: #000 !important;
   border-radius: 2px;
 }
@@ -141,7 +140,7 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
   min-height: 100vh;
   background-color: var(--bg-editor-page);
   color: var(--text-header);
-  padding: 80px 24px 100px; /* Увеличен отступ сверху */
+  padding: 80px 24px 100px; 
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -150,30 +149,30 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
 
 .reader-container {
   width: 100%;
-  max-width: 760px; /* Чуть шире для современного вида */
+  max-width: 760px; 
   background: var(--bg-editor-sheet);
   padding: 48px 64px;
   border-radius: 24px;
   box-shadow: 0 4px 12px var(--shadow-color);
   border: 1px solid var(--border-color);
-  /* Убрали transition: transform, так как сдвига больше нет */
+  
 }
 
-/* Удален класс .reader-container.with-sidebar { transform: translateX(-150px); } */
+
 
 .content-block-wrapper {
   position: relative;
   display: flex;
   align-items: flex-start;
   margin-bottom: 0;
-  padding: 8px 16px; /* Добавлен горизонтальный паддинг для кликабельной зоны */
+  padding: 8px 16px; 
   border-radius: 8px;
   transition: background-color 0.2s;
-  cursor: pointer; /* Делаем весь блок визуально кликабельным */
+  cursor: pointer; 
 }
 
 .content-block-wrapper:hover {
-  background-color: rgba(161, 161, 170, 0.05); /* Очень слабый фон при наведении */
+  background-color: rgba(161, 161, 170, 0.05); 
 }
 
 .content-block-wrapper.active-block {
@@ -184,10 +183,10 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
 .block-main {
   margin: 0;
   flex: 1;
-  width: 100%; /* Убедимся, что контент занимает всю ширину */
+  width: 100%; 
 }
 
-/* Стили для кнопки комментариев */
+
 .block-actions {
   position: absolute;
   right: -56px;
@@ -286,21 +285,21 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
   border-radius: 4px;
 }
 
-/* Стили текста для комфортного чтения */
+
 .chapter-content {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-size: 1.25rem; /* Оптимальный размер для чтения */
+  font-size: 1.25rem; 
   line-height: 1.8;
   color: var(--text-header);
 }
 
 .text-block {
-  margin-bottom: 1.5em; /* Отступы между абзацами */
+  margin-bottom: 1.5em; 
   white-space: pre-wrap;
   word-wrap: break-word;
   color: var(--text-header);
-  opacity: 0.9; /* Слегка смягчить контраст */
+  opacity: 0.9; 
 }
 
 .image-block {
@@ -392,7 +391,7 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
     padding: 32px 24px;
     border-radius: 16px;
   }
-  .block-actions { right: -8px; } /* Сдвигаем кнопку комментариев внутрь на мобилках */
+  .block-actions { right: -8px; } 
 }
 
 @media (max-width: 600px) {

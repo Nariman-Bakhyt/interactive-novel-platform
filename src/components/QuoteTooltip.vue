@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
-import { useRoute } from 'vue-router';
+import {onMounted, onUnmounted, ref} from 'vue';
+import {useRoute} from 'vue-router';
 import {useCommentStore} from "@/components/chat/commentStore.ts";
 
 const route = useRoute();
@@ -14,7 +14,7 @@ const updateSelection = () => {
   const selection = window.getSelection();
   const text = selection?.toString().trim();
 
-  // Если текста нет или он слишком короткий — скрываем
+  
   if (!text || text.length < 3) {
     showButton.value = false;
     return;
@@ -26,10 +26,10 @@ const updateSelection = () => {
   if (rect && rect.width > 0) {
     selectedText.value = text;
 
-    // Рассчитываем позицию (центрируем над выделением)
+    
     btnPos.value = {
-      top: rect.top + window.scrollY - 48, // Чуть выше
-      left: rect.left + window.scrollX + (rect.width / 2) - 60 // Центрируем по кнопке
+      top: rect.top + window.scrollY - 48, 
+      left: rect.left + window.scrollX + (rect.width / 2) - 60 
     };
     showButton.value = true;
     console.log("Кнопка должна появиться тут:", btnPos.value);
@@ -40,25 +40,25 @@ const createQuoteComment = () => {
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0) return;
 
-  let self = selection.anchorNode?.parentElement;
+  const self = selection.anchorNode?.parentElement;
   if (!self) return;
 
-  // 1. Берем класс самого элемента
+  
   const selfClass = self.classList[0] || 'node';
 
-  // 2. Ищем соседа сверху (предыдущий элемент)
-  let prev = self.previousElementSibling;
+  
+  const prev = self.previousElementSibling;
   let prevClass = "";
 
   if (prev) {
     prevClass = prev.classList[0] || "";
   } else {
-    // Если соседа нет, берем класс родителя как контекст
+    
     prevClass = self.parentElement?.classList[0] || "root";
   }
 
-  // 3. Считаем индекс среди элементов, у которых ТАКОЙ ЖЕ сосед
-  // Это сужает поиск до минимума
+  
+  
   const allElements = Array.from(document.querySelectorAll(`.${selfClass}`));
   const filteredByContext = allElements.filter(el => {
     const p = el.previousElementSibling;
@@ -67,7 +67,7 @@ const createQuoteComment = () => {
 
   const index = filteredByContext.indexOf(self);
 
-  // Формируем URL: q=текст, c=свой_класс, p=класс_соседа, i=индекс_в_контексте
+  
   const anchorUrl = `${route.path}?c=${selfClass}&p=${prevClass}&i=${index}`;
 
   chatStore.setQuoteMode({
@@ -80,9 +80,9 @@ const createQuoteComment = () => {
 };
 
 onMounted(() => {
-  // mouseup для десктопа, чтобы кнопка появлялась когда отпустили мышь
+  
   document.addEventListener('mouseup', updateSelection);
-  // На случай если выделение сбросили кликом в пустоту
+  
   document.addEventListener('selectionchange', () => {
     if (!window.getSelection()?.toString().trim()) {
       showButton.value = false;
@@ -115,7 +115,7 @@ onUnmounted(() => {
 <style scoped>
 .quote-floating-btn {
   position: absolute;
-  z-index: 999999; /* Максимальный приоритет */
+  z-index: 999999; 
   background: var(--bg-dropdown);
   color: var(--text-header);
   border: 1px solid var(--border-color);

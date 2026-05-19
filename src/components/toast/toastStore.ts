@@ -1,5 +1,5 @@
-import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import {defineStore} from 'pinia';
+import {ref} from 'vue';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -16,10 +16,10 @@ export const useToastStore = defineStore('toast', () => {
   const showToast = (text: string, type: ToastType = 'info', duration = 3000) => {
     const id = nextId++;
 
-    // Добавляем уведомление в массив
+    
     toasts.value.push({ id, text, type });
 
-    // Автоматически удаляем через заданное время
+    
     setTimeout(() => {
       removeToast(id);
     }, duration);

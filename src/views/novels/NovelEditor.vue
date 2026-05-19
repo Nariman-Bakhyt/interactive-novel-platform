@@ -3,7 +3,6 @@ import {computed, onMounted, onUnmounted, ref} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import type {
   ChapterShortResponseDto,
-  ChapterStatus,
   NovelRequestDto,
   TagOrGenreResponseDto
 } from "@/types/novel.ts";
@@ -13,14 +12,16 @@ import {
   createNovel,
   deleteChapter,
   deleteNovel,
-  getAllGenres,
-  getAllTags, getMyNovel, updateChapterPublishTime, updateNovel, uploadNovelCover
+  getMyNovel,
+  updateChapterPublishTime,
+  updateNovel,
+  uploadNovelCover
 } from "@/api/novelService.ts";
 
 const route = useRoute();
 const router = useRouter();
 const toastStore = useToastStore();
-// Состояния
+
 const novelId = computed(() => route.params.id);
 const isEditMode = computed(() => !!novelId.value);
 const isEditingNow = ref(false);
@@ -57,7 +58,7 @@ onUnmounted(() => {
   }
 });
 
-// Загрузка данных
+
 onMounted(async () => {
   try {
     allGenres.value = JSON.parse(localStorage.getItem('genres') || '[]');
@@ -78,8 +79,8 @@ onMounted(async () => {
       chaptersList.value = data.chapters || [];
       isEditingNow.value = false;
     }
-  } catch (e) {
-    console.error("Ошибка инициализации:", e);
+  } catch {
+    console.error("Ошибка инициализации");
   } finally {
     isLoading.value = false;
   }
@@ -98,16 +99,16 @@ const isSelected = (id: number, listName: 'genres' | 'tags') => {
   return form.value[listName].some(i => i.id === id);
 };
 
-// Сохранение текстовых данных
+
 const saveNovel = async () => {
   isSaving.value = true;
 
-  // Собираем payload строго по DTO
+  
   const payload: NovelRequestDto = {
     title: form.value.title,
     status: (isEditMode.value ? form.value.status : 'DRAFT') as string,
     description: form.value.description,
-    coverImage: form.value.coverImage, // Передаем файл, если он есть
+    coverImage: form.value.coverImage, 
     genres: form.value.genres.map(g => g.id),
     tags: form.value.tags.map(t => t.id)
   };
@@ -119,7 +120,7 @@ const saveNovel = async () => {
       const newNovel = await createNovel(payload);
       router.push(`/novels/${newNovel.id}/edit`);
     }
-  } catch (e) {
+  } catch {
     toastStore.error("Ошибка при сохранении");
   } finally {
     isSaving.value = false;
@@ -143,7 +144,7 @@ const handleDeleteNovel = async () => {
 };
 
 const handleDeleteChapter = async (chapterId: number, event: Event) => {
-  event.stopPropagation(); // Чтобы не сработал переход на редактирование
+  event.stopPropagation(); 
   if (!confirm('Вы точно хотите удалить эту главу?')) return;
 
   try {
@@ -239,20 +240,20 @@ const confirmPublishChapterInline = async (chapterId: number) => {
   }
 };
 
-// Загрузка файла обложки
+
 const triggerFileUpload = () => fileInput.value?.click();
 
 const handleDeleteCover = async () => {
   if (!confirm('Вы уверены, что хотите полностью удалить обложку?')) return;
 
-  // Если мы на этапе создания, просто стираем локальные данные
+  
   if (!isEditMode.value) {
     form.value.coverImage = null;
     form.value.cover = '';
     return;
   }
 
-  // Если это режим редактирования, шлем запрос на удаление
+  
   isUploadingCover.value = true;
   try {
     const updatedNovel = await uploadNovelCover(Number(novelId.value), null);
@@ -270,34 +271,31 @@ const handleCoverUpload = async (event: Event) => {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
 
-  // 1. Показываем локальное превью пользователю сразу
+  
   if (form.value.cover.startsWith('blob:')) {
     URL.revokeObjectURL(form.value.cover);
   }
   form.value.cover = URL.createObjectURL(file);
 
-  // 2. Разделяем логику для редактирования и создания
+  
   if (isEditMode.value && novelId.value) {
-    // Если новелла уже существует — загружаем в MinIO сразу (по твоему API)
+    
     isUploadingCover.value = true;
     try {
       const updatedNovel = await uploadNovelCover(Number(novelId.value), file);
       form.value.cover = updatedNovel.coverUrl;
-    } catch (e) {
+    } catch {
       toastStore.error("Ошибка при загрузке обложки");
     } finally {
       isUploadingCover.value = false;
     }
   } else {
-    // Если мы только создаем новеллу — просто запоминаем файл в форму
+    
     form.value.coverImage = file;
   }
 };
 
-const truncate = (text: string, length: number) => {
-  if (!text) return '';
-  return text.length > length ? text.substring(0, length) + '...' : text;
-};
+
 </script>
 
 <template>
@@ -521,7 +519,7 @@ const truncate = (text: string, length: number) => {
   max-width: 800px;
   display: flex;
   flex-direction: column;
-  align-items: center; /* Центрируем всё содержимое */
+  align-items: center; 
   text-align: center;
   box-shadow: 0 4px 12px var(--shadow-color);
   border: 1px solid var(--border-color);
@@ -568,7 +566,7 @@ const truncate = (text: string, length: number) => {
   color: var(--text-muted);
   line-height: 1.6;
   white-space: pre-wrap;
-  text-align: left; /* Аннотацию лучше читать слева */
+  text-align: left; 
   word-break: break-word;
   overflow-wrap: anywhere;
   max-width: 100%;
@@ -610,7 +608,7 @@ const truncate = (text: string, length: number) => {
 
 .novel-form-grid {
   display: grid;
-  grid-template-columns: 1fr 340px; /* Основной контент шире */
+  grid-template-columns: 1fr 340px; 
   gap: 48px;
 }
 
@@ -659,7 +657,7 @@ textarea {
   resize: vertical;
 }
 
-/* Правая колонка (Sidebar) */
+
 .form-sidebar-right {
   display: flex;
   flex-direction: column;
@@ -709,7 +707,7 @@ textarea {
   opacity: 1;
 }
 
-/* Стили кнопок выбора (Жанры/Теги) */
+
 .tags-selector, .status-selector {
   display: flex;
   flex-wrap: wrap;
@@ -752,7 +750,7 @@ textarea {
   border-color: var(--btn-plus);
 }
 
-/* Кнопки действий */
+
 .form-full-width-actions {
   grid-column: span 2;
   display: flex;
@@ -770,7 +768,7 @@ textarea {
 
 .btn-delete-novel {
   background: transparent;
-  color: #ef4444; /* red-500 */
+  color: #ef4444; 
   border: 1px solid #ef4444;
   padding: 16px 24px;
   border-radius: 12px;
@@ -828,7 +826,7 @@ textarea {
     grid-column: span 1;
   }
   .form-sidebar-right {
-    order: -1; /* Обложка и настройки сверху на мобилках */
+    order: -1; 
   }
 }
 .btn-remove-link {
@@ -842,7 +840,7 @@ textarea {
   background: transparent;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  color: #ef4444; /* red-500 */
+  color: #ef4444; 
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
@@ -1057,7 +1055,7 @@ textarea {
   transform: translateY(-2px);
 }
 
-/* Стили для инлайн публикации */
+
 .ch-publish-inline {
   position: relative;
   margin-right: 16px;

@@ -9,14 +9,16 @@ import {
   getMyChats,
   getOrCreatePrivateChat,
   kickUser,
-  leaveGroup, markConversationAsRead,
+  leaveGroup,
+  markConversationAsRead,
   sendMessage,
   sendTypingStatus,
   toggleChatSettings
 } from "@/api/chatService";
 import {deactivateStomp, subscribeToTopic, unsubscribeFromTopic} from "@/api/stompService";
 import {
-  type ConversationResponseDto, type CreateGroupRequest,
+  type ConversationResponseDto,
+  type CreateGroupRequest,
   type MessageResponseDto,
   type SendMessageRequestDto,
   WsEventType
@@ -32,51 +34,51 @@ export const useMessengerStore = defineStore('messenger', () => {
   const toastStore = useToastStore();
   const socialStore = useSocialStore();
   const authStore = useAuthStore();
-  // ==========================================
-  // УТИЛИТА ОБРАБОТКИ ОШИБОК
-  // ==========================================
+  
+  
+  
   const handleError = (context: string, err: any) => {
-    // 1. Лог для разработчика (пользователь не видит)
+    
     console.error(`[${context}]`, err);
 
-    // 2. Уведомление для пользователя
+    
     if (err.response) {
       if (err.response.status >= 400 && err.response.status < 500) {
-        // Ошибки бизнес-логики (например, настройки приватности)
+        
         toastStore.error(err.response.data?.detailedMessage || "Действие отклонено");
       } else if (err.response.status >= 500) {
-        // Серверные ошибки
+        
         toastStore.error("Что-то пошло не так на сервере. Мы уже чиним!");
       }
     } else {
-      // Нет ответа от сервера (нет интернета или сервер недоступен)
+      
       toastStore.error("Проверьте подключение к сети");
     }
   };
 
-  // 1. Левое меню (Список всех чатов)
+  
   const conversations = ref<ConversationResponseDto[]>([]);
   const isConversationsLoading = ref(false);
 
-  // 2. Открытый чат
+  
   const activeConversationId = ref<number | null>(null);
   const messages = ref<MessageResponseDto[]>([]);
   const messagesListRef = ref<HTMLElement | null>(null);
   const isSending = ref(false);
 
-  // 3. Пагинация сообщений
+  
   const currentPage = ref(0);
   const isLastPage = ref(false);
   const isLoadingMore = ref(false);
   const pageSize = 30;
 
-  // 4. Статус "Печатает..."
-  const typingUsers = ref<Record<number, string>>({}); // { userId: "username" }
+  
+  const typingUsers = ref<Record<number, string>>({}); 
   let typingTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  // ==========================================
-  // ГЛОБАЛЬНЫЙ WEBSOCKET (Для левого меню)
-  // ==========================================
+  
+  
+  
   const initGlobalSocket = (myUserId: number) => {
     const topic = `/topic/user.${myUserId}`;
 
@@ -132,13 +134,13 @@ export const useMessengerStore = defineStore('messenger', () => {
     }
 
     if (event.type === WsEventType.MESSAGE_DELETED) {
-      // Логика удаления из превью
+      
     }
   };
 
-  // ==========================================
-  // ACTIONS (Действия)
-  // ==========================================
+  
+  
+  
   const scrollToBottom = async () => {
     await nextTick();
     if (messagesListRef.value) {
@@ -224,7 +226,7 @@ export const useMessengerStore = defineStore('messenger', () => {
       }
     } catch (e) {
       handleError("loadMoreChats", e);
-      currentChatsPage.value--; // Откатываем страницу при ошибке
+      currentChatsPage.value--; 
       throw e;
     } finally {
       isConversationsLoading.value = false;
@@ -251,7 +253,7 @@ export const useMessengerStore = defineStore('messenger', () => {
       }
     } catch (e) {
       handleError("loadMoreMessages", e);
-      currentPage.value--; // Откатываем страницу при ошибке
+      currentPage.value--; 
       throw e;
     } finally {
       isLoadingMore.value = false;
@@ -273,7 +275,7 @@ export const useMessengerStore = defineStore('messenger', () => {
       await sendMessage(targetIdAtStart, dto, files);
     } catch (err: any) {
       handleError("send", err);
-      // Если это ограничение прав, динамически блокируем чат в интерфейсе
+      
       if (err.response?.status === 403) {
         const chat = conversations.value.find(c => c.id === targetIdAtStart);
         if (chat) chat.blocked = true;
@@ -399,7 +401,7 @@ export const useMessengerStore = defineStore('messenger', () => {
   });
 
   const createGroup = async (payload: CreateGroupRequest) => {
-    // 1. Проверка на заблокированных (бизнес-логика остается в Store)
+    
     const hasBlocked = payload.memberIds.some(id => socialStore.isBlocked(id));
     if (hasBlocked) {
       toastStore.error("В группу нельзя добавить заблокированных пользователей");
@@ -407,7 +409,7 @@ export const useMessengerStore = defineStore('messenger', () => {
     }
 
     try {
-      // 2. Просто вызываем сервис, передавая объект целиком
+      
       const newGroup = await createGroupChat(payload);
       conversations.value.unshift(newGroup);
       await openChat(newGroup.id);
@@ -422,14 +424,14 @@ export const useMessengerStore = defineStore('messenger', () => {
     const finalIds = targetUserIds.filter(targetId => {
       if (socialStore.isBlocked(targetId)) {
         toastStore.error(`Пользователь ${targetId} заблокирован и будет удален из списка`);
-        return false; // Убираем из итогового списка
+        return false; 
       }
-      return true; // Оставляем
+      return true; 
     });
     if (finalIds.length === 0) {
       const errorMsg = "Нет валидных пользователей для добавления";
       toastStore.error(errorMsg);
-      // Выбрасываем ошибку, чтобы вызывающий метод попал в свой блок catch
+      
       throw new Error(errorMsg);
     }
     try {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue';
-import { useAuthStore } from '@/api/auth.ts';
-import type {ProfileResponseDto, UserResponseDto} from '@/types/auth';
+import {onMounted, onUnmounted} from 'vue';
+import {useAuthStore} from '@/api/auth.ts';
+import type {ProfileResponseDto} from '@/types/auth';
 import AvatarUploader from './AvatarUploader.vue';
 import ProfileUpdateForm from './ProfileUpdateForm.vue';
 
@@ -17,7 +17,7 @@ const closeModal = () => {
   emit('update:isVisible', false);
 };
 
-// Закрытие по нажатию Esc (хороший тон для UX)
+
 const handleEsc = (e: KeyboardEvent) => {
   if (e.key === 'Escape' && props.isVisible) closeModal();
 };
@@ -86,7 +86,7 @@ const handleProfileUpdate = (updatedUserDto: ProfileResponseDto) => {
   padding: 24px;
 }
 
-/* Контент модалки */
+
 .modal-content {
   background: var(--bg-dropdown);
   color: var(--text-header);
@@ -103,7 +103,7 @@ const handleProfileUpdate = (updatedUserDto: ProfileResponseDto) => {
   flex-direction: column;
 }
 
-/* Заголовок */
+
 .modal-header {
   margin-bottom: 24px;
 }
@@ -133,7 +133,7 @@ const handleProfileUpdate = (updatedUserDto: ProfileResponseDto) => {
   background: var(--hover-dropdowb);
 }
 
-/* Разделитель */
+
 .divider {
   height: 1px;
   background: var(--border-color);

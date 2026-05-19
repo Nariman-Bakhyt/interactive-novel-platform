@@ -1,8 +1,9 @@
 <script setup lang = "ts">
-import {ref, watch, computed} from 'vue';
+import {computed, ref, watch} from 'vue';
 import {uploadAvatar} from "@/api/profileService.ts";
-import type {ProfileResponseDto, UserResponseDto} from '@/types/auth';
+import type {ProfileResponseDto} from '@/types/auth';
 import {useAuthStore} from "@/api/auth.ts";
+
 const props = defineProps<{
   initialAvatarUrl: string | null;
 }>();
@@ -15,7 +16,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const message = ref('');
 const isError = ref(false);
 const authStore = useAuthStore();
-const isUploading = ref(false); // Новое состояние
+const isUploading = ref(false); 
 
 const handleFileChange = async (event: Event) => {
   const input = event.target as HTMLInputElement;
@@ -27,7 +28,7 @@ const handleFileChange = async (event: Event) => {
     return;
   }
 
-  isUploading.value = true; // Запускаем лоадер
+  isUploading.value = true; 
   try {
     const updatedUserDto = await uploadAvatar(file);
     currentAvatarUrl.value = updatedUserDto.avatarUrl;
@@ -39,7 +40,7 @@ const handleFileChange = async (event: Event) => {
     isError.value = true;
     message.value = error.message || 'Ошибка загрузки';
   } finally {
-    isUploading.value = false; // Выключаем лоадер
+    isUploading.value = false; 
     input.value = '';
   }
 };
@@ -53,7 +54,7 @@ const triggerFileUpload = () => {
 
 const validateFile = (file: File): boolean => {
   const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
-  const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+  const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; 
 
   if (file.size > MAX_FILE_SIZE_BYTES) {
     message.value = `Файл слишком большой. Максимальный размер: 5 МБ.`;
@@ -173,7 +174,7 @@ const avatarDisplayUrl = computed(() => {
   display: block;
 }
 
-/* Оверлей при наведении */
+
 .avatar-overlay {
   position: absolute;
   inset: 0;
@@ -223,7 +224,7 @@ const avatarDisplayUrl = computed(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 40px; /* Чтобы не прыгало при появлении текста */
+  min-height: 40px; 
 }
 
 .message-text {
@@ -232,8 +233,8 @@ const avatarDisplayUrl = computed(() => {
   font-weight: 500;
   text-align: center;
 }
-.error-msg { color: #ef4444; } /* red-500 */
-.success-msg { color: #10b981; } /* emerald-500 */
+.error-msg { color: #ef4444; } 
+.success-msg { color: #10b981; } 
 
 .btn-delete {
   background: transparent;

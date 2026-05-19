@@ -3,7 +3,7 @@ import {ref} from "vue";
 
 export const activeSubscriptions = new Map<string, { sub: StompSubscription | null, callback: (data: any) => void }>();
 export const isConnected = ref(false);
-// Создаем экземпляр клиента один раз внутри этого файла
+
 
 
 const getBrokerURL = (): string => {
@@ -16,7 +16,7 @@ const getBrokerURL = (): string => {
 
 const stompClient = new Client({
   brokerURL: getBrokerURL(),
-  // Убрали статический connectHeaders отсюда
+  
   debug: (str) => console.log('STOMP Debug:', str),
   reconnectDelay: 5000,
   heartbeatIncoming: 10000,
@@ -25,15 +25,16 @@ const stompClient = new Client({
 stompClient.beforeConnect = () => {
   const token = localStorage.getItem('jwt_token');
 
-  // Если токена нет или это строка "null", отменяем попытку
+  
   if (!token || token === 'null') {
     console.warn('STOMP: Подключение отменено, jwt_token отсутствует.');
-    // Мы не вызываем deactivate(), чтобы клиент "ждал" следующего вызова activate вручную
-    // Но выкидываем ошибку или просто возвращаем, если библиотека позволяет
+    
+    
     return;
   }
 
-  // Динамически подставляем актуальный токен
+  // WebSocket-соединения не отправляют HTTP-заголовки Authorization автоматически. 
+  // Передаем токен принудительно через connectHeaders при установлении STOMP-соединения.
   stompClient.connectHeaders = {
     Authorization: `Bearer ${token}`,
   };
@@ -46,6 +47,8 @@ stompClient.onConnect = () => {
   isConnected.value = true;
   console.log('✅ STOMP Connected');
 
+  // Брокер сообщений сбрасывает состояние подписок клиента при разрыве сессии. 
+  // Обходим все зарегистрированные коллбеки в реестре activeSubscriptions и восстанавливаем подписки при успешном реконнекте.
   activeSubscriptions.forEach((value, topic) => {
     const newSub = stompClient.subscribe(topic, (message) => {
       value.callback(JSON.parse(message.body));
@@ -57,8 +60,8 @@ stompClient.onConnect = () => {
 
 stompClient.onWebSocketClose = () => {
   isConnected.value = false;
-  // При закрытии сокета обнуляем ссылки на объекты подписок,
-  // но оставляем callback-и в Map для восстановления
+  
+  
   activeSubscriptions.forEach(val => val.sub = null);
 };
 
@@ -67,7 +70,7 @@ export function subscribeToTopic<T>(topic: string, onMessage: (data: T) => void)
 
   activeSubscriptions.set(topic, { sub: null, callback: onMessage });
 
-  // Если мы пытаемся подписаться, а клиент выключен — пробуем включить
+  
   if (!stompClient.active) {
     activateStomp();
   }

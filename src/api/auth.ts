@@ -2,10 +2,15 @@ import {defineStore} from "pinia";
 import {computed, ref} from "vue";
 import apiClient from "./axios.ts";
 import {
-  type AuthResponse, type EmailRequest,
-  type LoginRequest, type ProfileResponseDto,
-  type RegistrationRequestDto, type ResetPasswordRequest,
-  type UserResponseDto, type VerificationRequest, VerificationTokenType, type VerifyLoginCodeRequest
+  type AuthResponse,
+  type EmailRequest,
+  type LoginRequest,
+  type ProfileResponseDto,
+  type RegistrationRequestDto,
+  type ResetPasswordRequest,
+  type VerificationRequest,
+  VerificationTokenType,
+  type VerifyLoginCodeRequest
 } from "@/types/auth.ts";
 import type {UserSettingsRequestDto, UserSettingsResponseDto} from "@/types/user.ts";
 
@@ -81,7 +86,7 @@ export const useAuthStore = defineStore("auth", ()=> {
     return response.data;
   }
 
-    // Запрос на смену почты (внутри профиля)
+    
     async function requestEmailUpdate(data: EmailRequest): Promise<string> {
     const response = await apiClient.post<string>('/user/email/update-request', data);
     return response.data;
@@ -156,7 +161,7 @@ export const useAuthStore = defineStore("auth", ()=> {
   async function fetchUserSettings() {
     if (!isAuthenticated.value) return null;
     try {
-      // Предполагаю, что базовый URL в контроллере /users
+      
       const response = await apiClient.get<UserSettingsResponseDto>('/users/setting');
       userSettings.value = response.data;
       return response.data;
@@ -166,11 +171,11 @@ export const useAuthStore = defineStore("auth", ()=> {
     }
   }
 
-  // Обновление настроек (PATCH)
+  
   async function updateUserSettings(dto: UserSettingsRequestDto) {
     try {
       const response = await apiClient.patch<UserSettingsResponseDto>('/users/setting', dto);
-      // Сразу обновляем локальный стейт, чтобы UI перерисовался без перезагрузки
+      
       userSettings.value = response.data;
       return response.data;
     } catch (e) {

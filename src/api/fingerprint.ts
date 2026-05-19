@@ -2,7 +2,8 @@ import FingerprintJS from '@fingerprintjs/fingerprintjs';
 
 let cachedId: string | null = null;
 
-// Эта функция запускается ОДИН РАЗ при старте приложения в main.ts
+
+// Кэшируем visitorId при инициализации приложения. Это позволяет Axios-интерцепторам считывать его мгновенно и синхронно, избегая асинхронных задержек на каждый HTTP-запрос.
 export const initVisitorId = async () => {
   try {
     const fp = await FingerprintJS.load();
@@ -11,7 +12,8 @@ export const initVisitorId = async () => {
     console.log("Fingerprint initialized:", cachedId);
   } catch (e) {
     console.error("Failed to init fingerprint", e);
-    cachedId = "fallback-id-" + Date.now(); // На крайний случай
+    // Резервный fallback обеспечивает отказоустойчивость (fault tolerance) при блокировках скрипта браузером / блокировщиками рекламы.
+    cachedId = "fallback-id-" + Date.now(); 
   }
 };
 

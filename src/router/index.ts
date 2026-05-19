@@ -1,13 +1,12 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import {createRouter, createWebHistory} from 'vue-router';
 import {useAuthStore} from "@/api/auth.ts";
 import HomeView from "@/views/HomeView.vue";
 import MainLayout from "@/views/MainLayout.vue";
 
 
-
-
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  // scrollBehavior плавно скроллит к хэшу (удобно для сносок/блоков) или восстанавливает сохраненный скролл при переходах назад/вперед.
   scrollBehavior(to, from, savedPosition) {
     if (to.hash) {
       return {
@@ -28,8 +27,9 @@ const router = createRouter({
           component: HomeView ,
         },
         {
-          path: '/profile/:id?', // Знак вопроса означает, что id не обязателен
+          path: '/profile/:id?', 
           name: 'profile',
+          // Ленивая загрузка (lazy loading) разделяет код на чанки (Vite code splitting), снижая размер первичного бандла и ускоряя LCP.
           component: () => import('@/views/ProfileView.vue'),
           meta: { requiresAuth: true },
         },
@@ -37,7 +37,7 @@ const router = createRouter({
           path: '/my-novels',
           name: 'MyNovels',
           component: () => import('@/views/novels/MyNovels.vue'),
-          meta: { requiresAuth: true } // Помечаем, что нужен вход
+          meta: { requiresAuth: true } 
         },
         {
           path: '/novels/create',
@@ -50,7 +50,7 @@ const router = createRouter({
           name: 'EditNovel',
           component: () => import('@/views/novels/NovelEditor.vue'),
           meta: { requiresAuth: true },
-          props: true // Чтобы ID из ссылки попал в props компонента
+          props: true 
         },
         {
           path: '/novel/:id',
@@ -63,7 +63,7 @@ const router = createRouter({
           name: 'createChapter',
           component: () => import('@/views/novels/chapter/ChapterEditor.vue'),
           meta: { requiresAuth: true },
-          props: true //novelId придет в компонент как пропс
+          props: true 
         },
         {
           path: '/novels/:novelId/chapters/:chapterId/edit',
@@ -91,9 +91,9 @@ const router = createRouter({
         {
           path: '/social',
           name: 'SocialConnections',
-          component: () => import('@/views/SocialView.vue'), // Ленивая загрузка страницы
+          component: () => import('@/views/SocialView.vue'), 
           meta: {
-            requiresAuth: true, // Страница только для залогиненных
+            requiresAuth: true, 
             title: 'Мои связи'
           }
         }
@@ -103,6 +103,7 @@ const router = createRouter({
   ]
 })
 
+// Навигационный guard перенаправляет гостей на главную, сохраняя исходный путь в query-параметре 'redirect' для последующего возврата.
 router.beforeEach((to, from) => {
   const authStore = useAuthStore();
 

@@ -11,15 +11,15 @@ import {useToastStore} from "@/components/toast/toastStore.ts";
 
 export const useLibraryStore = defineStore('library', () => {
   const novelStatuses = ref<Record<number, LibraryStatus>>({});
-  const isLoaded = ref(false); // Флаг, чтобы не скачивать дважды
+  const isLoaded = ref(false); 
   const toastStore = useToastStore();
-  // Метод для инициализации (вызовем его один раз после логина)
+  
   const fetchMyStatuses = async (force = false) => {
     if (isLoaded.value && !force) return;
 
     try {
       const statusesArray = await getLibraryStatusesApi();
-      // Превращаем массив [{novelId: 1, status: 'READING'}] в словарь {1: 'READING'}
+      
       statusesArray.forEach(item => {
         novelStatuses.value[item.novelId] = item.status;
       });

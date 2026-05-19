@@ -21,8 +21,7 @@ export interface NovelRequestDto {
   tags:Array<number>;
   genres:Array<number>;
 }
-export interface NovelUpdateRequestDto extends Partial<NovelRequestDto> {
-}
+export type NovelUpdateRequestDto = Partial<NovelRequestDto>;
 
 export interface TagOrGenreResponseDto{
   id: number;
@@ -38,13 +37,13 @@ export enum novelStatus {
 }
 
 export interface NovelSearchRequestDto{
-  title: string | null;           // Чтобы можно было очистить до null
+  title: string | null;           
   authorId?: number | null;
-  includedGenreIds: number[];      // Массивы лучше инициализировать как []
+  includedGenreIds: number[];      
   excludedGenreIds: number[];
   includedTagIds: number[];
   excludedTagIds: number[];
-  minRating: number | null;        // Чтобы 0 не считался отсутствием значения
+  minRating: number | null;        
   maxRating?: number | null;
   status: novelStatus | null;
 }
