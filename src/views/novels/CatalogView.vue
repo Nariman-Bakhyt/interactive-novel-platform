@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch, nextTick, onUnmounted } from 'vue';
 import { useRouter } from "vue-router";
-import { findAllNovels, getAllGenres, getAllTags } from "@/api/novelService.ts";
+import { findAllNovels } from "@/api/novelService.ts";
 import { searchUsers } from "@/api/profileService.ts";
 import type { NovelResponseDto, NovelSearchRequestDto, TagOrGenreResponseDto } from "@/types/novel.ts";
 import NovelCard from "@/components/NovelCard.vue";
@@ -107,14 +107,9 @@ const selectAuthor = (author: any) => {
 };
 
 // --- МЕТАДАННЫЕ ---
-const fetchMetadata = async () => {
-  try {
-    const [genresData, tagsData] = await Promise.all([getAllGenres(), getAllTags()]);
-    genres.value = genresData;
-    tags.value = tagsData;
-  } catch (e) {
-    console.error("Ошибка загрузки метаданных", e);
-  }
+const fetchMetadata = () => {
+  genres.value = JSON.parse(localStorage.getItem('genres') || '[]');
+  tags.value = JSON.parse(localStorage.getItem('tags') || '[]');
 };
 
 // --- ЛОГИКА ФИЛЬТРАЦИИ ---

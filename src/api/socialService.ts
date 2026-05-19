@@ -4,7 +4,7 @@ import type {
   UserRelationResponseDto
 } from "@/types/social.ts";
 import apiClient from "@/api/axios.ts";
-import type {PagedModel} from "@/types/PagedModel.ts";
+import type {PagedModel, SliceModel} from "@/types/PagedModel.ts";
 
 
 export async function follow(dto: UserRelationRequestDto): Promise<UserRelationResponseDto> {
@@ -18,7 +18,7 @@ export async function unfollow(dto: UserRelationRequestDto): Promise<void> {
 
 export async function getFollowers(page: number = 0,
                                    size: number = 20,
-                                   sort: string = 'updatedAt,desc'): Promise<any>  {
+                                   sort: string = 'updatedAt,desc'): Promise<SliceModel<UserRelationResponseDto>>  {
   const response = await apiClient.get('/social/followers', {
     params: {page, size, sort},
   });
@@ -27,7 +27,7 @@ export async function getFollowers(page: number = 0,
 
 export async function getFollowing(page: number = 0,
                                    size: number = 20,
-                                   sort: string = 'updatedAt,desc'): Promise<any>  {
+                                   sort: string = 'updatedAt,desc'): Promise<SliceModel<UserRelationResponseDto>>  {
   const response = await apiClient.get('/social/following', {
     params: {page, size, sort},
   });
@@ -49,21 +49,21 @@ export async function declineFriendRequest(dto: UserRelationRequestDto): Promise
   return response.data;
 }
 
-export async function getIncomingRequest(page: number = 0,size: number = 20,sort: string = 'updatedAt,desc'): Promise<PagedModel<UserRelationResponseDto>>  {
+export async function getIncomingRequest(page: number = 0,size: number = 20,sort: string = 'updatedAt,desc'): Promise<SliceModel<UserRelationResponseDto>>  {
   const response = await apiClient.get('/social/friends/requests/incoming', {
     params: {page, size, sort},
   });
   return response.data;
 }
 
-export async function getOutgoingRequests(page: number = 0, size: number = 20 ,sort: string = 'updatedAt,desc'): Promise<PagedModel<UserRelationResponseDto>> {
+export async function getOutgoingRequests(page: number = 0, size: number = 20 ,sort: string = 'updatedAt,desc'): Promise<SliceModel<UserRelationResponseDto>> {
   const response = await apiClient.get('/social/friends/requests/outgoing', {
-    params: { page, size },
+    params: { page, size ,sort },
   });
   return response.data;
 }
 
-export async function getFriends(page: number = 0,size: number = 20,sort: string = 'updatedAt,desc'):Promise<PagedModel<UserRelationResponseDto>> {
+export async function getFriends(page: number = 0,size: number = 20,sort: string = 'updatedAt,desc'):Promise<SliceModel<UserRelationResponseDto>> {
   const response = await apiClient.get('/social/friends', {
     params: {page, size, sort},
   })
@@ -93,7 +93,7 @@ export async function unblockUser(dto: UserRelationRequestDto): Promise<void> {
   await apiClient.post('/social/blocks/unblock', dto);
 }
 
-export async function getMyBlackList(page: number = 0,size: number = 20,sort: string = 'updatedAt,desc'): Promise<PagedModel<UserRelationResponseDto>> {
+export async function getMyBlackList(page: number = 0,size: number = 20,sort: string = 'updatedAt,desc'): Promise<SliceModel<UserRelationResponseDto>> {
   const response = await apiClient.get('/social/blocks', {
     params: {page, size, sort},
   });

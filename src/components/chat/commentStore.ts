@@ -74,11 +74,13 @@ export const useCommentStore = defineStore('chat', () => {
     const topic = `/topic/${type.toLowerCase()}.${id}`;
 
     if (!activeSubscriptions.has(topic)) {
-      subscribeToTopic<any>(topic, (newMsg) => {
-        if ('deleted' in newMsg && newMsg.deleted) {
-          comments.value = comments.value.filter(c => c.id !== newMsg.id);
-        } else {
-          const comment = newMsg as CommentResponseDto;
+      subscribeToTopic<any>(topic, (wsEvent) => {
+        const type = wsEvent.type;
+        const payload = wsEvent.payload;
+        if (type === 'COMMENT_DELETED') {
+          comments.value = comments.value.filter(c => c.id !== payload.id);
+        } else if (type === 'COMMENT_CREATED') {
+          const comment = payload as CommentResponseDto;
           if (!comments.value.some(c => c.id === comment.id)) {
             comments.value.push(comment);
             scrollToBottom();
@@ -106,11 +108,7 @@ export const useCommentStore = defineStore('chat', () => {
       comments.value = history.content ? [...history.content].reverse() : [];
 
       // Проверяем, последняя ли это страница
-      if (history.page) {
-        isLastPage.value = (history.page.number + 1) >= history.page.totalPages || history.content.length === 0;
-      } else {
-        isLastPage.value = history.last ?? true;
-      }
+      isLastPage.value = history.last;
       scrollToBottom();
     } catch (e) {
       console.error("Ошибка загрузки чата:", e);
@@ -140,11 +138,7 @@ export const useCommentStore = defineStore('chat', () => {
         // Разворачиваем старые сообщения и ставим их В НАЧАЛО массива
         comments.value = [...history.content.reverse(), ...comments.value];
 
-        if (history.page) {
-          isLastPage.value = (history.page.number + 1) >= history.page.totalPages || history.content.length === 0;
-        } else {
-          isLastPage.value = history.last ?? true;
-        }
+        isLastPage.value = history.last;
       }
     } catch (e) {
       console.error("Ошибка подгрузки истории:", e);

@@ -6,7 +6,7 @@ import type {
   MessageResponseDto,
   SendMessageRequestDto
 } from "@/types/chat.ts";
-import type {PagedModel} from "@/types/PagedModel.ts";
+import type {PagedModel, SliceModel} from "@/types/PagedModel.ts";
 
 
 export async function getMyChats(page: number = 0, size: number = 20 ): Promise<PagedModel<ConversationResponseDto>> {
@@ -15,7 +15,7 @@ export async function getMyChats(page: number = 0, size: number = 20 ): Promise<
 }
 
 // 2. Получить историю сообщений конкретного чата
-export async function getChatMessages(conversationId: number, page: number = 0, size: number = 50,sort: string = 'timestamp,desc'): Promise<PagedModel<MessageResponseDto>> {
+export async function getChatMessages(conversationId: number, page: number = 0, size: number = 50,sort: string = 'timestamp,desc'): Promise<SliceModel<MessageResponseDto>> {
   const response = await apiClient.get(`/chats/${conversationId}/messages`, { params: { page, size,sort } });
   return response.data;
 }

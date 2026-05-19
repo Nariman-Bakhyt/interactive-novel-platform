@@ -1,5 +1,6 @@
 import apiClient from "./axios.ts";
 import type {CommentRequestDto, CommentResponseDto} from "@/types/comment.ts";
+import type {SliceModel} from "@/types/PagedModel.ts";
 import {nextTick} from "vue";
 import {useRoute} from "vue-router";
 
@@ -7,7 +8,7 @@ import {useRoute} from "vue-router";
 export async function getComments(params: Partial<CommentRequestDto>, page = 0,
                                   size = 20,
                                   sort: string = 'timestamp,asc'
-): Promise<any> {
+): Promise<SliceModel<CommentResponseDto>> {
   const response = await apiClient.get(`/comments/public`, {
     params: { ...params, page, size,sort }
   });

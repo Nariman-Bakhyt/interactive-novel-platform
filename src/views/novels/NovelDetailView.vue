@@ -61,12 +61,7 @@ const fetchComments = async () => {
       if (!commentsMap.value[topicId]) commentsMap.value[topicId] = [];
       commentsMap.value[topicId].push(...newItems);
 
-      // Логика для PagedModel (структура как на твоем скриншоте была)
-      if (response.page) {
-        isCommentsLastPage.value = (response.page.number + 1) >= response.page.totalPages;
-      } else {
-        isCommentsLastPage.value = response.last ?? (newItems.length < PAGE_SIZE);
-      }
+      isCommentsLastPage.value = response.last;
 
       if (!isCommentsLastPage.value) {
         commentsPage.value++;
@@ -177,27 +172,31 @@ const handleTabChange = async (tab: Tab) => {
   if (!novel.value) return;
   activeTab.value = tab;
   await nextTick();
-  if (tab === 'comments' ) {
-    const topicId = `novel.${novel.value.id}`;
-    const wsTopic = `/topic/${topicId}`;
-    if (!activeSubscriptions.has(wsTopic)) {
-      subscribeToTopic<any>(wsTopic, (newComment) => {
-        if (newComment.deleted) {
-          if (commentsMap.value[topicId]) {
-            commentsMap.value[topicId] = commentsMap.value[topicId].filter(c => c.id !== newComment.id);
+    if (tab === 'comments' ) {
+      const topicId = `novel.${novel.value.id}`;
+      const wsTopic = `/topic/${topicId}`;
+      if (!activeSubscriptions.has(wsTopic)) {
+        subscribeToTopic<any>(wsTopic, (wsEvent) => {
+          const type = wsEvent.type;
+          const payload = wsEvent.payload;
+          if (type === 'COMMENT_DELETED') {
+            if (commentsMap.value[topicId]) {
+              commentsMap.value[topicId] = commentsMap.value[topicId].filter(c => c.id !== payload.id);
+            }
+            return;
           }
-          return;
-        }
 
-        if (!commentsMap.value[topicId]) {
-          commentsMap.value[topicId] = [];
-        }
-        const exists = commentsMap.value[topicId].some(c => c.id === newComment.id);
-        if (!exists) {
-          commentsMap.value[topicId].unshift(newComment);
-        }
-      });
-    }
+          if (type === 'COMMENT_CREATED') {
+            if (!commentsMap.value[topicId]) {
+              commentsMap.value[topicId] = [];
+            }
+            const exists = commentsMap.value[topicId].some(c => c.id === payload.id);
+            if (!exists) {
+              commentsMap.value[topicId].unshift(payload);
+            }
+          }
+        });
+      }
 
     if (!commentsMap.value[topicId] || commentsMap.value[topicId].length === 0) {
       await fetchComments();
@@ -208,39 +207,32 @@ const handleTabChange = async (tab: Tab) => {
     const ratingsTopic = `/topic/novel.${novel.value.id}.ratings`;
 
     if (!activeSubscriptions.has(ratingsTopic)) {
-      subscribeToTopic<any>(ratingsTopic, (data) => {
+      subscribeToTopic<any>(ratingsTopic, (wsEvent) => {
+        const type = wsEvent.type;
+        const data = wsEvent.payload;
 
         if (novel.value) {
-          if (data.deleted) {
-            if ( data.score !== undefined) {
-              novel.value.totalScore -= data.score;
-              novel.value.ratingCount -= 1;
-            }else {
-              const localRating = ratingsList.value.find(r => r.ratingId === data.id);
-              if (localRating) {
-                novel.value.totalScore -= localRating.score;
-              }
-              novel.value.ratingCount -= 1;
-            }
-            ratingsList.value = ratingsList.value.filter(r => r.ratingId !== data.id);
-
-            return;
-          }
           novel.value.totalScore = data.totalScore;
           novel.value.ratingCount = data.ratingCount;
         }
-        const oldReviewIndex = ratingsList.value.findIndex(
-          r => r.username === data.username
-        );
 
-        if (oldReviewIndex !== -1) {
-          ratingsList.value.splice(oldReviewIndex, 1);
+        if (type === 'RATING_DELETED') {
+          ratingsList.value = ratingsList.value.filter(r => r.ratingId !== data.ratingId);
+          return;
         }
 
-        if (data.score !== undefined && data.username && data.timestamp) {
+        if (type === 'RATING_CREATED') {
+          const oldReviewIndex = ratingsList.value.findIndex(
+            r => r.username === data.username
+          );
+
+          if (oldReviewIndex !== -1) {
+            ratingsList.value.splice(oldReviewIndex, 1);
+          }
+
           const newReview = {
             ratingId: data.ratingId,
-            content: data.content || '', // Если текста нет, ставим пустую строку
+            content: data.commentText || '',
             username: data.username,
             timestamp: data.timestamp,
             score: data.score

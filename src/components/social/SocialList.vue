@@ -24,8 +24,7 @@ const loadMore = async () => {
 
     if (data && data.content) {
       users.value.push(...data.content);
-      // Важно: проверяем по totalPages, если используем Spring PagedModel
-      isLast.value = (data.page.number + 1) >= data.page.totalPages || data.content.length === 0;
+      isLast.value = data.last;
       page.value++;
       await nextTick();
     }

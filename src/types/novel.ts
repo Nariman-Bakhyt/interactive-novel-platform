@@ -49,10 +49,18 @@ export interface NovelSearchRequestDto{
   status: novelStatus | null;
 }
 
+export enum ChapterStatus {
+  DRAFT = 'DRAFT',
+  SCHEDULED = 'SCHEDULED',
+  PUBLISHED = 'PUBLISHED',
+}
+
 export interface ChapterShortResponseDto {
   id: number;
   title: string;
   chapterNumber: number;
+  status: ChapterStatus;
+  publishedAt: string | null;
 }
 
 export interface NovelAndChapterShortResponseDto{
@@ -83,5 +91,7 @@ export interface ChapterResponseDto{
   id: number;
   chapterNumber: number;
   title: string;
+  status: ChapterStatus;
+  publishedAt: string | null;
   blocks: ChapterBlockResponseDto[];
 }

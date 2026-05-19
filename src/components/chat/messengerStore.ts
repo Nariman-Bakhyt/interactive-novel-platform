@@ -194,7 +194,7 @@ export const useMessengerStore = defineStore('messenger', () => {
     try {
       const history = await getChatMessages(conversationId, currentPage.value, pageSize);
       messages.value = history.content ? [...history.content].reverse() : [];
-      isLastPage.value = (history.page.number + 1) >= history.page.totalPages;
+      isLastPage.value = history.last;
       scrollToBottom();
     } catch (e) {
       handleError("openChat", e);
@@ -242,7 +242,7 @@ export const useMessengerStore = defineStore('messenger', () => {
       if (history.content) {
         const oldScrollHeight = messagesListRef.value?.scrollHeight || 0;
         messages.value = [...history.content.reverse(), ...messages.value];
-        isLastPage.value = (history.page.number + 1) >= history.page.totalPages;
+        isLastPage.value = history.last;
 
         await nextTick();
         if (messagesListRef.value) {

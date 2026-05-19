@@ -13,3 +13,14 @@ export interface PageMetadata {
   totalElements: number; // Всего записей в базе
   totalPages: number;    // Всего страниц
 }
+
+export interface SliceModel<T> {
+  content: T[];
+  last: boolean;
+  first: boolean;
+  number: number;
+  size: number;
+  numberOfElements: number;
+  empty: boolean;
+}
+

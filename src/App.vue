@@ -14,6 +14,7 @@ const messengerStore = useMessengerStore();
 
 import UserContextMenu from "@/components/menu/UserContextMenu.vue"
 import router from "@/router";
+import { getAllGenres, getAllTags } from "@/api/novelService.ts";
 
 type UserContextMenuInstance = InstanceType<typeof UserContextMenu>;
 
@@ -54,8 +55,13 @@ const handleVisibilityChange = () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('visibilitychange', handleVisibilityChange);
+  try {
+    await Promise.all([getAllGenres(), getAllTags()]);
+  } catch (e) {
+    console.error("Ошибка предзагрузки метаданных:", e);
+  }
 });
 
 onUnmounted(() => {

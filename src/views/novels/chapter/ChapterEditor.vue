@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import {computed, nextTick, onMounted, ref, watch} from 'vue';
+import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue';
 import {useRouter} from 'vue-router';
-import {createChapter, getChapter, updateChapter} from '@/api/novelService';
-import {getComments} from "@/api/commentService.ts";
 import {
-  activeSubscriptions,
-  sendMessage,
-  subscribeToTopic,
-  unsubscribeFromTopic
-} from "@/api/stompService.ts";
+  createChapter,
+  getChapter,
+  updateChapter,
+  updateChapterPublishTime
+} from '@/api/novelService';
+import {unsubscribeFromTopic} from "@/api/stompService.ts";
 import type {ChapterRequestDto} from '@/types/novel';
 import type {CommentResponseDto} from "@/types/comment.ts";
 import {useCommentStore} from "@/components/chat/commentStore.ts";
@@ -38,6 +37,12 @@ const isEditMode = computed(() => !!cId.value);
 const isLoading = ref(false);
 const isSaving = ref(false);
 const draggedItemIndex = ref<number | null>(null);
+
+// Публикация
+const showDatePicker = ref(false);
+const selectedPublishDate = ref('');
+const currentStatus = ref('DRAFT');
+const isPublishing = ref(false);
 
 
 const activeCommentsBlockId = ref<number | null>(null);
@@ -108,6 +113,10 @@ onMounted(async () => {
     try {
       const data = await getChapter(nId.value, cId.value!);
       form.value.title = data.title;
+      currentStatus.value = data.status || 'DRAFT';
+      if (data.publishedAt) {
+        selectedPublishDate.value = data.publishedAt.slice(0, 16); // format for datetime-local
+      }
       form.value.blocks = (data.blocks || []).sort((a, b) => a.sequenceOrder - b.sequenceOrder);
 
       // Даем время DOM отрисоваться и подгоняем высоту всех textarea
@@ -239,19 +248,139 @@ const handleSave = async () => {
     isSaving.value = false;
   }
 };
+
+const handlePublishAction = async (action: 'NOW' | 'DRAFT' | 'SCHEDULE') => {
+  if (!isEditMode.value) {
+    alert('Сначала сохраните главу!');
+    return;
+  }
+
+  if (action === 'SCHEDULE') {
+    if (!showDatePicker.value) {
+      showDatePicker.value = true;
+      return;
+    }
+    if (!selectedPublishDate.value) {
+      alert('Выберите дату и время!');
+      return;
+    }
+  }
+
+  isPublishing.value = true;
+  let publishTime: string | null = null;
+
+  if (action === 'NOW') {
+    publishTime = new Date().toISOString();
+  } else if (action === 'SCHEDULE') {
+    publishTime = new Date(selectedPublishDate.value).toISOString();
+  } else if (action === 'DRAFT') {
+    publishTime = null;
+  }
+
+  try {
+    const updatedChapter = await updateChapterPublishTime(nId.value, cId.value!, publishTime);
+    currentStatus.value = updatedChapter.status;
+    showDatePicker.value = false;
+    alert(action === 'DRAFT' ? 'Глава снята с публикации' : 'Настройки публикации сохранены!');
+  } catch (e) {
+    console.error(e);
+    alert('Ошибка обновления статуса публикации');
+  } finally {
+    isPublishing.value = false;
+  }
+};
+
+const isToolbarVisible = ref(true);
+let lastScrollTop = 0;
+const scrollThreshold = 8; // Чуть уменьшил порог для лучшей отзывчивости
+
+const handleScroll = (event: Event) => {
+  // Магия: берем скролл ИМЕННО того элемента, который сейчас прокручивается
+  const target = event.target as HTMLElement;
+
+  // Если скроллится текстовое поле (textarea) внутри блока, игнорируем, чтобы тулбар не прыгал
+  if (target && target.tagName === 'TEXTAREA') return;
+
+  // Достаем точное значение прокрутки из любого источника
+  const currentScroll = window.pageYOffset
+    || document.documentElement.scrollTop
+    || document.body.scrollTop
+    || (target ? target.scrollTop : 0);
+
+  // Защита от дребезга у самого верха
+  if (currentScroll <= 30) {
+    isToolbarVisible.value = true;
+    return;
+  }
+
+  // Проверяем порог прокрутки
+  if (Math.abs(currentScroll - lastScrollTop) <= scrollThreshold) {
+    return;
+  }
+
+  if (currentScroll > lastScrollTop) {
+    // Скролл вниз — скрываем тулбар
+    isToolbarVisible.value = false;
+  } else {
+    // Скролл вверх — показываем тулбар
+    isToolbarVisible.value = true;
+  }
+
+  lastScrollTop = currentScroll;
+};
+
+onMounted(() => {
+  // ТРЕТИЙ АРГУМЕНТ true (capture mode) — заставляет Spring/Vue ловить
+  // скролл, даже если скроллится внутренний невидимый div твоего шаблона!
+  window.addEventListener('scroll', handleScroll, true);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll, true);
+});
+
 watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, { deep: true });
 </script>
 
 <template>
   <div class="editor-page-wrapper">
     <div class="notion-style-container">
-      <header class="editor-toolbar">
-        <button @click="router.back()" class="btn-minimal">
-          <span class="icon">←</span> Назад
-        </button>
-        <button @click="handleSave" :disabled="isSaving" class="btn-save-notion">
-          {{ isSaving ? 'Сохранение...' : 'Сохранить' }}
-        </button>
+      <header class="editor-toolbar"
+              :class="{ 'toolbar-hidden': !isToolbarVisible }"
+      >
+        <div class="toolbar-left">
+          <button @click="router.back()" class="btn-minimal">
+            <span class="icon">←</span> Назад
+          </button>
+        </div>
+
+        <div class="toolbar-right">
+          <div class="publish-controls" v-if="isEditMode">
+            <span class="status-badge" :class="currentStatus.toLowerCase()">{{ currentStatus }}</span>
+
+            <div class="publish-actions">
+              <button class="btn-publish" @click="handlePublishAction('NOW')" :disabled="isPublishing">Опубликовать</button>
+
+              <div class="schedule-wrapper">
+                <button class="btn-schedule" @click="handlePublishAction('SCHEDULE')" :disabled="isPublishing">
+                  {{ showDatePicker ? 'Подтвердить' : 'Запланировать' }}
+                </button>
+                <input
+                  v-if="showDatePicker"
+                  type="datetime-local"
+                  v-model="selectedPublishDate"
+                  class="date-picker-input"
+                />
+              </div>
+
+              <button v-if="currentStatus !== 'DRAFT'" class="btn-draft" @click="handlePublishAction('DRAFT')" :disabled="isPublishing">Снять</button>
+            </div>
+          </div>
+
+          <button @click="handleSave" :disabled="isSaving" class="btn-save-notion">
+            {{ isSaving ? 'Сохранение...' : 'Сохранить' }}
+          </button>
+        </div>
       </header>
 
       <input
@@ -354,9 +483,10 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
 
 .notion-style-container {
   width: 100%;
-  max-width: 760px; /* Приравниваем к читалке */
+  max-width: 860px;
   background-color: var(--bg-editor-sheet);
-  padding: 48px 64px; /* Уменьшили отступы, чтобы текст был той же ширины */
+  /* Возвращаем нормальный отступ сверху, так как тулбар больше не занимает тут место */
+  padding: 48px 64px 64px;
   border-radius: 24px;
   box-shadow: 0 4px 12px var(--shadow-color);
   border: 1px solid var(--border-color);
@@ -365,25 +495,142 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
 }
 
 .editor-toolbar {
+  position: sticky;
+  top: 0;
+  /* Цвет фона обязательно должен совпадать с цветом листа,
+     чтобы перекрывать заезжающий под него текст при скролле */
+  background: var(--bg-editor-sheet);
+  z-index: 100;
+
   width: 100%;
-  max-width: 850px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
+
+  /* Фиксируем начальную высоту и отступы для плавной анимации */
+  height: 56px;
+  padding: 16px 0;
   margin-bottom: 32px;
-  padding: 0;
+  border-bottom: 1px solid var(--border-color);
+
+  /* Анимируем свойства схлопывания */
+  transition:
+    height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    margin-bottom 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.2s ease,
+    border-color 0.2s ease;
+
+  overflow: hidden; /* Прячет кнопки, когда высота сжимается в 0 */
+  opacity: 1;
+}
+
+/* ИДЕАЛЬНОЕ ИСЧЕЗНОВЕНИЕ В ЦЕНТРЕ */
+.editor-toolbar.toolbar-hidden {
+  height: 0;                 /* Сжимаем высоту в ноль */
+  padding-top: 0;            /* Убираем паддинги, чтобы не было зазоров */
+  padding-bottom: 0;
+  margin-bottom: 0;          /* Обнуляем отступ, чтобы текст плавно поехал выше */
+  opacity: 0;                /* Растворяем кнопки */
+  border-color: transparent; /* Убираем разделительную линию */
+  pointer-events: none;      /* Отключаем случайные клики по скрытым кнопкам */
+  transform: none;           /* ТРАНСФОРМ БОЛЬШЕ НЕ НУЖЕН, он не ломает sticky! */
+}
+
+.toolbar-left, .toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.publish-controls {
+  display: flex;
+  flex-direction: row; /* СТРОГО в ряд, никаких колонок */
+  align-items: center;
+  gap: 16px;
+  background: var(--bg-main);
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.publish-actions {
+  display: flex;
+  gap: 8px;
   align-items: center;
 }
 
+.schedule-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-picker-input {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-dropdown);
+  color: var(--text-header);
+}
+
+.btn-publish {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-publish:hover { background: #059669; transform: translateY(-1px); }
+
+.btn-schedule {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-schedule:hover { background: #2563eb; transform: translateY(-1px); }
+
+.btn-draft {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-draft:hover { background: var(--hover-dropdowb); color: var(--text-header); }
+
+.status-badge {
+  font-size: 0.8rem;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.status-badge.published { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.status-badge.scheduled { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.status-badge.draft { background: rgba(161, 161, 170, 0.1); color: #a1a1aa; }
+
 .main-title-input {
   width: 100%;
-  font-size: 2.75rem; /* Как .chapter-title в читалке */
+  font-size: 2.5rem;
   font-weight: 800;
   background: none;
   border: none;
   color: var(--text-header);
   outline: none;
-  margin-bottom: 48px;
-  text-align: center; /* Центрируем заголовок как в читалке */
+  margin-bottom: 32px;
+  text-align: left; /* В Notion заголовки слева, так удобнее читать! */
   letter-spacing: -0.02em;
 }
 .main-title-input::placeholder {
@@ -575,7 +822,6 @@ watch(comments, () => { nextTick(() => setTimeout(initStickyObserver, 100)); }, 
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  margin-left: -12px;
   border-radius: 8px;
   transition: all 0.2s ease;
 }

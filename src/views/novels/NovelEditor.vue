@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
-import {
-  createNovel,
-  getAllGenres,
-  getAllTags,
-  getMyNovel,
-  updateNovel,
-  uploadNovelCover
-} from '@/api/novelService';
 import type {
   ChapterShortResponseDto,
+  ChapterStatus,
   NovelRequestDto,
   TagOrGenreResponseDto
 } from "@/types/novel.ts";
 import {useToastStore} from "@/components/toast/toastStore.ts";
+import {
+  createNovel,
+  deleteChapter,
+  deleteNovel,
+  getAllGenres,
+  getAllTags, getMyNovel, updateChapterPublishTime, updateNovel, uploadNovelCover
+} from "@/api/novelService.ts";
 
 const route = useRoute();
 const router = useRouter();
@@ -59,13 +59,8 @@ onUnmounted(() => {
 // Загрузка данных
 onMounted(async () => {
   try {
-
-    const [genresData, tagsData] = await Promise.all([
-      getAllGenres(),
-      getAllTags()
-    ]);
-    allGenres.value = genresData;
-    allTags.value = tagsData;
+    allGenres.value = JSON.parse(localStorage.getItem('genres') || '[]');
+    allTags.value = JSON.parse(localStorage.getItem('tags') || '[]');
 
     if (isEditMode.value) {
       isLoading.value = true;
@@ -127,6 +122,119 @@ const saveNovel = async () => {
     toastStore.error("Ошибка при сохранении");
   } finally {
     isSaving.value = false;
+  }
+};
+
+const handleDeleteNovel = async () => {
+  if (!confirm('Вы точно хотите удалить эту новеллу? Это действие нельзя отменить!')) return;
+
+  isSaving.value = true;
+  try {
+    await deleteNovel(Number(novelId.value));
+    toastStore.success('Новелла успешно удалена');
+    router.push('/novels/my');
+  } catch (e) {
+    console.error(e);
+    toastStore.error('Ошибка при удалении новеллы');
+  } finally {
+    isSaving.value = false;
+  }
+};
+
+const handleDeleteChapter = async (chapterId: number, event: Event) => {
+  event.stopPropagation(); // Чтобы не сработал переход на редактирование
+  if (!confirm('Вы точно хотите удалить эту главу?')) return;
+
+  try {
+    await deleteChapter(Number(novelId.value), chapterId);
+    toastStore.success('Глава удалена');
+    chaptersList.value = chaptersList.value.filter(c => c.id !== chapterId);
+  } catch (e) {
+    console.error(e);
+    toastStore.error('Ошибка при удалении главы');
+  }
+};
+
+const activePublishMenuChapterId = ref<number | null>(null);
+const showDatePickerForChapterId = ref<number | null>(null);
+const chapterPublishDates = ref<Record<number, string>>({});
+const isChapterPublishing = ref(false);
+
+const toggleChapterPublishMenu = (chapterId: number) => {
+  if (activePublishMenuChapterId.value === chapterId) {
+    activePublishMenuChapterId.value = null;
+    showDatePickerForChapterId.value = null;
+  } else {
+    activePublishMenuChapterId.value = chapterId;
+    showDatePickerForChapterId.value = null;
+    const chapter = chaptersList.value.find(c => c.id === chapterId);
+    if (chapter && chapter.publishedAt) {
+      chapterPublishDates.value[chapterId] = chapter.publishedAt.slice(0, 16);
+    } else {
+      chapterPublishDates.value[chapterId] = '';
+    }
+  }
+};
+
+const publishChapterInline = async (chapterId: number, action: 'NOW' | 'DRAFT' | 'SCHEDULE') => {
+  if (action === 'SCHEDULE') {
+    showDatePickerForChapterId.value = chapterId;
+    return;
+  }
+
+  isChapterPublishing.value = true;
+  let publishTime: string | null = null;
+  if (action === 'NOW') {
+    publishTime = new Date().toISOString();
+  } else if (action === 'DRAFT') {
+    publishTime = null;
+  }
+
+  try {
+    const updatedChapter = await updateChapterPublishTime(Number(novelId.value), chapterId, publishTime);
+    const chapter = chaptersList.value.find(c => c.id === chapterId);
+
+    if (chapter) {
+      chapter.status = updatedChapter.status;
+      chapter.publishedAt = updatedChapter.publishedAt;
+    }
+    toastStore.success(action === 'DRAFT' ? 'Глава снята с публикации' : 'Глава опубликована');
+    activePublishMenuChapterId.value = null;
+    showDatePickerForChapterId.value = null;
+  } catch (e) {
+    console.error(e);
+    toastStore.error('Ошибка изменения статуса публикации');
+  } finally {
+    isChapterPublishing.value = false;
+  }
+};
+
+const confirmPublishChapterInline = async (chapterId: number) => {
+  const dateStr = chapterPublishDates.value[chapterId];
+  if (!dateStr) {
+    toastStore.error('Выберите дату и время!');
+    return;
+  }
+
+  isChapterPublishing.value = true;
+  const publishTime = new Date(dateStr).toISOString();
+
+  try {
+    const updatedChapter = await updateChapterPublishTime(Number(novelId.value), chapterId, publishTime);
+    const chapter = chaptersList.value.find(c => c.id === chapterId);
+
+    if (chapter) {
+      chapter.status = updatedChapter.status;
+      chapter.publishedAt = updatedChapter.publishedAt;
+    }
+    toastStore.success('Глава успешно запланирована');
+    activePublishMenuChapterId.value = null;
+    showDatePickerForChapterId.value = null;
+  } catch (e) {
+    console.error(e);
+    toastStore.error('Ошибка планирования публикации');
+  } finally {
+    isChapterPublishing.value = false;
   }
 };
 
@@ -232,7 +340,7 @@ const truncate = (text: string, length: number) => {
                 <span class="chapter-count">Всего глав: {{ chaptersList.length }}</span>
               </div>
 
-              <div v-if="chaptersList.length > 0" class="chapters-list">
+               <div v-if="chaptersList.length > 0" class="chapters-list">
                 <div
                   v-for="chapter in chaptersList"
                   :key="chapter.id"
@@ -241,6 +349,27 @@ const truncate = (text: string, length: number) => {
                 >
                   <span class="ch-number">Глава {{ chapter.chapterNumber }}:</span>
                   <span class="ch-title">{{ chapter.title }}</span>
+
+                  <div class="ch-publish-inline" @click.stop>
+                    <span class="ch-status-badge pointer" :class="chapter.status?.toLowerCase()" @click="toggleChapterPublishMenu(chapter.id)">
+                      {{ chapter.status }} ⚙️
+                    </span>
+
+                    <div v-if="activePublishMenuChapterId === chapter.id" class="mini-publish-menu">
+                      <button class="btn-mini-pub now" @click="publishChapterInline(chapter.id, 'NOW')" :disabled="isChapterPublishing">Опубликовать сейчас</button>
+                      <button class="btn-mini-pub schedule" @click="publishChapterInline(chapter.id, 'SCHEDULE')" :disabled="isChapterPublishing">Запланировать</button>
+                      <button v-if="chapter.status !== 'DRAFT'" class="btn-mini-pub draft" @click="publishChapterInline(chapter.id, 'DRAFT')" :disabled="isChapterPublishing">Снять</button>
+
+                      <div v-if="showDatePickerForChapterId === chapter.id" class="mini-datepicker-wrapper">
+                        <input type="datetime-local" v-model="chapterPublishDates[chapter.id]" class="mini-date-input" />
+                        <button class="btn-confirm-mini" @click="confirmPublishChapterInline(chapter.id)" :disabled="isChapterPublishing">OK</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button class="btn-delete-chapter" @click="handleDeleteChapter(chapter.id, $event)" title="Удалить главу">
+                    🗑️
+                  </button>
                   <span class="ch-icon">📖</span>
                 </div>
               </div>
@@ -346,10 +475,13 @@ const truncate = (text: string, length: number) => {
               </aside>
 
               <div class="form-full-width-actions">
-                <button v-if="isEditMode" type="button" @click="isEditingNow = false" class="btn-secondary">Отмена</button>
-                <button type="submit" class="btn-primary" :disabled="isSaving">
-                  {{ isSaving ? 'Сохранение...' : (isEditMode ? 'Сохранить изменения' : 'Опубликовать новеллу') }}
-                </button>
+                <button v-if="isEditMode" type="button" @click="handleDeleteNovel" class="btn-delete-novel">🗑️ Удалить новеллу</button>
+                <div class="right-actions">
+                  <button v-if="isEditMode" type="button" @click="isEditingNow = false" class="btn-secondary">Отмена</button>
+                  <button type="submit" class="btn-primary" :disabled="isSaving">
+                    {{ isSaving ? 'Сохранение...' : (isEditMode ? 'Сохранить изменения' : 'Опубликовать новеллу') }}
+                  </button>
+                </div>
               </div>
             </form>
           </main>
@@ -623,11 +755,32 @@ textarea {
 .form-full-width-actions {
   grid-column: span 2;
   display: flex;
-  justify-content: flex-end;
-  gap: 16px;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 24px;
   padding-top: 32px;
   border-top: 1px solid var(--border-color);
+}
+
+.right-actions {
+  display: flex;
+  gap: 16px;
+}
+
+.btn-delete-novel {
+  background: transparent;
+  color: #ef4444; /* red-500 */
+  border: 1px solid #ef4444;
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-delete-novel:hover {
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .btn-primary {
@@ -798,6 +951,38 @@ textarea {
   border: 1px solid var(--border-color);
   transition: all 0.2s ease;
   cursor: pointer;
+}
+
+.ch-title {
+  flex-grow: 1;
+  font-weight: 600;
+  color: var(--text-header);
+}
+
+.ch-status-badge {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-right: 16px;
+}
+.ch-status-badge.published { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+.ch-status-badge.scheduled { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2); }
+.ch-status-badge.draft { background: rgba(161, 161, 170, 0.1); color: #a1a1aa; border: 1px solid rgba(161, 161, 170, 0.2); }
+
+.btn-delete-chapter {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.2s, transform 0.2s;
+  margin-right: 12px;
+}
+.btn-delete-chapter:hover {
+  opacity: 1;
+  transform: scale(1.1);
   user-select: none;
 }
 
@@ -869,5 +1054,98 @@ textarea {
 .btn-add-chapter:hover {
   background: var(--btn-plus-hover);
   transform: translateY(-2px);
+}
+
+/* Стили для инлайн публикации */
+.ch-publish-inline {
+  position: relative;
+  margin-right: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.ch-status-badge.pointer {
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+}
+.ch-status-badge.pointer:hover {
+  transform: scale(1.05);
+}
+
+.mini-publish-menu {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px var(--shadow-color);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 100;
+  margin-bottom: 8px;
+  min-width: 180px;
+}
+
+.btn-mini-pub {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.2s;
+}
+.btn-mini-pub.now {
+  background: #10b981;
+  color: white;
+}
+.btn-mini-pub.now:hover { background: #059669; }
+
+.btn-mini-pub.schedule {
+  background: #3b82f6;
+  color: white;
+}
+.btn-mini-pub.schedule:hover { background: #2563eb; }
+
+.btn-mini-pub.draft {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+.btn-mini-pub.draft:hover { background: var(--hover-dropdowb); color: var(--text-header); }
+
+.mini-datepicker-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 6px;
+}
+
+.mini-date-input {
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-main);
+  color: var(--text-header);
+  font-size: 0.8rem;
+}
+
+.btn-confirm-mini {
+  background: var(--btn-plus);
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-confirm-mini:hover {
+  background: var(--btn-plus-hover);
 }
 </style>

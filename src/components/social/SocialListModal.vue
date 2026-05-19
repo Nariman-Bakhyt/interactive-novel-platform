@@ -24,7 +24,7 @@ const loadMore = async () => {
   try {
     const data = await props.fetchFn(page.value, size);
     users.value.push(...data.content); // В Spring Data обычно данные в поле .content
-    isLast.value = (data.page.number + 1) >= data.page.totalPages || data.content.length === 0;
+    isLast.value = data.last;
     page.value++;
   } finally {
     isLoading.value = false;

@@ -82,11 +82,21 @@ export async function getMyNovel(novelId: number): Promise<NovelAndChapterShortR
   return response.data;
 }
 export async function getAllGenres(): Promise<TagOrGenreResponseDto[]> {
+  const cached = localStorage.getItem("genres");
+  if (cached) {
+    return JSON.parse(cached);
+  }
   const response: AxiosResponse<TagOrGenreResponseDto[]> = await apiClient.get("/genres/public");
+  localStorage.setItem("genres", JSON.stringify(response.data));
   return response.data;
 }
 export async function getAllTags(): Promise<TagOrGenreResponseDto[]> {
+  const cached = localStorage.getItem("tags");
+  if (cached) {
+    return JSON.parse(cached);
+  }
   const response: AxiosResponse<TagOrGenreResponseDto[]> = await apiClient.get("/tags/public");
+  localStorage.setItem("tags", JSON.stringify(response.data));
   return response.data;
 }
 export async function createChapter(novelId: number, dto: ChapterRequestDto): Promise<ChapterResponseDto> {
@@ -111,5 +121,22 @@ export async function searchNovels(title:string , page:number, size:number ):Pro
   const response = await apiClient.get('/novels/public/search', {
     params: {title, page, size}
   })
+  return response.data;
+}
+
+export async function deleteNovel(novelId: number): Promise<void> {
+  await apiClient.delete(`/novels/${novelId}`);
+}
+
+export async function deleteChapter(novelId: number, chapterId: number): Promise<void> {
+  await apiClient.delete(`/novels/${novelId}/chapter/${chapterId}`);
+}
+
+export async function updateChapterPublishTime(novelId: number, chapterId: number, publishTime: string | null): Promise<ChapterResponseDto> {
+  const params: Record<string, string> = {};
+  if (publishTime) {
+    params.publishTime = publishTime;
+  }
+  const response = await apiClient.put(`/novels/${novelId}/chapter/${chapterId}/publish`, null, { params });
   return response.data;
 }
