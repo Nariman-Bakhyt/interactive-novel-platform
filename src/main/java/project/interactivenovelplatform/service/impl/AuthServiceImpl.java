@@ -146,8 +146,13 @@ public class AuthServiceImpl implements AuthService {
                 .maxAge(30 * 24 * 60 * 60)
                 .sameSite("Lax")
                 .build();
+        ResponseCookie deleteGuestCookie = ResponseCookie.from("guest_id", "")
+                .httpOnly(true)
+                .path("/")
+                .maxAge(0)
+                .build();
 
-        return new AuthResponseDto(newAccessToken, newRefreshToken, cookie, null, userPrincipal.getUsername());
+        return new AuthResponseDto(newAccessToken, newRefreshToken, cookie, deleteGuestCookie, userPrincipal.getUsername());
     }
 
     private void invalidateAllSessions(Long userId) {

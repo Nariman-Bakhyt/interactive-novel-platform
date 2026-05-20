@@ -8,8 +8,12 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import project.interactivenovelplatform.security.UserPrincipal;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -24,18 +28,42 @@ public class RateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        String guestId = (String) request.getAttribute("VALID_GUEST_ID");
+        String path = request.getRequestURI();
 
-        // Фильтрация лимитов гостей на уровне Servlet Filter выполняется до достижения DispatcherServlet.
-        // Это позволяет отсекать DDOS-атаки и вредоносный парсинг публичных эндпоинтов до парсинга путей в Spring MVC.
-        if (guestId != null) {
-            byte[] redisKey = ("limit:guest:" + guestId).getBytes(StandardCharsets.UTF_8);
+        if (path.contains("/auth/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-            BucketConfiguration config = BucketConfiguration.builder()
-                    .addLimit(limit -> limit.capacity(50).refillGreedy(50, Duration.ofMinutes(1)))
-                    .build();
+        String redisKeyStr = null;
+        BucketConfiguration config = null;
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-            Bucket bucket = proxyManager.getProxy(redisKey, () -> config);
+        // Архитектурный паттерн контроля трафика:
+        if (auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)) {
+            // Сценарий 1: Авторизованный пользователь — выделяем повышенный лимит для комфортного UX
+            if (auth.getPrincipal() instanceof UserPrincipal userPrincipal) {
+                redisKeyStr = "limit:user:" + userPrincipal.getId();
+                config = BucketConfiguration.builder()
+                        .addLimit(limit -> limit.capacity(100).refillGreedy(100, Duration.ofMinutes(1)))
+                        .build();
+            }
+        } else {
+            // Сценарий 2: Анонимный гость — накладываем строгий лимит для защиты от парсинга контента и DDoS
+            String guestId = (String) request.getAttribute("VALID_GUEST_ID");
+            if (guestId != null) {
+                redisKeyStr = "limit:guest:" + guestId;
+                config = BucketConfiguration.builder()
+                        .addLimit(limit -> limit.capacity(50).refillGreedy(30, Duration.ofMinutes(1)))
+                        .build();
+            }
+        }
+
+        // Если стратегия лимитирования успешно определена — выполняем списание токена из Redis
+        if (redisKeyStr != null && config != null) {
+            byte[] redisKey = redisKeyStr.getBytes(StandardCharsets.UTF_8);
+            BucketConfiguration finalConfig = config;
+            Bucket bucket = proxyManager.getProxy(redisKey, () -> finalConfig);
 
             if (bucket.tryConsume(1)) {
                 filterChain.doFilter(request, response);
