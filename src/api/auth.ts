@@ -28,7 +28,7 @@ export const useAuthStore = defineStore("auth", ()=> {
 
   async function refreshToken() {
     try {
-      const response = await apiClient.post<AuthResponse>('/auth/refresh');
+      const response = await apiClient.post<AuthResponse>('/auth/public/refresh');
       const { accessToken } = response.data;
       token.value = accessToken;
       localStorage.setItem('jwt_token', accessToken);
@@ -40,7 +40,7 @@ export const useAuthStore = defineStore("auth", ()=> {
   }
   async function login(credentials:LoginRequest){
     try {
-      const response = await apiClient.post<AuthResponse>('/auth/login',credentials);
+      const response = await apiClient.post<AuthResponse>('/auth/public/login',credentials);
       await setAccessToken(response.data.accessToken,response.data.username);
       await fetchUserDetails();
       await fetchUserSettings();
@@ -53,7 +53,7 @@ export const useAuthStore = defineStore("auth", ()=> {
   }
 
   async function requestLoginByEmail(data: EmailRequest): Promise<string> {
-    const response = await apiClient.post<string>('/auth/login/email', data);
+    const response = await apiClient.post<string>('/auth/public/login/email', data);
     return response.data;
   }
 
@@ -65,7 +65,7 @@ export const useAuthStore = defineStore("auth", ()=> {
   }
 
   async function verifyLoginCode(data: VerifyLoginCodeRequest): Promise<boolean> {
-    const response = await apiClient.post<AuthResponse>('/auth/login/verify', data);
+    const response = await apiClient.post<AuthResponse>('/auth/public/login/verify', data);
     await setAccessToken(response.data.accessToken,response.data.username);
     await fetchUserDetails();
     await fetchUserSettings();
@@ -74,21 +74,21 @@ export const useAuthStore = defineStore("auth", ()=> {
 
   async function verifyCode(data: VerificationRequest): Promise<string> {
     const endpoint = data.type === VerificationTokenType.REGISTRATION_CONFIRMATION
-      ? '/auth/register/verify-code'
-      : '/user/verify-code';
+      ? '/auth/public/register/verify-code'
+      : '/auth/public/verify-code';
 
     const response = await apiClient.post<string>(endpoint, data);
     return response.data;
   }
 
   async function requestPasswordReset(data: ResetPasswordRequest): Promise<string> {
-    const response = await apiClient.post<string>('/user/password/reset-request', data);
+    const response = await apiClient.post<string>('/auth/password/reset-request', data);
     return response.data;
   }
 
-    
+
     async function requestEmailUpdate(data: EmailRequest): Promise<string> {
-    const response = await apiClient.post<string>('/user/email/update-request', data);
+    const response = await apiClient.post<string>('/auth/email/update-request', data);
     return response.data;
   }
 
@@ -114,7 +114,7 @@ export const useAuthStore = defineStore("auth", ()=> {
 
   async function register(credentials:RegistrationRequestDto):Promise<number> {
     try {
-      const response = await apiClient.post<number>('/auth/register',credentials);
+      const response = await apiClient.post<number>('/auth/public/register',credentials);
       return response.data;
     }
     catch(error){
@@ -161,7 +161,7 @@ export const useAuthStore = defineStore("auth", ()=> {
   async function fetchUserSettings() {
     if (!isAuthenticated.value) return null;
     try {
-      
+
       const response = await apiClient.get<UserSettingsResponseDto>('/users/setting');
       userSettings.value = response.data;
       return response.data;
@@ -171,11 +171,11 @@ export const useAuthStore = defineStore("auth", ()=> {
     }
   }
 
-  
+
   async function updateUserSettings(dto: UserSettingsRequestDto) {
     try {
       const response = await apiClient.patch<UserSettingsResponseDto>('/users/setting', dto);
-      
+
       userSettings.value = response.data;
       return response.data;
     } catch (e) {

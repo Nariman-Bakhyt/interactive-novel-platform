@@ -55,7 +55,7 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
 
     
-    if (error.response?.status === 401 && originalRequest.url === '/auth/refresh') {
+    if (error.response?.status === 401 && originalRequest.url === '/auth/public/refresh') {
       authStore.logout();
       return Promise.reject(error);
     }
