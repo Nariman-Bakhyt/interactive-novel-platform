@@ -42,7 +42,6 @@ const filteredConversations = computed(() => {
 });
 
 onMounted(() => {
-  messengerStore.loadMyChats();
   window.addEventListener('keydown', closeActivePanels);
 });
 
@@ -289,6 +288,53 @@ const isMyMessage = (item: any) => {
   return authStore.userDetails?.id === senderId;
 };
 
+const contextMenu = ref({
+  show: false,
+  x: 0,
+  y: 0,
+  targetId: null as number | null
+});
+
+const openContextMenu = (e: MouseEvent, id: number, item: any) => {
+  if (!isMyMessage(item)) {
+    const chat = currentChat.value;
+    const isChatAdmin = chat?.members.find(m => m.userId === authStore.userDetails?.id)?.role === 'ADMIN';
+    if (!isChatAdmin) return;
+  }
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  contextMenu.value = {
+    show: true,
+    x: e.clientX,
+    y: e.clientY,
+    targetId: id
+  };
+
+  const close = () => {
+    contextMenu.value.show = false;
+    document.removeEventListener('click', close);
+  };
+
+  setTimeout(() => {
+    document.addEventListener('click', close);
+  }, 50);
+};
+
+const handleDelete = async () => {
+  const { targetId } = contextMenu.value;
+  if (!targetId || !activeContext.value) return;
+
+  try {
+    await activeContext.value.remove(targetId);
+    contextMenu.value.show = false;
+  } catch (error) {
+    console.error("Ошибка удаления:", error);
+    toastStore.error("Вы не можете удалить это сообщение");
+  }
+};
+
 onUnmounted(() => {
   window.removeEventListener('keydown', closeActivePanels);
   if (topObserver) topObserver.disconnect();
@@ -402,7 +448,9 @@ onUnmounted(() => {
                 <div v-for="item in group" :key="item.id"
                      class="comment-item-wrapper"
                      :class="{ 'is-mine': isMyMessage(item), 'is-others': !isMyMessage(item) }">
-                  <div class="comment-bubble" :class="{ 'bubble-mine': isMyMessage(item), 'bubble-others': !isMyMessage(item) }">
+                  <div class="comment-bubble"
+                       :class="{ 'bubble-mine': isMyMessage(item), 'bubble-others': !isMyMessage(item) }"
+                       @contextmenu.prevent="openContextMenu($event, item.id, item)">
                     <span v-if="!isMyMessage(item)" class="user-badge">{{ ('username' in item) ? item.username : item.senderUsername }}</span>
                     <div v-if="item.metadata?.images?.length" class="comment-images">
                       <img v-for="url in item.metadata.images" :key="url" :src="url" class="comment-img" @click.stop="zoomImage(url)">
@@ -508,6 +556,17 @@ onUnmounted(() => {
 
       <div class="image-container" @click.stop>
         <img :src="zoomedImageUrl" class="full-image" :style="{ transform: `scale(${zoomLevel})` }" />
+      </div>
+    </div>
+  </Teleport>
+  <Teleport to="body">
+    <div
+      v-if="contextMenu.show"
+      class="context-menu"
+      :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
+    >
+      <div class="menu-item delete" @click="handleDelete">
+        🗑 Удалить
       </div>
     </div>
   </Teleport>
@@ -674,7 +733,7 @@ onUnmounted(() => {
 }
 .chat-avatar-wrapper.expanded { justify-content: flex-start; padding: 8px 12px; width: 100%; }
 .chat-avatar-wrapper:hover, .chat-avatar-wrapper.is-active { background: var(--hover-dropdowb); }
-.chat-avatar-wrapper.avatar-hero { width: 64px; height: 64px; border-radius: 50%; cursor: default; background: transparent !important; border: 2px solid var(--chat-accent); }
+.chat-avatar-wrapper.avatar-hero { width: 64px; height: 64px; border-radius: 50%; cursor: default; background: transparent !important; border: 2px solid var(D--chat-accent); }
 .chat-avatar-wrapper.avatar-hero:hover { background: transparent; }
 
 .avatar-circle-container {
@@ -1020,4 +1079,33 @@ onUnmounted(() => {
   transition: background 0.2s;
 }
 .close-lightbox:hover { background: rgba(255, 255, 255, 0.3); }
+
+.context-menu {
+  position: fixed;
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border-radius: 8px;
+  padding: 4px;
+  z-index: 9999;
+  min-width: 160px;
+}
+
+.menu-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  transition: background 0.2s;
+  font-weight: 500;
+  color: var(--text-header);
+}
+
+.menu-item:hover {
+  background: var(--hover-dropdowb);
+}
+
+.menu-item.delete {
+  color: #ef4444;
+}
 </style>

@@ -16,15 +16,19 @@ import type {UserSettingsRequestDto, UserSettingsResponseDto} from "@/types/user
 
 
 export const useAuthStore = defineStore("auth", ()=> {
-  const token = ref<String|null>(localStorage.getItem('jwt_token'));
+  const token = ref<string|null>(localStorage.getItem('jwt_token'));
   const user = ref<string|null>(localStorage.getItem('username'));
-  const isAuthenticated = computed(()=> !!token.value);
   const userDetails = ref<ProfileResponseDto | null>(null);
   const avatarTimestamp = ref<number>(Date.now());
   const userSettings = ref<UserSettingsResponseDto | null>(null);
   const showAuthModal = ref(false);
   const isInitialized = ref(false);
   apiClient.defaults.withCredentials = true;
+
+  const isAuthenticated = computed(() => {
+    const val = token.value;
+    return !!val && val !== 'null' && val !== 'undefined' && val.trim() !== '';
+  });
 
   async function refreshToken() {
     try {
@@ -93,9 +97,11 @@ export const useAuthStore = defineStore("auth", ()=> {
   }
 
 
-  async function logout() {
+  async function logout(isLocalOnly = false) {
     try {
-      await apiClient.post('/auth/logout');
+      if (!isLocalOnly && token.value) {
+        await apiClient.post('/auth/logout');
+      }
     } catch (e) {
       console.error("Ошибка при логауте на сервере", e);
     } finally {

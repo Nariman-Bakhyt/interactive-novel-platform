@@ -15,7 +15,7 @@ apiClient.interceptors.request.use(
   (config) => {
     const vId = getCachedVisitorId();
 
-    
+
     if (vId) {
       config.headers['X-Visitor-Id'] = vId;
     }
@@ -30,8 +30,8 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// failedQueue и isRefreshing реализуют слияние (concurrency pooling) параллельных запросов обновления токена. 
-// Если одновременно падает несколько параллельных запросов с 401, выполняется ровно один запрос /auth/refresh, 
+// failedQueue и isRefreshing реализуют слияние (concurrency pooling) параллельных запросов обновления токена.
+// Если одновременно падает несколько параллельных запросов с 401, выполняется ровно один запрос /auth/refresh,
 // а остальные ждут его завершения в очереди. Это защищает бэкенд от спама рефрешами и предотвращает race conditions.
 let isRefreshing = false;
 let failedQueue: any[] = [];
@@ -50,20 +50,20 @@ const processQueue = (error: any, token: string | null = null) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    
+
     const authStore = useAuthStore();
     const originalRequest = error.config;
 
-    
+
     if (error.response?.status === 401 && originalRequest.url === '/auth/public/refresh') {
-      authStore.logout();
+      authStore.logout(true);
       return Promise.reject(error);
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      
+
       if (isRefreshing) {
         return new Promise(function(resolve, reject) {
           failedQueue.push({ resolve, reject });
@@ -75,25 +75,20 @@ apiClient.interceptors.response.use(
         });
       }
 
-      
+
       isRefreshing = true;
 
       try {
         const newToken = await authStore.refreshToken();
-
-        
         processQueue(null, newToken);
-
-        
         originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
-        
+        authStore.logout(true);
         processQueue(refreshError, null);
-        authStore.logout();
         return Promise.reject(refreshError);
       } finally {
-        
+
         isRefreshing = false;
       }
     }

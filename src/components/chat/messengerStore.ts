@@ -115,6 +115,8 @@ export const useMessengerStore = defineStore('messenger', () => {
 
           if (payload.senderId === authStore.userDetails?.id) {
             chat.lastReadAt = payload.timestamp;
+          } else if (activeConversationId.value === targetChatId) {
+            markAsRead(targetChatId);
           }
 
           conversations.value.splice(index, 1);
@@ -134,7 +136,11 @@ export const useMessengerStore = defineStore('messenger', () => {
     }
 
     if (event.type === WsEventType.MESSAGE_DELETED) {
-      
+      const messageId = payload.messageId;
+      const conversationId = payload.conversationId;
+      if (activeConversationId.value === conversationId) {
+        messages.value = messages.value.filter(m => m.id !== messageId);
+      }
     }
   };
 
