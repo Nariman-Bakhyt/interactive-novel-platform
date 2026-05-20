@@ -4,6 +4,9 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.jboss.logging.BasicLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -22,6 +25,7 @@ import project.interactivenovelplatform.dto.response.AuthResponseDto;
 import project.interactivenovelplatform.dto.response.JwtAuthenticationResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
 import project.interactivenovelplatform.entity.VerificationTokenType;
+import project.interactivenovelplatform.error.GlobalExceptionHandler;
 import project.interactivenovelplatform.security.UserPrincipal;
 import project.interactivenovelplatform.service.AuthService;
 import project.interactivenovelplatform.service.UserService;
@@ -35,14 +39,13 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final VerificationService verificationService;
     private final AuthService authService;
-
+    private final static Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @RateLimited(capacity = 5, minutes = 5)
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody @Valid LoginRequestDto loginRequest, HttpServletRequest request){
+    @PostMapping("/public/login")
+    public ResponseEntity<?> login(@RequestBody @Valid LoginRequestDto loginRequest, HttpServletRequest request) {
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
-        );
+                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
         SecurityContextHolder.getContext().setAuthentication(authentication);
         UserPrincipal user = (UserPrincipal) authentication.getPrincipal();
 
@@ -55,44 +58,49 @@ public class AuthController {
     }
 
     @RateLimited(capacity = 3, minutes = 10)
-    @PostMapping("/login/email")
+    @PostMapping("/public/login/email")
     public ResponseEntity<String> requestLoginCode(@RequestBody @Valid EmailRequestDto loginRequest) {
         try {
             AppUserEntity user = userService.getEntityByEmail(loginRequest.getEmail());
             verificationService.sendVerificationCode(user.getId(), VerificationTokenType.LOGIN_BY_CODE, null);
         } catch (EntityNotFoundException e) {
-        }
-        return ResponseEntity.ok("Код подтверждения отправлен на почту");
-    }
+            log.warn("Попытка запроса кода авторизации на незарегистрированный email: {}", loginRequest.getEmail());
 
-    
+        } catch (Exception ex) {
+            log.error("Критическая ошибка при генерации одноразового кода авторизации", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Произошла внутренняя ошибка сервера. Попробуйте позже.");
+        }
+
+        return ResponseEntity.ok("Если данный email зарегистрирован в системе, код подтверждения будет отправлен на почту");}
+
     @RateLimited(capacity = 5, minutes = 5)
-    @PostMapping("/login/verify")
-    public ResponseEntity<?> verifyLoginCode(@RequestBody @Valid VerifyLoginCodeRequestDto verifyRequest, HttpServletRequest request) {
+    @PostMapping("/public/login/verify")
+    public ResponseEntity<?> verifyLoginCode(@RequestBody @Valid VerifyLoginCodeRequestDto verifyRequest,
+            HttpServletRequest request) {
         AuthResponseDto authResponse = authService.loginByVerificationCode(
                 verifyRequest.getEmail(),
                 verifyRequest.getCode(),
-                request
-        );
+                request);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, authResponse.getCookie().toString())
                 .header(HttpHeaders.SET_COOKIE, authResponse.getGuestCookie().toString())
                 .body(new JwtAuthenticationResponseDto(
                         authResponse.getAccessToken(),
-                        authResponse.getUsername()
-                ));
+                        authResponse.getUsername()));
     }
 
-
     @RateLimited(capacity = 5, minutes = 15)
-    @PostMapping("/refresh")
+    @PostMapping("/public/refresh")
     public ResponseEntity<?> refreshToken(@CookieValue(name = "refreshToken", required = false) String refreshToken,
-                                          HttpServletRequest request) {
+            HttpServletRequest request) {
         try {
             String userAgent = request.getHeader("User-Agent");
-            JwtAuthenticationResponseDto response = authService.refreshAccessToken(refreshToken, userAgent);
-            return ResponseEntity.ok(response);
+            AuthResponseDto authResponse = authService.refreshAccessToken(refreshToken, userAgent);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, authResponse.getCookie().toString())
+                    .body(new JwtAuthenticationResponseDto(authResponse.getAccessToken(), authResponse.getUsername()));
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         } catch (Exception e) {
@@ -119,14 +127,15 @@ public class AuthController {
     }
 
     @RateLimited(capacity = 3, minutes = 10)
-    @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody @Valid RegistrationRequestDto registrationRequestDto){
+    @PostMapping("/public/register")
+    public ResponseEntity<?> registerUser(@RequestBody @Valid RegistrationRequestDto registrationRequestDto) {
         var user = userService.registerUser(registrationRequestDto);
         verificationService.sendVerificationCode(user.getId(), VerificationTokenType.REGISTRATION_CONFIRMATION, null);
         return ResponseEntity.status(HttpStatus.CREATED).body(user.getId());
     }
+
     @RateLimited(capacity = 3, minutes = 10)
-    @PostMapping("/register/verify-code")
+    @PostMapping("/public/register/verify-code")
     public ResponseEntity<?> verifyRegister(
             HttpServletRequest request,
             @RequestBody @Valid VerificationRequestDto dto) {
@@ -141,12 +150,11 @@ public class AuthController {
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody @Valid ResetPasswordRequestDto dto) {
 
-        userService.forgotPassword(principal.getId(),dto);
+        userService.forgotPassword(principal.getId(), dto);
         return ResponseEntity.ok("Код подтверждения для смены пароля отправлен на почту.");
     }
 
-    
-    @PostMapping("/verify-code")
+    @PostMapping("/public/verify-code")
     public ResponseEntity<String> verifyCode(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody @Valid VerificationRequestDto dto) {
@@ -156,7 +164,6 @@ public class AuthController {
         return ResponseEntity.ok("Действие успешно подтверждено.");
     }
 
-    
     @PostMapping("/email/update-request")
     public ResponseEntity<String> requestEmailUpdate(
             @AuthenticationPrincipal UserPrincipal principal,
@@ -168,4 +175,3 @@ public class AuthController {
     }
 
 }
-

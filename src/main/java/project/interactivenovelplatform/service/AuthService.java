@@ -10,7 +10,7 @@ public interface AuthService {
     AuthResponseDto createSession(UserPrincipal user, HttpServletRequest request);
 
     @Transactional
-    JwtAuthenticationResponseDto refreshAccessToken(String refreshToken, String userAgent);
+    AuthResponseDto refreshAccessToken(String refreshToken, String userAgent);
 
     @Transactional
     void logout(String refreshToken);

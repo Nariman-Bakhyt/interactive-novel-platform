@@ -1,5 +1,7 @@
 package project.interactivenovelplatform.repository;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
@@ -156,4 +158,5 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
     void updateUserPassword(@Param("userId") Long userId, @Param("password") String password);
 
 
+    boolean existsByEmail(@NotBlank(message = "Email не может быть пустым.") @Email(message = "Некорректный формат email адреса.") String email);
 }

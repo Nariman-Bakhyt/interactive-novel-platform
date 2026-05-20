@@ -21,6 +21,7 @@ import project.interactivenovelplatform.service.AuthService;
 import project.interactivenovelplatform.service.VerificationService;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -85,25 +86,31 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional
     @Override
-    public JwtAuthenticationResponseDto refreshAccessToken(String refreshToken, String userAgent) {
+    public AuthResponseDto refreshAccessToken(String refreshToken, String userAgent) {
         if (refreshToken == null || !tokenProvider.verifyRefreshTokenSignature(refreshToken)) {
             throw new BadCredentialsException("Невалидный токен обновления");
         }
 
+        String reusedUserId = redisTemplate.opsForValue().get("rotated:" + refreshToken);
+        if (reusedUserId != null) {
+            Long userId = Long.parseLong(reusedUserId);
+            invalidateAllSessions(userId);
+            throw new BadCredentialsException("Подозрение на повторное использование токена. Все сессии аннулированы.");
+        }
+
         String redisKey = "refresh:" + refreshToken;
         String userIdStr = (String) redisTemplate.opsForHash().get(redisKey, "userId");
+        UserSessionEntity session;
 
         if (userIdStr == null) {
-            UserSessionEntity session = userSessionRepository.findByRefreshToken(refreshToken)
+            session = userSessionRepository.findByRefreshToken(refreshToken)
                     .filter(UserSessionEntity::isActive)
                     .filter(s -> s.getExpiresAt().isAfter(OffsetDateTime.now()))
                     .orElseThrow(() -> new BadCredentialsException("Сессия истекла или не существует"));
-
             userIdStr = session.getUserId().toString();
-
-            redisTemplate.opsForHash().put(redisKey, "userId", userIdStr);
-            redisTemplate.opsForHash().put(redisKey, "userAgent", userAgent);
-            redisTemplate.expire(redisKey, 30, TimeUnit.DAYS);
+        } else {
+            session = userSessionRepository.findByRefreshToken(refreshToken)
+                    .orElseThrow(() -> new BadCredentialsException("Сессия истекла или не существует"));
         }
 
         Long userId = Long.parseLong(userIdStr);
@@ -113,8 +120,43 @@ public class AuthServiceImpl implements AuthService {
         UserPrincipal userPrincipal = UserPrincipal.create(userEntity);
 
         String newAccessToken = tokenProvider.generateAccessToken(userPrincipal);
+        String newRefreshToken = tokenProvider.generateSignedRefreshToken();
 
-        return new JwtAuthenticationResponseDto(newAccessToken, userPrincipal.getUsername());
+        session.setRefreshToken(newRefreshToken);
+        session.setLoginTime(OffsetDateTime.now());
+        session.setExpiresAt(OffsetDateTime.now().plusDays(30));
+        userSessionRepository.save(session);
+
+        redisTemplate.delete(redisKey);
+
+        String newRedisKey = "refresh:" + newRefreshToken;
+        Map<String, String> sessionData = Map.of(
+                "userId", userId.toString(),
+                "userAgent", userAgent != null ? userAgent : ""
+        );
+        redisTemplate.opsForHash().putAll(newRedisKey, sessionData);
+        redisTemplate.expire(newRedisKey, 30, TimeUnit.DAYS);
+
+        redisTemplate.opsForValue().set("rotated:" + refreshToken, userId.toString(), 30, TimeUnit.DAYS);
+
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", newRefreshToken)
+                .httpOnly(true)
+                .secure(false)
+                .path("/api/auth")
+                .maxAge(30 * 24 * 60 * 60)
+                .sameSite("Lax")
+                .build();
+
+        return new AuthResponseDto(newAccessToken, newRefreshToken, cookie, null, userPrincipal.getUsername());
+    }
+
+    private void invalidateAllSessions(Long userId) {
+        List<UserSessionEntity> sessions = userSessionRepository.findAllByUserIdAndIsActiveTrue(userId);
+        for (UserSessionEntity session : sessions) {
+            session.setActive(false);
+            redisTemplate.delete("refresh:" + session.getRefreshToken());
+        }
+        userSessionRepository.saveAll(sessions);
     }
 
     @Transactional

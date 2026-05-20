@@ -334,6 +334,9 @@ public class UserServiceImpl  implements UserService {
     @Transactional
     @Override
     public void updateEmail(Long userId, EmailRequestDto dto) {
+        if (userRepository.existsByEmail(dto.getEmail())) {
+            throw new IllegalArgumentException("Пользователь с таким email уже зарегистрирован на платформе");
+        }
         verificationService.sendVerificationCode(userId,VerificationTokenType.EMAIL_CHANGE, dto.getEmail());
     }
 
