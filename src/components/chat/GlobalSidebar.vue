@@ -540,6 +540,42 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
+
+          <div v-if="miniTab === 'COMMENTS'" class="avatar-list">
+            <div v-if="commentStore.currentNovelContext"
+                 class="chat-avatar-wrapper"
+                 :class="{ 'is-active': commentStore.isOpen && commentStore.activeTargetId === commentStore.currentNovelContext.id && commentStore.targetType === 'NOVEL', 'expanded': isSidebarExpanded }"
+                 @click="commentStore.openChat(commentStore.currentNovelContext.id, 'NOVEL')"
+            >
+              <div class="avatar-circle-container" :style="getGlowStyle(commentStore.currentNovelContext.id, false)">
+                <div class="chat-avatar-placeholder">
+                  N
+                </div>
+              </div>
+              <div v-if="isSidebarExpanded" class="chat-info-text">
+                <span class="chat-list-title">Новелла: {{ commentStore.currentNovelContext.title }}</span>
+              </div>
+            </div>
+
+            <div v-if="commentStore.currentChapterContext"
+                 class="chat-avatar-wrapper"
+                 :class="{ 'is-active': commentStore.isOpen && commentStore.activeTargetId === commentStore.currentChapterContext.id && commentStore.targetType === 'CHAPTER', 'expanded': isSidebarExpanded }"
+                 @click="commentStore.openChat(commentStore.currentChapterContext.id, 'CHAPTER')"
+            >
+              <div class="avatar-circle-container" :style="getGlowStyle(commentStore.currentChapterContext.id, false)">
+                <div class="chat-avatar-placeholder">
+                  C
+                </div>
+              </div>
+              <div v-if="isSidebarExpanded" class="chat-info-text">
+                <span class="chat-list-title">Глава: {{ commentStore.currentChapterContext.title }}</span>
+              </div>
+            </div>
+
+            <div v-if="!commentStore.currentNovelContext && !commentStore.currentChapterContext" style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 16px;">
+              Откройте главу<br v-if="!isSidebarExpanded" /> для обсуждения
+            </div>
+          </div>
         </nav>
       </div>
     </Transition>
@@ -883,6 +919,7 @@ onUnmounted(() => {
   flex-direction: column;
   scrollbar-width: thin;
   scrollbar-color: var(--border-color) transparent;
+  overflow-anchor: none;
 }
 .comment-item-wrapper { display: flex; width: 100%; margin-bottom: 16px; }
 .comment-item-wrapper.is-mine { justify-content: flex-end; }

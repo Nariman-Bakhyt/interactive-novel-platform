@@ -9,6 +9,7 @@ import {
 } from '@/api/novelService';
 import type {ChapterRequestDto} from '@/types/novel';
 import {useCommentStore} from "@/components/chat/commentStore.ts";
+import ChapterComments from '@/components/chat/ChapterComments.vue';
 
 
 const props = defineProps<{ novelId: string | number; chapterId?: string | number; }>();
@@ -59,6 +60,9 @@ onMounted(async () => {
         selectedPublishDate.value = data.publishedAt.slice(0, 16); 
       }
       form.value.blocks = (data.blocks || []).sort((a, b) => a.sequenceOrder - b.sequenceOrder);
+      
+      const novelTitle = "Новелла"; // For editor, we might not have the full novel fetched here, but we set the context.
+      await chatStore.setContext(nId.value, novelTitle, cId.value, data.title);
 
       
       // Vue обновляет DOM асинхронно. Используем nextTick, чтобы дождаться перерисовки элементов textarea и корректно рассчитать их высоту на основе scrollHeight.
@@ -87,6 +91,10 @@ onMounted(() => {
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') showMenuIndex.value = null;
   });
+});
+
+onUnmounted(() => {
+  chatStore.clearContext();
 });
 
 const toggleMenu = (index: number) => {
@@ -412,6 +420,8 @@ onUnmounted(() => {
           </div>
         </div>
       </div>
+      
+      <ChapterComments v-if="isEditMode" />
     </div>
   </div>
 </template>

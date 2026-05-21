@@ -147,10 +147,14 @@ export const useMessengerStore = defineStore('messenger', () => {
   
   
   
-  const scrollToBottom = async () => {
+  const scrollToBottom = async (force = false) => {
     await nextTick();
     if (messagesListRef.value) {
-      messagesListRef.value.scrollTop = messagesListRef.value.scrollHeight;
+      const el = messagesListRef.value;
+      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+      if (force || isNearBottom) {
+        el.scrollTop = el.scrollHeight;
+      }
     }
   };
 
@@ -203,7 +207,7 @@ export const useMessengerStore = defineStore('messenger', () => {
       const history = await getChatMessages(conversationId, currentPage.value, pageSize);
       messages.value = history.content ? [...history.content].reverse() : [];
       isLastPage.value = history.last;
-      scrollToBottom();
+      scrollToBottom(true);
     } catch (e) {
       handleError("openChat", e);
       throw e;

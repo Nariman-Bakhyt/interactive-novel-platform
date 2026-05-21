@@ -5,6 +5,8 @@ import {getChapter, getNovelById} from "@/api/novelService.ts";
 import type {ChapterResponseDto, ChapterShortResponseDto} from "@/types/novel.ts";
 import {useSmartScroll} from "@/api/commentService.ts";
 import {useCommentStore} from "@/components/chat/commentStore.ts";
+import ChapterComments from '@/components/chat/ChapterComments.vue';
+import { onUnmounted } from 'vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -32,6 +34,10 @@ const fetchData = async () => {
     if (chaptersList.value.length === 0) {
       const novelData = await getNovelById(nId.value);
       chaptersList.value = (novelData.chapters || []).sort((a, b) => a.chapterNumber - b.chapterNumber);
+      await chatStore.setContext(nId.value, novelData.title, cId.value, chapter.value.title);
+    } else {
+      const novelTitle = chaptersList.value.length > 0 ? "Новелла" : "Новелла"; // Or find novel title from another store if available
+      await chatStore.setContext(nId.value, novelTitle, cId.value, chapter.value.title);
     }
   } catch (error) {
     console.error("Ошибка при загрузке главы:", error);
@@ -40,6 +46,10 @@ const fetchData = async () => {
     window.scrollTo(0, 0);
   }
 };
+
+onUnmounted(() => {
+  chatStore.clearContext();
+});
 
 
 const toggleComments = (blockId: number | null) => {
@@ -125,6 +135,8 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
           Следующая <span class="icon">→</span>
         </button>
       </footer>
+      
+      <ChapterComments />
     </div>
   </div>
 </template>

@@ -14,6 +14,12 @@ export const useCommentStore = defineStore('chat', () => {
   const pendingQuote = ref<{ text: string, url: string } | null>(null);
   const savedQuote = localStorage.getItem('pending_quote');
 
+  const currentNovelContext = ref<{ id: number, title: string } | null>(null);
+  const currentChapterContext = ref<{ id: number, title: string } | null>(null);
+  const chapterComments = ref<CommentResponseDto[]>([]);
+  let contextCallback: ((wsEvent: any) => void) | null = null;
+  let chatCallback: ((wsEvent: any) => void) | null = null;
+
   const currentPage = ref(0);
   const isLastPage = ref(false);
   const isLoadingMore = ref(false); 
@@ -43,10 +49,14 @@ export const useCommentStore = defineStore('chat', () => {
     return groups;
   });
 
-  const scrollToBottom = async () => {
+  const scrollToBottom = async (force = false) => {
     await nextTick();
     if (commentsListRef.value) {
-      commentsListRef.value.scrollTop = commentsListRef.value.scrollHeight;
+      const el = commentsListRef.value;
+      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+      if (force || isNearBottom) {
+        el.scrollTop = el.scrollHeight;
+      }
     }
   };
 
@@ -69,8 +79,8 @@ export const useCommentStore = defineStore('chat', () => {
 
     const topic = `/topic/${type.toLowerCase()}.${id}`;
 
-    if (!activeSubscriptions.has(topic)) {
-      subscribeToTopic<any>(topic, (wsEvent) => {
+    if (!activeSubscriptions.has(topic) || !chatCallback) {
+      chatCallback = (wsEvent: any) => {
         const type = wsEvent.type;
         const payload = wsEvent.payload;
         if (type === 'COMMENT_DELETED') {
@@ -82,7 +92,8 @@ export const useCommentStore = defineStore('chat', () => {
             scrollToBottom();
           }
         }
-      });
+      };
+      subscribeToTopic<any>(topic, chatCallback);
     }
 
     try {
@@ -105,7 +116,7 @@ export const useCommentStore = defineStore('chat', () => {
 
       
       isLastPage.value = history.last;
-      scrollToBottom();
+      scrollToBottom(true);
     } catch (e) {
       console.error("Ошибка загрузки чата:", e);
     }
@@ -196,9 +207,10 @@ export const useCommentStore = defineStore('chat', () => {
   };
 
   const unsubscribeFromCurrent = () => {
-    if (activeTargetId.value) {
+    if (activeTargetId.value && chatCallback) {
       const topic = `/topic/${targetType.value.toLowerCase()}.${activeTargetId.value}`;
-      unsubscribeFromTopic(topic);
+      unsubscribeFromTopic(topic, chatCallback);
+      chatCallback = null;
     }
     comments.value = [];
   };
@@ -209,8 +221,50 @@ export const useCommentStore = defineStore('chat', () => {
     isOpen.value = false;
   };
 
+  const setContext = async (novelId: number, novelTitle: string, chapterId: number, chapterTitle: string) => {
+    currentNovelContext.value = { id: novelId, title: novelTitle };
+    currentChapterContext.value = { id: chapterId, title: chapterTitle };
+    
+    const topic = `/topic/chapter.${chapterId}`;
+    
+    if (!contextCallback) {
+      contextCallback = (wsEvent: any) => {
+        const type = wsEvent.type;
+        const payload = wsEvent.payload;
+        if (type === 'COMMENT_DELETED') {
+          chapterComments.value = chapterComments.value.filter(c => c.id !== payload.id);
+        } else if (type === 'COMMENT_CREATED') {
+          const comment = payload as CommentResponseDto;
+          if (!chapterComments.value.some(c => c.id === comment.id)) {
+            chapterComments.value.push(comment);
+          }
+        }
+      };
+      subscribeToTopic<any>(topic, contextCallback);
+    }
+
+    try {
+      const history = await getComments({ chapterId }, 0, 50, 'timestamp,asc');
+      chapterComments.value = history.content ? [...history.content] : [];
+    } catch (e) {
+      console.error("Ошибка загрузки комментариев главы", e);
+    }
+  };
+
+  const clearContext = () => {
+    if (currentChapterContext.value && contextCallback) {
+      const topic = `/topic/chapter.${currentChapterContext.value.id}`;
+      unsubscribeFromTopic(topic, contextCallback);
+      contextCallback = null;
+    }
+    currentNovelContext.value = null;
+    currentChapterContext.value = null;
+    chapterComments.value = [];
+  };
+
   return {
     isOpen, comments,scrollToBottom, activeTargetId, groupedComments, targetType, isSending,setQuoteMode ,pendingQuote,
-    clearQuote, commentsListRef, openChat, closeChat, send, removeComment ,loadMoreComments, isLoadingMore, isLastPage
+    clearQuote, commentsListRef, openChat, closeChat, send, removeComment ,loadMoreComments, isLoadingMore, isLastPage,
+    currentNovelContext, currentChapterContext, chapterComments, setContext, clearContext
   };
 });

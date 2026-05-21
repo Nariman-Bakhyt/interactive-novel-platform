@@ -1,7 +1,7 @@
 import {Client, type IFrame, type StompSubscription} from '@stomp/stompjs';
 import {ref} from "vue";
 
-export const activeSubscriptions = new Map<string, { sub: StompSubscription | null, callback: (data: any) => void }>();
+export const activeSubscriptions = new Map<string, { sub: StompSubscription | null, callbacks: Set<(data: any) => void> }>();
 export const isConnected = ref(false);
 
 
@@ -51,7 +51,12 @@ stompClient.onConnect = () => {
   // Обходим все зарегистрированные коллбеки в реестре activeSubscriptions и восстанавливаем подписки при успешном реконнекте.
   activeSubscriptions.forEach((value, topic) => {
     const newSub = stompClient.subscribe(topic, (message) => {
-      value.callback(JSON.parse(message.body));
+      try {
+        const data = JSON.parse(message.body);
+        value.callbacks.forEach(cb => cb(data));
+      } catch (e) {
+        console.error("STOMP: Ошибка парсинга JSON", e, message.body);
+      }
     });
     value.sub = newSub;
     console.log(`🔄 Восстановлена подписка на: ${topic}`);
@@ -66,34 +71,49 @@ stompClient.onWebSocketClose = () => {
 };
 
 export function subscribeToTopic<T>(topic: string, onMessage: (data: T) => void) {
-  if (activeSubscriptions.has(topic)) return;
-
-  activeSubscriptions.set(topic, { sub: null, callback: onMessage });
-
+  let subData = activeSubscriptions.get(topic);
   
-  if (!stompClient.active) {
-    activateStomp();
-  }
+  if (!subData) {
+    subData = { sub: null, callbacks: new Set() };
+    activeSubscriptions.set(topic, subData);
 
-  if (stompClient.connected) {
-    const sub = stompClient.subscribe(topic, (message) => {
-      try {
-        const data = JSON.parse(message.body);
-        onMessage(data);
-      } catch (e) {
-        console.error("STOMP: Ошибка парсинга JSON", e, message.body);
-      }
-    });
-    activeSubscriptions.get(topic)!.sub = sub;
+    if (!stompClient.active) {
+      activateStomp();
+    }
+
+    if (stompClient.connected) {
+      const sub = stompClient.subscribe(topic, (message) => {
+        try {
+          const data = JSON.parse(message.body);
+          const currentSub = activeSubscriptions.get(topic);
+          if (currentSub) {
+            currentSub.callbacks.forEach(cb => cb(data));
+          }
+        } catch (e) {
+          console.error("STOMP: Ошибка парсинга JSON", e, message.body);
+        }
+      });
+      subData.sub = sub;
+    }
   }
+  
+  subData.callbacks.add(onMessage as (data: any) => void);
 }
 
-export function unsubscribeFromTopic(topic: string) {
+export function unsubscribeFromTopic(topic: string, onMessage?: (data: any) => void) {
   const data = activeSubscriptions.get(topic);
-  if (data?.sub) {
-    data.sub.unsubscribe();
+  if (data) {
+    if (onMessage) {
+      data.callbacks.delete(onMessage);
+    }
+    
+    if (!onMessage || data.callbacks.size === 0) {
+      if (data.sub) {
+        data.sub.unsubscribe();
+      }
+      activeSubscriptions.delete(topic);
+    }
   }
-  activeSubscriptions.delete(topic);
 }
 
 export function sendMessage(destination: string, body: any) {
