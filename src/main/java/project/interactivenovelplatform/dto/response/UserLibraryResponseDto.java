@@ -11,9 +11,7 @@ import java.time.OffsetDateTime;
 @Getter@Setter
 @AllArgsConstructor
 public class UserLibraryResponseDto {
-    private Long novelId;
-    private String title;
-    private String coverUrl;
+    private NovelResponseDto  novel;
     private LibraryStatus status;
     private OffsetDateTime createdAt;
     private PrivacyLevel privacyLevel;

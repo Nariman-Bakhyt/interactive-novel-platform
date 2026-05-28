@@ -33,11 +33,12 @@ public class UserController {
         var user = userService.findProfileById(principal.getId(),principal.getId());
         return ResponseEntity.ok().body(user);
     }
+
     @RateLimited(capacity = 30, minutes = 1)
-    @GetMapping("/profile/{userId}")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ProfileResponseDto> getProfile(@PathVariable Long userId,@AuthenticationPrincipal UserPrincipal principal) {
-        var user = userService.findProfileById(principal.getId(),userId);
+    @GetMapping("/public/profile/{userId}")
+    public ResponseEntity<ProfileResponseDto> getProfile(@PathVariable Long userId, @AuthenticationPrincipal UserPrincipal principal) {
+        Long currentUserId = (principal != null) ? principal.getId() : null;
+        var user = userService.findProfileById(currentUserId, userId);
         return ResponseEntity.ok().body(user);
     }
     @RateLimited(capacity = 5, minutes = 10)

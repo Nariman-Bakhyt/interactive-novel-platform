@@ -53,7 +53,6 @@ public class AuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, authResponse.getCookie().toString())
-                .header(HttpHeaders.SET_COOKIE, authResponse.getGuestCookie().toString())
                 .body(new JwtAuthenticationResponseDto(authResponse.getAccessToken(), authResponse.getUsername()));
     }
 
@@ -85,7 +84,6 @@ public class AuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, authResponse.getCookie().toString())
-                .header(HttpHeaders.SET_COOKIE, authResponse.getGuestCookie().toString())
                 .body(new JwtAuthenticationResponseDto(
                         authResponse.getAccessToken(),
                         authResponse.getUsername()));

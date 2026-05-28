@@ -86,7 +86,7 @@ public class UserServiceImpl  implements UserService {
     @Transactional(readOnly = true)
     public ProfileResponseDto findProfileById(Long currentUserId ,Long targetUserId){
         ProfileResponseDto profile = userRepository.getFullProfile(targetUserId, currentUserId)
-                .orElseThrow(() -> new EntityNotFoundException("Пользователь с id: " + targetUserId + " не найден"));
+                    .orElseThrow(() -> new EntityNotFoundException("Пользователь с id: " + targetUserId + " не найден"));
 
         boolean isMe = currentUserId != null && currentUserId.equals(targetUserId);
         String publicUrl = profile.getAvatarUrl() != null ? storageService.getPublicUrl(profile.getAvatarUrl()) : null;

@@ -19,7 +19,7 @@ public class ScheduledChapterPublisher {
     private final ChapterRepository chapterRepository;
     private final NovelRepository novelRepository;
 
-    @Scheduled(cron = "0 * * * * *") 
+    @Scheduled(cron = "0 0 * * * *")
     @Transactional
     public void publishScheduledChapters() {
         OffsetDateTime now = OffsetDateTime.now();

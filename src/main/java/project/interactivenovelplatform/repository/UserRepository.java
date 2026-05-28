@@ -73,17 +73,28 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
         
         false,
         
-        ((SELECT COUNT(f3) FROM UserFollowerEntity f3 WHERE f3.sender.id = :currentUserId AND f3.receiver = u) > 0),
+        CASE WHEN :currentUserId IS NULL THEN false
+             ELSE ((SELECT COUNT(f3) FROM UserFollowerEntity f3 WHERE f3.sender.id = :currentUserId AND f3.receiver = u) > 0)
+        END,
         
-        ((SELECT COUNT(fr2) FROM UserFriendEntity fr2
-          WHERE fr2.status = project.interactivenovelplatform.entity.RelationStatus.FRIEND
-          AND ((fr2.sender.id = :currentUserId AND fr2.receiver = u)
-            OR (fr2.sender = u AND fr2.receiver.id = :currentUserId))) > 0),
+        CASE WHEN :currentUserId IS NULL THEN false
+             ELSE ((SELECT COUNT(fr2) FROM UserFriendEntity fr2
+                    WHERE fr2.status = project.interactivenovelplatform.entity.RelationStatus.FRIEND
+                    AND ((fr2.sender.id = :currentUserId AND fr2.receiver = u)
+                      OR (fr2.sender = u AND fr2.receiver.id = :currentUserId))) > 0)
+        END,
         
-        ((SELECT COUNT(cf2) FROM UserCloseFriendsEntity cf2 WHERE cf2.owner.id = :currentUserId AND cf2.friend = u) > 0),
-        ((SELECT COUNT(b1) FROM UserBlockEntity b1 WHERE b1.blocker.id = :currentUserId AND b1.blocked = u) > 0),
-        ((SELECT COUNT(b2) FROM UserBlockEntity b2 WHERE b2.blocker = u AND b2.blocked.id = :currentUserId) > 0)
+        CASE WHEN :currentUserId IS NULL THEN false
+             ELSE ((SELECT COUNT(cf2) FROM UserCloseFriendsEntity cf2 WHERE cf2.owner.id = :currentUserId AND cf2.friend = u) > 0)
+        END,
         
+        CASE WHEN :currentUserId IS NULL THEN false
+             ELSE ((SELECT COUNT(b1) FROM UserBlockEntity b1 WHERE b1.blocker.id = :currentUserId AND b1.blocked = u) > 0)
+        END,
+        
+        CASE WHEN :currentUserId IS NULL THEN false
+             ELSE ((SELECT COUNT(b2) FROM UserBlockEntity b2 WHERE b2.blocker = u AND b2.blocked.id = :currentUserId) > 0)
+        END
     )
     FROM AppUserEntity u
     WHERE u.id = :targetUserId

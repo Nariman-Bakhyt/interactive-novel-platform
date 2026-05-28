@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import project.interactivenovelplatform.config.RateLimited;
 import project.interactivenovelplatform.dto.request.ChatSettingsRequestDto;
 import project.interactivenovelplatform.dto.request.CreateGroupRequest;
 import project.interactivenovelplatform.dto.request.SendMessageRequestDto;
@@ -30,6 +31,7 @@ public class ChatController {
     private final ChatService chatService;
 
     
+    @RateLimited(capacity = 100, minutes = 1)
     @GetMapping
     public ResponseEntity<PagedModel<ConversationResponseDto>> getMyChats(
             @AuthenticationPrincipal UserPrincipal user,
@@ -41,6 +43,7 @@ public class ChatController {
     }
 
     
+    @RateLimited(capacity = 100, minutes = 1)
     @GetMapping("/{conversationId}/messages")
     public ResponseEntity<Slice<MessageResponseDto>> getChatMessages(
             @AuthenticationPrincipal UserPrincipal user,
@@ -54,6 +57,7 @@ public class ChatController {
     }
 
     
+    @RateLimited(capacity = 10, minutes = 1)
     @PostMapping("/private/{targetUserId}")
     public ResponseEntity<ConversationResponseDto> getOrCreatePrivateChat(
             @AuthenticationPrincipal UserPrincipal user,
@@ -62,6 +66,7 @@ public class ChatController {
     }
 
     
+    @RateLimited(capacity = 10, minutes = 1)
     @PostMapping(value = "/group", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ConversationResponseDto> createGroupChat(
             @AuthenticationPrincipal UserPrincipal user,
@@ -70,6 +75,7 @@ public class ChatController {
     }
 
     
+    @RateLimited(capacity = 30, minutes = 1)
     @PostMapping(value = "/{conversationId}/messages", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MessageResponseDto> sendMessage(
             @AuthenticationPrincipal UserPrincipal user,
@@ -80,6 +86,7 @@ public class ChatController {
     }
 
     
+    @RateLimited(capacity = 10, minutes = 1)
     @DeleteMapping("/messages/{messageId}")
     public ResponseEntity<Void> deleteMessage(
             @AuthenticationPrincipal UserPrincipal user,
@@ -89,6 +96,7 @@ public class ChatController {
     }
 
     
+    @RateLimited(capacity = 10, minutes = 1)
     @DeleteMapping("/{conversationId}")
     public ResponseEntity<Void> deleteChatForUser(
             @AuthenticationPrincipal UserPrincipal user,
@@ -98,6 +106,7 @@ public class ChatController {
     }
 
     
+    @RateLimited(capacity = 10, minutes = 1)
     @PatchMapping("/conversation/settings")
     public ResponseEntity<Void> toggleSettings(
             @AuthenticationPrincipal UserPrincipal user,
@@ -107,6 +116,7 @@ public class ChatController {
     }
 
     
+    @RateLimited(capacity = 10, minutes = 1)
     @PostMapping("/{conversationId}/leave")
     public ResponseEntity<Void> leaveGroup(
             @AuthenticationPrincipal UserPrincipal user,
@@ -116,6 +126,7 @@ public class ChatController {
     }
 
     
+    @RateLimited(capacity = 10, minutes = 1)
     @PostMapping("/{conversationId}/members")
     public ResponseEntity<ConversationResponseDto> addUserToGroup(
             @AuthenticationPrincipal UserPrincipal user,
@@ -126,6 +137,7 @@ public class ChatController {
     }
 
     
+    @RateLimited(capacity = 10, minutes = 1)
     @DeleteMapping("/{conversationId}/members/{targetUserId}")
     public ResponseEntity<Void> kickUser(
             @AuthenticationPrincipal UserPrincipal user,
@@ -135,6 +147,7 @@ public class ChatController {
         return ResponseEntity.ok().build();
     }
 
+    @RateLimited(capacity = 60, minutes = 1)
     @PostMapping("/{conversationId}/messages/typing")
     public ResponseEntity<Void> sendTypingStatus(
             @AuthenticationPrincipal UserPrincipal user,
@@ -143,6 +156,7 @@ public class ChatController {
         return ResponseEntity.ok().build();
     }
 
+    @RateLimited(capacity = 60, minutes = 1)
     @PostMapping("/{conversationId}/read")
     public ResponseEntity<Void> markAsRead(@PathVariable Long conversationId,
                                            @AuthenticationPrincipal UserPrincipal currentUser) {

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.OffsetDateTime;
 import java.util.HashSet;
@@ -56,6 +57,7 @@ public class NovelEntity {
     private AppUserEntity author;
 
     @ManyToMany(fetch = FetchType.LAZY)
+    @BatchSize(size = 20)
     @JoinTable(
             name = "novel_genre",
             joinColumns = @JoinColumn(name = "novel_id"),
@@ -64,6 +66,7 @@ public class NovelEntity {
     private Set<GenreEntity> genres = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
+    @BatchSize(size = 20)
     @JoinTable(
             name = "novel_tag",
             joinColumns = @JoinColumn(name = "novel_id"),

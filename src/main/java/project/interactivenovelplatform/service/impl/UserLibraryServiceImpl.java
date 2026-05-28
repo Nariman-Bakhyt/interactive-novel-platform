@@ -9,17 +9,13 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.interactivenovelplatform.dto.request.UserLibraryRequestDto;
-import project.interactivenovelplatform.dto.response.RelationshipStateDto;
-import project.interactivenovelplatform.dto.response.UserLibraryResponseDto;
-import project.interactivenovelplatform.dto.response.UserLibraryStatusDto;
+import project.interactivenovelplatform.dto.response.*;
+import project.interactivenovelplatform.entity.NovelEntity;
 import project.interactivenovelplatform.entity.PrivacyLevel;
 import project.interactivenovelplatform.entity.UserLibraryEntity;
 import project.interactivenovelplatform.entity.UserNovelId;
 import project.interactivenovelplatform.repository.UserLibraryRepository;
-import project.interactivenovelplatform.service.NovelService;
-import project.interactivenovelplatform.service.UserLibraryService;
-import project.interactivenovelplatform.service.UserService;
-import project.interactivenovelplatform.service.UserSocialService;
+import project.interactivenovelplatform.service.*;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -32,12 +28,38 @@ public class UserLibraryServiceImpl implements UserLibraryService {
     private final UserSocialService userSocialService;
     private final UserService userService;
     private final NovelService novelService;
+    private final StorageHelper storageHelper;
+    private final StorageService storageService;
+
+
+    private NovelResponseDto convertToNovelDto(NovelEntity novel) {
+        String publicCoverUrl = novel.getCoverUrl() != null ? storageService.getPublicUrl(novel.getCoverUrl()) : null;
+        return new NovelResponseDto(
+                novel.getId(),
+                novel.getTitle(),
+                novel.getStatus().toString(),
+                novel.getDescription(),
+                novel.getPublicationDate(),
+                novel.getChapterCount(),
+                novel.getTotalScore(),
+                novel.getRatingCount(),
+                novel.getViewCount(),
+                novel.getAuthor().getUsername(),
+                storageHelper.getCoverOrDefault(publicCoverUrl),
+                novel.getTags().stream().map(tag -> new TagOrGenreResponseDto(
+                        tag.getId(),
+                        tag.getName()
+                )).toList(),
+                novel.getGenres().stream().map(genre -> new TagOrGenreResponseDto(
+                        genre.getId(),
+                        genre.getName()
+                )).toList()
+        );
+    }
 
     private UserLibraryResponseDto convertToDto(UserLibraryEntity entity) {
         return new UserLibraryResponseDto(
-                entity.getNovel().getId(),
-                entity.getNovel().getTitle(),
-                entity.getNovel().getCoverUrl(),
+                convertToNovelDto(entity.getNovel()),
                 entity.getStatus(),
                 entity.getCreatedAt(),
                 entity.getPrivacyLevel()

@@ -6,11 +6,12 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Hulk
-      POSTGRES_DB: website
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
       - ./postgres_data:/var/lib/postgresql:Z
+    restart: always
 
   minio:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
@@ -26,14 +27,24 @@ services:
     volumes:
       - ./minio_data:/data:Z
     command: server /data --console-address ":9001"
+    restart: always
 
   valkey:
     image: valkey/valkey:9.0.3-alpine
     container_name: my_valkey
     ports:
       - "6379:6379"
-    # Для безопасности можно добавить пароль, но для локальной разработки обычно оставляют так
-    command: valkey-server  --requirepass Hulk --save 60 1 --loglevel warning
+    command: >
+      valkey-server 
+      --requirepass ${VALKEY_PASSWORD} 
+      --save 60 1 
+      --loglevel warning 
+      --maxmemory 1024mb 
+      --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
     volumes:
       - ./valkey_data:/data:Z
     restart: always

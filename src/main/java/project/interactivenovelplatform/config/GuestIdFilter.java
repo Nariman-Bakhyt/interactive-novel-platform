@@ -45,16 +45,13 @@ public class GuestIdFilter extends OncePerRequestFilter {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-        
         if (auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-
-
-        // X-Visitor-Id (фингерпринт устройства) необходим для ограничения частоты сброса кук и предотвращения DDoS (cookie-clearing attack).
         String visitorId = request.getHeader("X-Visitor-Id");
+        String visitorId2 = request.getHeader("X-Visitor-Id2");
 
         if (visitorId == null || visitorId.isBlank()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -72,55 +69,45 @@ public class GuestIdFilter extends OncePerRequestFilter {
                     .orElse(null);
         }
 
-        
         if (guestToken == null || !validateToken(guestToken)) {
-
-            
-            if (!tryConsumeGenerationLimit(visitorId)) {
-                handleLimitExceeded(response);
-                return;
-            }
-
-            // Подпись UUID с помощью HMAC защищает от подделки guest_id клиентом без хранения сессии на сервере (stateless).
-            String newUuid = UUID.randomUUID().toString();
-            String signature = generateSignature(newUuid);
-            String secureToken = newUuid + "." + signature;
-
-            Cookie guestCookie = new Cookie("guest_id", secureToken);
-            guestCookie.setHttpOnly(true);
-            guestCookie.setPath("/");
-            guestCookie.setMaxAge(60 * 60 * 24 * 365); 
-
-            response.addCookie(guestCookie);
-            // Используем request attribute вместо SecurityContext, чтобы не загрязнять контекст безопасности неавторизованным пользователем.
-            request.setAttribute("VALID_GUEST_ID", newUuid);
+            // Если паспорта нет — просто отправляем на фронтенд маркер 401. Лимиты тут не трогаем!
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json; charset=UTF-8");
+            response.getWriter().write("{\"requires_challenge\": true}");
+            return;
         } else {
+            // Контур 2: Защита от обнаглевших ботов, решивших PoW (Оставляем как было, это гениально)
+            if (visitorId2 != null && !visitorId2.isBlank()) {
+                if (!tryConsumeApiLimit(visitorId2)) {
+                    handleApiLimitExceeded(response);
+                    return;
+                }
+            }
             request.setAttribute("VALID_GUEST_ID", guestToken.split("\\.")[0]);
         }
 
         filterChain.doFilter(request, response);
     }
 
-    private boolean tryConsumeGenerationLimit(String visitorId) {
-        
+    private boolean tryConsumeApiLimit(String visitorId2) {
         BucketConfiguration config = BucketConfiguration.builder()
-                .addLimit(limit -> limit.capacity(5).refillGreedy(3, Duration.ofMinutes(10)))
+                .addLimit(limit -> limit.capacity(120).refillGreedy(120, Duration.ofMinutes(1)))
                 .build();
 
-        byte[] key = ("limit:gen-id:" + visitorId).getBytes(StandardCharsets.UTF_8);
+        byte[] key = ("limit:api:device:" + visitorId2).getBytes(StandardCharsets.UTF_8);
         Bucket bucket = proxyManager.getProxy(key, () -> config);
 
         return bucket.tryConsume(1);
     }
 
-    private void handleLimitExceeded(HttpServletResponse response) throws IOException {
+    private void handleApiLimitExceeded(HttpServletResponse response) throws IOException {
         response.setStatus(429);
         response.setContentType("application/json; charset=UTF-8");
         response.getWriter().write("""
             {
                 "status": 429,
-                "error": "Too Many Identity Changes",
-                "message": "Вы слишком часто сбрасываете личность. Подождите 10 минут."
+                "error": "Too Many Requests",
+                "message": "Превышен лимит запросов к API. Подождите немного."
             }
             """);
     }

@@ -21,6 +21,7 @@ public interface UserLibraryRepository extends JpaRepository<UserLibraryEntity, 
 
     @EntityGraph(attributePaths = {"novel"})
     Page<UserLibraryEntity> findByUserId(Long userId, Pageable pageable);
+
     @EntityGraph(attributePaths = {"novel"})
     Page<UserLibraryEntity> findByUserIdAndPrivacyLevelIn(Long userId, List<PrivacyLevel> levels, Pageable pageable);
 
