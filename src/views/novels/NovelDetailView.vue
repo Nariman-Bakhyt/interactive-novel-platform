@@ -306,9 +306,27 @@ const submitComment = () => {
 
 watch(
   () => route.params.id,
-  (newId) => {
+  async (newId, oldId) => {
+    if (oldId) {
+      // Отписываемся от топиков старой новеллы
+      unsubscribeFromTopic(`/topic/novel.${oldId}`);
+      unsubscribeFromTopic(`/topic/novel.${oldId}.ratings`);
+
+      // Сбрасываем кэш комментариев и пагинацию
+      const oldTopicId = `novel.${oldId}`;
+      delete commentsMap.value[oldTopicId];
+      ratingsList.value = [];
+      ratingsPage.value = 0;
+      isRatingsLastPage.value = false;
+      commentsPage.value = 0;
+      isCommentsLastPage.value = false;
+    }
     if (newId) {
-      fetchNovelData();
+      await fetchNovelData();
+      // Если мы находились на вкладке обсуждения или отзывов, переподписываемся и загружаем актуальные данные
+      if (activeTab.value === 'comments' || activeTab.value === 'ratings') {
+        handleTabChange(activeTab.value);
+      }
     }
   },
   { immediate: true }

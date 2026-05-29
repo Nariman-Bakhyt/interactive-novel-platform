@@ -189,7 +189,7 @@ const menu = (event: MouseEvent,res:any) => {
 
 <template>
   <header class="main-header">
-    <RouterLink to="/" class="logo">Novels Platform</RouterLink>
+    <RouterLink to="/" class="logo">WénLib</RouterLink>
     <div class="header-right">
       <div class="search-container" :class="{ 'is-open': isSearchOpen }" ref="searchContainerRef">
         <button class="search-trigger" @click.stop="isSearchOpen = true" v-if="!isSearchOpen">
@@ -269,6 +269,7 @@ const menu = (event: MouseEvent,res:any) => {
 
             <div v-if="showDropdown" class="dropdown-menu profile-menu">
               <button @click="goToProfile">Профиль</button>
+              <button @click="router.push('/library'); showDropdown = false;">Библиотека</button>
               <button @click="router.push('/social'); showDropdown = false;">Сообщество</button>
               <button @click="router.push('/settings'); showDropdown = false;">Настройки</button>
               <div class="separator"></div>
@@ -296,14 +297,15 @@ const menu = (event: MouseEvent,res:any) => {
 </template>
 
 <style scoped>
-.theme-toggle{
-  background:none;
-  border:none;
-  font-size: 1.2rem;
+/* ── Theme toggle ── */
+.theme-toggle {
+  background: none;
+  border: none;
+  font-size: 1.15rem;
   cursor: pointer;
   padding: 8px;
   border-radius: 50%;
-  transition: background 0.2s;
+  transition: background var(--transition-base);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -312,117 +314,137 @@ const menu = (event: MouseEvent,res:any) => {
   background: var(--hover-dropdowb);
 }
 
-.menu-wrapper{
-  position: relative; 
+/* ── Menu wrapper ── */
+.menu-wrapper {
+  position: relative;
   display: flex;
   align-items: center;
   height: 60px;
 }
+
+/* ── Logo — gradient text ── */
 .logo {
-  color: var(--text-header);
   text-decoration: none;
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 12px var(--primary-glow));
 }
+
+/* ── User status row ── */
 .user-status {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   position: relative;
   height: 100%;
-
 }
 
-.plus-btn{
-  background: var(--btn-plus); 
+/* ── Plus button ── */
+.plus-btn {
+  background: var(--gradient-primary);
   color: #fff;
   border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.2s, background 0.2s;
+  box-shadow: 0 4px 12px var(--primary-glow);
+  transition: box-shadow var(--transition-base), transform var(--transition-base);
 }
 .plus-btn:hover {
-  background: var(--btn-plus-hover);
-  transform: translateY(-1px);
+  box-shadow: 0 6px 20px var(--primary-glow-lg);
+  transform: translateY(-2px) scale(1.05);
 }
-
 .plus-icon {
   font-size: 18px;
   font-weight: 600;
   line-height: 1;
 }
+
+/* ── Dropdown menu — glassmorphism ── */
 .dropdown-menu {
   position: absolute;
   top: 60px;
   background: var(--bg-dropdown);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px var(--shadow-color);
+  backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--surface-glass-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-elevated);
   z-index: 100;
   min-width: 200px;
   overflow: hidden;
-  padding: 4px;
+  padding: 6px;
+  animation: dropdownIn 0.18s var(--transition-base) both;
 }
-
-.create-menu {
-  left: auto;
-  right: 0;
+@keyframes dropdownIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-.profile-menu{
-  right: 0;
-  left: auto;
-}
+.create-menu  { left: auto; right: 0; }
+.profile-menu { right: 0; left: auto; }
 
 .dropdown-menu button {
   width: 100%;
-  padding: 8px 12px;
+  padding: 9px 14px;
   background: none;
   border: none;
   color: var(--text-header);
   text-align: left;
   cursor: pointer;
-  font-size: 14px;
-  border-radius: 6px;
-  transition: background 0.2s, color 0.2s;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  transition: background var(--transition-base), color var(--transition-base);
 }
-
 .dropdown-menu button:hover {
   background: var(--hover-dropdowb);
 }
-
 .separator {
   height: 1px;
   background: var(--border-color);
   margin: 4px 0;
+  opacity: 0.6;
 }
 
+/* ── Main header — backdrop-blur ── */
 .main-header {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  padding: 0 24px;
+  padding: 0 28px;
   height: 60px;
   z-index: 1000;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: var(--bg-header);
+  /* glass effect */
+  background: rgba(24, 24, 27, 0.82);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   color: var(--text-header);
-  border-bottom: 1px solid var(--border-color);
+  /* subtle bottom glow line */
+  box-shadow: 0 1px 0 rgba(99, 102, 241, 0.12), 0 4px 16px rgba(0,0,0,0.3);
+}
+[data-theme="light"] .main-header {
+  background: rgba(255, 255, 255, 0.88);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 0 rgba(79, 70, 229, 0.08), 0 4px 16px rgba(0,0,0,0.06);
 }
 
-
+/* ── Dropdown trigger ── */
 .dropdown-trigger {
-  border-radius: 20px;
-  padding: 4px 12px 4px 4px;
-  transition: background 0.2s;
+  border-radius: 24px;
+  padding: 4px 10px 4px 4px;
+  transition: background var(--transition-base), border-color var(--transition-base);
   cursor: pointer;
   outline: none;
   display: inline-flex;
@@ -436,77 +458,92 @@ const menu = (event: MouseEvent,res:any) => {
 }
 .username {
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   padding-left: 4px;
 }
 
-.user-avatar-lg{
+/* ── Avatar with indigo ring ── */
+.user-avatar-lg {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid var(--border-color);
+  border: 2px solid transparent;
+  box-shadow: 0 0 0 2px var(--btn-plus), 0 0 8px var(--primary-glow);
+  transition: box-shadow var(--transition-base);
+}
+.dropdown-trigger:hover .user-avatar-lg {
+  box-shadow: 0 0 0 2px #818cf8, 0 0 14px var(--primary-glow-lg);
 }
 
-
+/* ── Login button ── */
 .login-button-corner {
-  padding: 8px 16px;
-  background-color: var(--btn-plus);
+  padding: 8px 18px;
+  background: var(--gradient-primary);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 9px;
   cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
+  font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 12px var(--primary-glow);
+  transition: box-shadow var(--transition-base), transform var(--transition-base);
 }
 .login-button-corner:hover {
-  background-color: var(--btn-plus-hover);
+  box-shadow: 0 6px 20px var(--primary-glow-lg);
+  transform: translateY(-1px);
 }
+
+/* ── Header right ── */
 .header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
+/* ── Search ── */
 .search-container {
   display: flex;
   align-items: center;
-  transition: all 0.3s ease;
+  transition: all var(--transition-slow);
 }
-
 .search-trigger {
   background: none;
   border: none;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   cursor: pointer;
   padding: 8px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: background var(--transition-base);
 }
 .search-trigger:hover {
   background: var(--hover-dropdowb);
 }
 
+/* Search bar — glassmorphism */
 .search-bar-wrapper {
   display: flex;
   align-items: center;
-  background: var(--bg-main);
+  background: var(--bg-dropdown);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 4px 12px;
-  width: 400px; 
+  border-radius: 10px;
+  padding: 4px 10px;
+  width: 400px;
   position: relative;
-  animation: slideIn 0.3s ease;
+  animation: slideIn 0.25s var(--transition-base);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
-
+.search-bar-wrapper:focus-within {
+  border-color: var(--btn-plus);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
 @keyframes slideIn {
   from { width: 0; opacity: 0; }
-  to { width: 400px; opacity: 1; }
+  to   { width: 400px; opacity: 1; }
 }
-
 .search-input {
   background: none;
   border: none;
@@ -515,90 +552,90 @@ const menu = (event: MouseEvent,res:any) => {
   width: 100%;
   outline: none;
   font-size: 0.9rem;
+  font-family: var(--main-font);
 }
 .search-input::placeholder {
   color: var(--input-placeholder);
 }
-
 .search-type-select {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   cursor: pointer;
   outline: none;
-  margin-right: 8px;
+  margin-right: 6px;
   font-weight: 500;
 }
 
+/* Search results dropdown — glassmorphism */
 .search-results {
   position: absolute;
-  top: 100%;
-  margin-top: 8px;
+  top: calc(100% + 8px);
   left: 0;
   right: 0;
   background: var(--bg-dropdown);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px var(--shadow-color);
-  max-height: 300px;
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  box-shadow: var(--shadow-elevated);
+  max-height: 320px;
   overflow-y: auto;
-  padding: 4px;
+  padding: 6px;
+  animation: dropdownIn 0.18s var(--transition-base) both;
 }
-
 .result-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px;
+  padding: 8px 10px;
   cursor: pointer;
-  transition: background 0.2s;
-  border-radius: 6px;
+  transition: background var(--transition-base);
+  border-radius: 8px;
 }
-
 .result-item:hover {
   background: var(--hover-dropdowb);
 }
-
 .res-thumb {
   width: 40px;
   height: 40px;
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: 6px;
+  flex-shrink: 0;
 }
-
-.res-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.res-name { font-size: 0.9rem; font-weight: 500; }
-.res-sub { font-size: 0.75rem; color: var(--text-muted); }
-
+.res-info { display: flex; flex-direction: column; }
+.res-name { font-size: 0.88rem; font-weight: 500; }
+.res-sub  { font-size: 0.72rem; color: var(--text-muted); }
 .search-loading {
-  padding: 8px;
+  padding: 10px;
   text-align: center;
   color: var(--text-muted);
   font-size: 0.85rem;
 }
 
+/* Close search button */
 .close-search {
   background: none;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
-  font-size: 1.1rem;
+  padding: 4px 6px;
+  font-size: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 6px;
+  transition: color var(--transition-base), background var(--transition-base);
 }
 .close-search:hover {
   color: var(--text-header);
+  background: var(--hover-dropdowb);
 }
 
 .scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: var(--border-color) transparent;
+  scrollbar-color: rgba(99,102,241,0.4) transparent;
 }
 </style>
+
+

@@ -8,6 +8,7 @@ import type {
 } from "@/types/novel.ts";
 import {useToastStore} from "@/components/toast/toastStore.ts";
 import {DEFAULT_COVER} from "@/utils/media.ts";
+import {compressImage} from "@/utils/imageCompressor.ts";
 import {
   createNovel,
   deleteChapter,
@@ -268,30 +269,30 @@ const handleDeleteCover = async () => {
 };
 
 const handleCoverUpload = async (event: Event) => {
-  const file = (event.target as HTMLInputElement).files?.[0];
+  let file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
 
-  
-  if (form.value.cover.startsWith('blob:')) {
-    URL.revokeObjectURL(form.value.cover);
-  }
-  form.value.cover = URL.createObjectURL(file);
+  isUploadingCover.value = true;
+  try {
+    // Сжимаем обложку: макс 600x900px (соотношение 2:3), качество 0.8, конвертируем в WebP
+    file = await compressImage(file, { maxWidth: 600, maxHeight: 900, quality: 0.8, mimeType: 'image/webp' });
 
-  
-  if (isEditMode.value && novelId.value) {
-    
-    isUploadingCover.value = true;
-    try {
+    if (form.value.cover.startsWith('blob:')) {
+      URL.revokeObjectURL(form.value.cover);
+    }
+    form.value.cover = URL.createObjectURL(file);
+
+    if (isEditMode.value && novelId.value) {
       const updatedNovel = await uploadNovelCover(Number(novelId.value), file);
       form.value.cover = updatedNovel.coverUrl;
-    } catch {
-      toastStore.error("Ошибка при загрузке обложки");
-    } finally {
-      isUploadingCover.value = false;
+    } else {
+      form.value.coverImage = file;
     }
-  } else {
-    
-    form.value.coverImage = file;
+  } catch (err: any) {
+    console.error("Ошибка при обработке обложки:", err);
+    toastStore.error("Ошибка при обработке обложки");
+  } finally {
+    isUploadingCover.value = false;
   }
 };
 

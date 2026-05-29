@@ -1,6 +1,6 @@
 import {defineStore} from 'pinia';
 import {computed, nextTick, ref} from 'vue';
-import {createComment, deleteComment, getComments} from "@/api/commentService.ts"; 
+import {createComment, deleteComment, getComments} from "@/api/commentService.ts";
 import {activeSubscriptions, subscribeToTopic, unsubscribeFromTopic} from "@/api/stompService.ts";
 import type {CommentResponseDto} from "@/types/comment.ts";
 
@@ -10,7 +10,7 @@ export const useCommentStore = defineStore('chat', () => {
   const activeTargetId = ref<number | null>(null);
   const targetType = ref<'BLOCK' | 'CHAPTER' | 'NOVEL'>('NOVEL');
   const commentsListRef = ref<HTMLElement | null>(null);
-  const isSending = ref(false); 
+  const isSending = ref(false);
   const pendingQuote = ref<{ text: string, url: string } | null>(null);
   const savedQuote = localStorage.getItem('pending_quote');
 
@@ -22,8 +22,8 @@ export const useCommentStore = defineStore('chat', () => {
 
   const currentPage = ref(0);
   const isLastPage = ref(false);
-  const isLoadingMore = ref(false); 
-  const size = 3;
+  const isLoadingMore = ref(false);
+  const size = 30;
   const setQuoteMode = (quote: { text: string, url: string }) => {
     pendingQuote.value = quote;
     localStorage.setItem('pending_quote', JSON.stringify(quote));
@@ -71,11 +71,11 @@ export const useCommentStore = defineStore('chat', () => {
     targetType.value = type;
     isOpen.value = true;
 
-    
+
     currentPage.value = 0;
     isLastPage.value = false;
     isLoadingMore.value = false;
-    comments.value = []; 
+    comments.value = [];
 
     const topic = `/topic/${type.toLowerCase()}.${id}`;
 
@@ -105,18 +105,33 @@ export const useCommentStore = defineStore('chat', () => {
 
 
       const history = await getComments(
-        commentFilters,    
-        currentPage.value,                 
-        size,                
-        'timestamp,desc'   
+        commentFilters,
+        currentPage.value,
+        size,
+        'timestamp,desc'
       );
 
-      
+
       comments.value = history.content ? [...history.content].reverse() : [];
 
-      
+
       isLastPage.value = history.last;
-      scrollToBottom(true);
+      await nextTick();
+      if (commentsListRef.value) {
+        const saved = localStorage.getItem(`scroll_comment_${id}`);
+        if (saved) {
+          const scrollTopVal = parseInt(saved, 10);
+          commentsListRef.value.scrollTop = scrollTopVal;
+          setTimeout(() => {
+            if (commentsListRef.value) commentsListRef.value.scrollTop = scrollTopVal;
+          }, 100);
+          setTimeout(() => {
+            if (commentsListRef.value) commentsListRef.value.scrollTop = scrollTopVal;
+          }, 300);
+        } else {
+          commentsListRef.value.scrollTop = commentsListRef.value.scrollHeight;
+        }
+      }
     } catch (e) {
       console.error("Ошибка загрузки чата:", e);
     }
@@ -135,26 +150,26 @@ export const useCommentStore = defineStore('chat', () => {
 
 
       const history = await getComments(
-        commentFilters,    
-        currentPage.value,                 
-        size,                
-        'timestamp,desc'   
+        commentFilters,
+        currentPage.value,
+        size,
+        'timestamp,desc'
       );
 
       if (history && history.content) {
-        
+
         comments.value = [...history.content.reverse(), ...comments.value];
 
         isLastPage.value = history.last;
       }
     } catch (e) {
       console.error("Ошибка подгрузки истории:", e);
-      currentPage.value--; 
+      currentPage.value--;
     } finally {
       isLoadingMore.value = false;
     }
   };
-  
+
   const send = async (payload: {
     content: string,
     file?: File | null,
@@ -164,31 +179,31 @@ export const useCommentStore = defineStore('chat', () => {
 
     isSending.value = true;
 
-    
+
     const dto: any = {
       content: payload.content,
       type: 'PLAIN'
     };
 
-    
+
     if (targetType.value === 'BLOCK') dto.blockId = activeTargetId.value;
     else if (targetType.value === 'CHAPTER') dto.chapterId = activeTargetId.value;
     else if (targetType.value === 'NOVEL') dto.novelId = activeTargetId.value;
 
-    const currentQuote = pendingQuote.value; 
+    const currentQuote = pendingQuote.value;
     if (currentQuote) {
       dto.type = 'QUOTE';
       dto.quoteText = currentQuote.text;
       dto.anchorUrl = currentQuote.url;
     }
-    
+
     else if (payload.file) {
       dto.type = 'IMAGE';
     }
 
     try {
-      
-      
+
+
       await createComment(payload.file || null, dto);
       pendingQuote.value = null;
     } catch (e: any) {
@@ -222,11 +237,14 @@ export const useCommentStore = defineStore('chat', () => {
   };
 
   const setContext = async (novelId: number, novelTitle: string, chapterId: number, chapterTitle: string) => {
+    if (currentChapterContext.value && currentChapterContext.value.id !== chapterId) {
+      clearContext();
+    }
     currentNovelContext.value = { id: novelId, title: novelTitle };
     currentChapterContext.value = { id: chapterId, title: chapterTitle };
-    
+
     const topic = `/topic/chapter.${chapterId}`;
-    
+
     if (!contextCallback) {
       contextCallback = (wsEvent: any) => {
         const type = wsEvent.type;

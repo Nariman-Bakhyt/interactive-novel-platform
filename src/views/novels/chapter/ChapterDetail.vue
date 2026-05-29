@@ -7,10 +7,11 @@ import {useSmartScroll} from "@/api/commentService.ts";
 import {useCommentStore} from "@/components/chat/commentStore.ts";
 import ChapterComments from '@/components/chat/ChapterComments.vue';
 import { onUnmounted } from 'vue';
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 
 const route = useRoute();
 const router = useRouter();
-const chatStore = useCommentStore(); 
+const chatStore = useCommentStore();
 
 const chapter = ref<ChapterResponseDto | null>(null);
 const chaptersList = ref<ChapterShortResponseDto[]>([]);
@@ -27,6 +28,39 @@ watch(() => route.query.q, async (newText) => {
   scrollToTarget();
 }, { immediate: true });
 
+let scrollTimeout: any = null;
+let isLeaving = false;
+
+const saveCurrentScroll = () => {
+  if (!isLoading.value && chapter.value && !isLeaving) {
+    const scrollPos = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    localStorage.setItem(`scroll_n_${nId.value}_c_${cId.value}`, scrollPos.toString());
+  }
+};
+
+onBeforeRouteLeave(() => {
+  saveCurrentScroll();
+  isLeaving = true;
+});
+
+onBeforeRouteUpdate(() => {
+  saveCurrentScroll();
+});
+
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'hidden') {
+    saveCurrentScroll();
+  }
+};
+
+const handleScroll = () => {
+  if (scrollTimeout || isLeaving) return;
+  scrollTimeout = setTimeout(() => {
+    saveCurrentScroll();
+    scrollTimeout = null;
+  }, 200);
+};
+
 const fetchData = async () => {
   try {
     isLoading.value = true;
@@ -34,34 +68,81 @@ const fetchData = async () => {
     if (chaptersList.value.length === 0) {
       const novelData = await getNovelById(nId.value);
       chaptersList.value = (novelData.chapters || []).sort((a, b) => a.chapterNumber - b.chapterNumber);
-      await chatStore.setContext(nId.value, novelData.title, cId.value, chapter.value.title);
+      await chatStore.setContext(nId.value, novelData.novel.title, cId.value, chapter.value.title);
     } else {
-      const novelTitle = chaptersList.value.length > 0 ? "Новелла" : "Новелла"; // Or find novel title from another store if available
+      const novelTitle = chaptersList.value.length > 0 ? "Новелла" : "Новелла";
       await chatStore.setContext(nId.value, novelTitle, cId.value, chapter.value.title);
     }
   } catch (error) {
     console.error("Ошибка при загрузке главы:", error);
   } finally {
     isLoading.value = false;
-    window.scrollTo(0, 0);
+    nextTick(() => {
+      const saved = localStorage.getItem(`scroll_n_${nId.value}_c_${cId.value}`);
+      if (saved && !route.query.q) {
+        const y = parseInt(saved, 10);
+        
+        // Если это перезагрузка страницы (F5), браузер сам восстановит скролл, не вмешиваемся
+        const navEntries = performance.getEntriesByType('navigation');
+        if (navEntries.length > 0 && (navEntries[0] as PerformanceNavigationTiming).type === 'reload') {
+          return;
+        }
+
+        let userScrolled = false;
+        const cancelRestore = () => { userScrolled = true; };
+        window.addEventListener('wheel', cancelRestore, { once: true });
+        window.addEventListener('touchstart', cancelRestore, { once: true });
+
+        setTimeout(async () => {
+          const images = document.querySelectorAll('.chapter-content img');
+          const promises = Array.from(images).map(img => {
+            const htmlImg = img as HTMLImageElement;
+            if (htmlImg.complete) return Promise.resolve();
+            return new Promise(resolve => {
+              htmlImg.addEventListener('load', resolve, { once: true });
+              htmlImg.addEventListener('error', resolve, { once: true });
+            });
+          });
+          
+          await Promise.all(promises);
+          
+          if (!userScrolled) {
+            window.scrollTo({ top: y, behavior: 'instant' });
+          }
+          
+          window.removeEventListener('wheel', cancelRestore);
+          window.removeEventListener('touchstart', cancelRestore);
+        }, 50);
+      } else if (!route.query.q) {
+        window.scrollTo(0, 0);
+      }
+    });
   }
 };
 
+onMounted(() => {
+  fetchData();
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+});
+
 onUnmounted(() => {
+  saveCurrentScroll();
   chatStore.clearContext();
+  window.removeEventListener('scroll', handleScroll);
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
+  if (scrollTimeout) clearTimeout(scrollTimeout);
 });
 
 
 const toggleComments = (blockId: number | null) => {
   if (!blockId) return;
   chatStore.openChat(blockId, 'BLOCK');
-  
+
   window.dispatchEvent(new CustomEvent('open-messenger'));
 };
 
 watch(() => route.params.chapterId, (newId) => { if (newId) fetchData(); });
-
-onMounted(fetchData);
 
 
 const chapterNumber = computed(() => {
@@ -86,7 +167,7 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
       <p>Загрузка страницы...</p>
     </div>
 
-    
+
     <div v-else-if="chapter" class="reader-container">
       <nav class="reader-nav">
         <button @click="router.push(`/novel/${nId}`)" class="btn-back">
@@ -135,7 +216,7 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
           Следующая <span class="icon">→</span>
         </button>
       </footer>
-      
+
       <ChapterComments />
     </div>
   </div>
@@ -143,7 +224,7 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
 
 <style scoped>
 ::highlight(search-results) {
-  background-color: #fcd34d !important; 
+  background-color: #fcd34d !important;
   color: #000 !important;
   border-radius: 2px;
 }
@@ -152,7 +233,7 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
   min-height: 100vh;
   background-color: var(--bg-editor-page);
   color: var(--text-header);
-  padding: 80px 24px 100px; 
+  padding: 80px 24px 100px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -161,13 +242,13 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
 
 .reader-container {
   width: 100%;
-  max-width: 760px; 
+  max-width: 760px;
   background: var(--bg-editor-sheet);
   padding: 48px 64px;
   border-radius: 24px;
   box-shadow: 0 4px 12px var(--shadow-color);
   border: 1px solid var(--border-color);
-  
+
 }
 
 
@@ -177,14 +258,14 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
   display: flex;
   align-items: flex-start;
   margin-bottom: 0;
-  padding: 8px 16px; 
+  padding: 8px 16px;
   border-radius: 8px;
   transition: background-color 0.2s;
-  cursor: pointer; 
+  cursor: pointer;
 }
 
 .content-block-wrapper:hover {
-  background-color: rgba(161, 161, 170, 0.05); 
+  background-color: rgba(161, 161, 170, 0.05);
 }
 
 .content-block-wrapper.active-block {
@@ -195,7 +276,7 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
 .block-main {
   margin: 0;
   flex: 1;
-  width: 100%; 
+  width: 100%;
 }
 
 
@@ -301,17 +382,17 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
 .chapter-content {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-size: 1.25rem; 
+  font-size: 1.25rem;
   line-height: 1.8;
   color: var(--text-header);
 }
 
 .text-block {
-  margin-bottom: 1.5em; 
+  margin-bottom: 1.5em;
   white-space: pre-wrap;
   word-wrap: break-word;
   color: var(--text-header);
-  opacity: 0.9; 
+  opacity: 0.9;
 }
 
 .image-block {
@@ -403,7 +484,7 @@ const navigateTo = (id: number) => router.push(`/novels/${nId.value}/chapter/${i
     padding: 32px 24px;
     border-radius: 16px;
   }
-  .block-actions { right: -8px; } 
+  .block-actions { right: -8px; }
 }
 
 @media (max-width: 600px) {

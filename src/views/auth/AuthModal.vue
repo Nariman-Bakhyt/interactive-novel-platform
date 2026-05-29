@@ -206,25 +206,43 @@ const handleVerifyRegister = async () => {
 
 <style scoped>
 
+/* ── Backdrop ── */
 .modal-backdrop {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex; justify-content: center; align-items: center;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  justify-content: center;
+  align-items: center;
   z-index: 2000;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px) saturate(120%);
+  animation: backdropIn 0.2s ease both;
+}
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
+/* ── Modal window — glassmorphism ── */
 .modal-window {
-  background: var(--bg-dropdown); 
-  padding: 32px;
-  border-radius: 16px;
+  background: var(--bg-dropdown);
+  backdrop-filter: blur(28px) saturate(160%);
+  padding: 36px;
+  border-radius: 20px;
   width: 100%;
-  max-width: 400px;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-  border: 1px solid var(--border-color);
+  max-width: 420px;
+  box-shadow: var(--shadow-elevated), 0 0 0 1px rgba(99,102,241,0.15);
+  border: 1px solid var(--surface-glass-border);
   position: relative;
+  animation: modalIn 0.25s cubic-bezier(0.4,0,0.2,1) both;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* ── Close button ── */
 .modal-header-actions {
   position: absolute;
   top: 16px;
@@ -234,36 +252,43 @@ const handleVerifyRegister = async () => {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   cursor: pointer;
   line-height: 1;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
+  padding: 6px;
+  border-radius: 8px;
+  transition: background var(--transition-base), color var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .close-btn:hover {
   background: var(--hover-dropdowb);
   color: var(--text-header);
 }
 
+/* ── Tabs ── */
 .tabs {
-  display: flex; margin-bottom: 24px; border-bottom: 1px solid var(--border-color);
-  gap: 16px;
+  display: flex;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--surface-glass-border);
+  gap: 8px;
 }
-
 .tabs button {
-  flex: 1; padding: 12px; border: none; background: none;
-  cursor: pointer; font-weight: 600; color: var(--text-muted); font-size: 1rem;
-  transition: color 0.2s;
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-family: var(--main-font);
+  transition: color var(--transition-base);
   position: relative;
 }
-.tabs button:hover {
-  color: var(--text-header);
-}
-
-.tabs button.active {
-  color: var(--btn-plus);
-}
+.tabs button:hover { color: var(--text-header); }
+.tabs button.active { color: #818cf8; }
 .tabs button.active::after {
   content: '';
   position: absolute;
@@ -271,80 +296,115 @@ const handleVerifyRegister = async () => {
   left: 0;
   width: 100%;
   height: 2px;
-  background: var(--btn-plus);
+  background: var(--gradient-primary);
   border-radius: 2px 2px 0 0;
 }
 
+/* ── Form inputs ── */
 input {
-  width: 100%; margin-bottom: 16px; padding: 14px 16px;
-  border: 1px solid var(--border-color); border-radius: 8px;
-  background: var(--bg-main);
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 13px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
   color: var(--text-header);
   font-size: 0.95rem;
-  transition: border-color 0.2s;
+  font-family: var(--main-font);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  outline: none;
+  box-sizing: border-box;
+  display: block;
 }
 input:focus {
-  outline: none;
   border-color: var(--btn-plus);
+  box-shadow: 0 0 0 3px var(--primary-glow);
 }
-input::placeholder {
-  color: var(--input-placeholder);
-}
+input::placeholder { color: var(--input-placeholder); }
 
+/* Code input */
 .code-input {
   text-align: center;
-  letter-spacing: 0.5em;
-  font-size: 1.25rem;
+  letter-spacing: 0.6em;
+  font-size: 1.3rem;
   font-weight: 700;
   padding: 16px;
 }
 
+/* ── Submit button — gradient ── */
 .submit-btn {
-  width: 100%; margin-top: 8px; padding: 14px;
-  background-color: var(--btn-plus); color: white;
-  border: none; border-radius: 8px; cursor: pointer; font-size: 1rem;
-  font-weight: 600;
-  transition: background 0.2s, transform 0.2s;
+  width: 100%;
+  margin-top: 6px;
+  padding: 14px;
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: var(--main-font);
+  box-shadow: 0 4px 16px var(--primary-glow);
+  transition: box-shadow var(--transition-base), transform var(--transition-base);
+  box-sizing: border-box;
+  display: block;
 }
-
 .submit-btn:hover:not(:disabled) {
-  background-color: var(--btn-plus-hover);
-  transform: translateY(-1px);
+  box-shadow: 0 8px 28px var(--primary-glow-lg);
+  transform: translateY(-2px);
 }
+.submit-btn:active:not(:disabled) { transform: translateY(0); }
+.submit-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
-.submit-btn:disabled {
-  opacity: 0.6; cursor: not-allowed;
-}
-
-.btn-width {
-  box-sizing: border-box; display: block;
-}
-
+/* ── Links ── */
 .link-container {
-  margin-top: 20px; text-align: center;
+  margin-top: 18px;
+  text-align: center;
 }
-
 .text-link {
-  color: var(--btn-plus); font-size: 0.9rem; cursor: pointer; font-weight: 500; transition: color 0.2s;
+  color: #818cf8;
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: color var(--transition-base);
 }
 .text-link:hover {
+  color: var(--btn-plus);
   text-decoration: underline;
-  color: var(--btn-plus-hover);
 }
 
+/* ── Messages ── */
 .message {
-  padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; text-align: center;
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 18px;
+  font-size: 0.88rem;
+  text-align: center;
   font-weight: 500;
+  backdrop-filter: blur(6px);
+}
+.success {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.error {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-.success { background-color: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
-.error { background-color: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
-.info-text { font-size: 0.95rem; color: var(--text-muted); margin-bottom: 20px; text-align: center; line-height: 1.5;}
+.info-text {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+  text-align: center;
+  line-height: 1.55;
+}
 
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s;
-}
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-}
+.fade-enter-active, .fade-leave-active { transition: opacity 0.25s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+.btn-width { box-sizing: border-box; display: block; }
 </style>
+

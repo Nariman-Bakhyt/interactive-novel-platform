@@ -3,6 +3,7 @@ import {computed, ref, watch} from 'vue';
 import {uploadAvatar} from "@/api/profileService.ts";
 import type {ProfileResponseDto} from '@/types/auth';
 import {useAuthStore} from "@/api/auth.ts";
+import {compressImage} from "@/utils/imageCompressor.ts";
 
 const props = defineProps<{
   initialAvatarUrl: string | null;
@@ -20,7 +21,7 @@ const isUploading = ref(false);
 
 const handleFileChange = async (event: Event) => {
   const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
+  let file = input.files?.[0];
   if (!file) return;
 
   if (!validateFile(file)) {
@@ -30,6 +31,9 @@ const handleFileChange = async (event: Event) => {
 
   isUploading.value = true; 
   try {
+    // Сжимаем аватарку перед отправкой: макс 500x500px, качество 0.8, конвертируем в WebP
+    file = await compressImage(file, { maxWidth: 500, maxHeight: 500, quality: 0.8, mimeType: 'image/webp' });
+
     const updatedUserDto = await uploadAvatar(file);
     currentAvatarUrl.value = updatedUserDto.avatarUrl;
     message.value = 'Аватар обновлен';
@@ -53,7 +57,7 @@ const triggerFileUpload = () => {
 };
 
 const validateFile = (file: File): boolean => {
-  const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
+  const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
   const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; 
 
   if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -63,7 +67,7 @@ const validateFile = (file: File): boolean => {
   }
 
   if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-    message.value = 'Недопустимый формат файла. Разрешены только JPG, PNG, GIF.';
+    message.value = 'Недопустимый формат файла. Разрешены только JPG, PNG, GIF, WEBP.';
     isError.value = true;
     return false;
   }
@@ -118,7 +122,7 @@ const avatarDisplayUrl = computed(() => {
       type="file"
       ref="fileInput"
       @change="handleFileChange"
-      accept="image/jpeg, image/png, image/gif"
+      accept="image/jpeg, image/png, image/gif, image/webp"
       style="display: none;"
     >
 

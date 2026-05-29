@@ -126,7 +126,7 @@ const openFollowing = () => {
           </button>
         </div>
 
-        <div v-else class="social-actions">
+        <div v-else-if="authStore.isAuthenticated" class="social-actions">
           <RelationshipButton :userId="profileData.id" />
         </div>
       </aside>
@@ -152,15 +152,15 @@ const openFollowing = () => {
             <span class="stat-value">{{ profileData.novelsCount || 0 }}</span>
             <span class="stat-label">Новелл</span>
           </div>
-          <div class="stat-box clickable" @click="openFriends">
+          <div :class="['stat-box', { clickable: isMyProfile }]" @click="openFriends">
             <span class="stat-value">{{ profileData.friendsCount }}</span>
             <span class="stat-label">Друзей</span>
           </div>
-          <div class="stat-box clickable" @click="openFollowers">
+          <div :class="['stat-box', { clickable: isMyProfile }]" @click="openFollowers">
             <span class="stat-value">{{ profileData.followersCount || 0 }}</span>
             <span class="stat-label">Подписчиков</span>
           </div>
-          <div class="stat-box clickable" @click="openFollowing">
+          <div :class="['stat-box', { clickable: isMyProfile }]" @click="openFollowing">
             <span class="stat-value">{{ profileData.followingCount || 0 }}</span>
             <span class="stat-label">Подписки</span>
           </div>
@@ -186,62 +186,113 @@ const openFollowing = () => {
 <style scoped>
 
 .social-actions {
-  margin-top: 24px;
+  margin-top: 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .profile-page {
   max-width: 1000px;
-  margin: 100px auto 60px; 
+  margin: 92px auto 60px;
   padding: 0 24px;
   color: var(--text-header);
+  animation: fadeInUp 0.5s cubic-bezier(0.4,0,0.2,1) both;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .profile-layout {
   display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 32px;
+  grid-template-columns: 300px 1fr;
+  gap: 28px;
+  align-items: start;
 }
 
-
+/* ── Sidebar — glassmorphism ── */
 .profile-sidebar {
   background: var(--bg-dropdown);
+  backdrop-filter: blur(20px) saturate(150%);
   padding: 32px;
-  border-radius: 16px;
+  border-radius: var(--card-radius);
   text-align: center;
   height: fit-content;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 4px 12px var(--shadow-color);
+  border: 1px solid var(--surface-glass-border);
+  box-shadow: var(--shadow-card);
+  position: sticky;
+  top: 76px;
 }
 
+/* ── Avatar with gradient ring ── */
 .avatar-wrapper {
   position: relative;
-  width: 180px;
-  height: 180px;
-  margin: 0 auto 24px;
+  width: 156px;
+  height: 156px;
+  margin: 0 auto 20px;
 }
-
+/* Gradient ring via border trick */
+.avatar-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  z-index: 0;
+  opacity: 0.85;
+  transition: opacity var(--transition-base);
+}
+.avatar-wrapper:hover::before {
+  opacity: 1;
+  box-shadow: 0 0 28px var(--primary-glow-lg);
+}
 .profile-avatar {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid var(--border-color);
+  border: 3px solid var(--bg-dropdown);
+  box-shadow: 0 0 20px var(--primary-glow);
+  transition: box-shadow var(--transition-base);
 }
-
+.avatar-wrapper:hover .profile-avatar {
+  box-shadow: 0 0 36px var(--primary-glow-lg);
+}
 
 .profile-name {
   margin: 0 0 4px;
-  font-size: 1.75rem;
+  font-size: 1.65rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .profile-role {
   color: var(--text-muted);
-  font-size: 1rem;
-  margin-bottom: 32px;
+  font-size: 0.9rem;
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.profile-role::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--btn-plus);
+  box-shadow: 0 0 6px var(--primary-glow);
+}
+
+/* ── Profile action buttons ── */
+.profile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .btn-edit-full {
@@ -249,118 +300,157 @@ const openFollowing = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px; 
-  padding: 12px 20px;
-  background-color: var(--bg-main); 
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  gap: 10px;
+  padding: 11px 16px;
+  background: var(--surface-glass);
+  border: 1px solid var(--surface-glass-border);
+  border-radius: 10px;
   color: var(--text-header);
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background var(--transition-base), border-color var(--transition-base), transform var(--transition-base);
   white-space: nowrap;
 }
-
 .btn-edit-full:hover {
-  background-color: var(--hover-dropdowb); 
-  border-color: var(--text-muted);
+  background: var(--hover-dropdowb);
+  border-color: var(--btn-plus);
+  transform: translateY(-1px);
 }
+.btn-edit-full span { font-size: 1.1rem; }
 
-.btn-edit-full span {
-  font-size: 1.25rem; 
-}
-
-
+/* ── Info card ── */
 .info-card {
   background: var(--bg-dropdown);
-  padding: 32px;
-  border-radius: 16px;
-  border: 1px solid var(--border-color);
-  margin-bottom: 32px;
-  box-shadow: 0 4px 12px var(--shadow-color);
+  backdrop-filter: blur(16px);
+  padding: 28px;
+  border-radius: var(--card-radius);
+  border: 1px solid var(--surface-glass-border);
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-card);
 }
-
 .info-card h3 {
   margin-top: 0;
-  margin-bottom: 24px;
-  font-size: 1.25rem;
+  margin-bottom: 20px;
+  font-size: 1.15rem;
+  font-weight: 700;
   border-bottom: 1px solid var(--border-color);
-  padding-bottom: 16px;
-  font-weight: 600;
+  padding-bottom: 14px;
+  position: relative;
+}
+.info-card h3::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 32px;
+  height: 2px;
+  background: var(--gradient-primary);
+  border-radius: 2px;
 }
 
 .info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  gap: 20px;
 }
 
 .info-item label {
   display: block;
   color: var(--text-muted);
-  font-size: 0.85rem;
-  margin-bottom: 6px;
-  font-weight: 500;
+  font-size: 0.75rem;
+  margin-bottom: 5px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
-
 .info-item span {
   font-weight: 500;
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
-
+/* ── Stats row ── */
 .stats-row {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
+  gap: 20px;
 }
 
 .stat-box {
   background: var(--bg-dropdown);
-  padding: 24px;
-  border-radius: 16px;
+  backdrop-filter: blur(16px);
+  padding: 22px;
+  border-radius: var(--card-radius);
   text-align: center;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 4px 12px var(--shadow-color);
-  transition: transform 0.2s, border-color 0.2s;
+  border: 1px solid var(--surface-glass-border);
+  box-shadow: var(--shadow-card);
+  transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
 }
-
-.stat-box.clickable {
-  cursor: pointer;
-}
-
+.stat-box.clickable { cursor: pointer; }
 .stat-box.clickable:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
   border-color: var(--btn-plus);
+  box-shadow: var(--shadow-glow), var(--shadow-card);
 }
 
+/* Gradient stat value */
 .stat-value {
   display: block;
   font-size: 2rem;
-  font-weight: 700;
-  color: var(--btn-plus);
+  font-weight: 800;
   margin-bottom: 4px;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
 }
-
 .stat-label {
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 500;
 }
 
-.profile-actions {
+/* ── Loading / error ── */
+.loading-container {
   display: flex;
   flex-direction: column;
-  gap: 12px; 
+  align-items: center;
+  padding: 80px 24px;
+  gap: 16px;
+  color: var(--text-muted);
 }
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--btn-plus);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
+.error-container {
+  text-align: center;
+  padding: 80px 24px;
+  color: var(--text-muted);
+}
+.btn-secondary {
+  margin-top: 16px;
+  padding: 10px 22px;
+  background: var(--surface-glass);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-header);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background var(--transition-base);
+}
+.btn-secondary:hover { background: var(--hover-dropdowb); }
 
 @media (max-width: 768px) {
-  .profile-layout {
-    grid-template-columns: 1fr;
-  }
+  .profile-layout { grid-template-columns: 1fr; }
+  .profile-sidebar { position: static; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
 }
 </style>

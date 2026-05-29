@@ -29,6 +29,20 @@ export default defineConfig(({ mode }) => {
           target: `http://${env.VITE_API_IP}:8080`,
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, '/api'),
+          configure: (proxy, _options) => {
+            proxy.on('proxyReq', (proxyReq, req, _res) => {
+              proxyReq.setHeader('X-Visitor-Id2', 'dev-fingerprint-bypass');
+            });
+          }
+        },
+        '/ws': {
+          target: `ws://${env.VITE_API_IP}:8080`,
+          ws: true,
+          changeOrigin: true
+        },
+        '/media': {
+          target: `http://${env.VITE_API_IP}:9000`,
+          changeOrigin: true
         }
       }
     }

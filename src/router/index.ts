@@ -27,17 +27,16 @@ const router = createRouter({
           component: HomeView ,
         },
         {
-          path: '/profile/:id?', 
+          path: '/profile/:id?',
           name: 'profile',
           // Ленивая загрузка (lazy loading) разделяет код на чанки (Vite code splitting), снижая размер первичного бандла и ускоряя LCP.
-          component: () => import('@/views/ProfileView.vue'),
-          meta: { requiresAuth: true },
+          component: () => import('@/views/ProfileView.vue')
         },
         {
           path: '/my-novels',
           name: 'MyNovels',
           component: () => import('@/views/novels/MyNovels.vue'),
-          meta: { requiresAuth: true } 
+          meta: { requiresAuth: true }
         },
         {
           path: '/novels/create',
@@ -50,7 +49,7 @@ const router = createRouter({
           name: 'EditNovel',
           component: () => import('@/views/novels/NovelEditor.vue'),
           meta: { requiresAuth: true },
-          props: true 
+          props: true
         },
         {
           path: '/novel/:id',
@@ -63,7 +62,7 @@ const router = createRouter({
           name: 'createChapter',
           component: () => import('@/views/novels/chapter/ChapterEditor.vue'),
           meta: { requiresAuth: true },
-          props: true 
+          props: true
         },
         {
           path: '/novels/:novelId/chapters/:chapterId/edit',
@@ -89,11 +88,17 @@ const router = createRouter({
           component: () => import('@/views/SettingsView.vue')
         },
         {
+          path: '/library',
+          name: 'LibraryView',
+          component: () => import('@/views/LibraryView.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
           path: '/social',
           name: 'SocialConnections',
-          component: () => import('@/views/SocialView.vue'), 
+          component: () => import('@/views/SocialView.vue'),
           meta: {
-            requiresAuth: true, 
+            requiresAuth: true,
             title: 'Мои связи'
           }
         }

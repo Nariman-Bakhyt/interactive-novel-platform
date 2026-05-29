@@ -1,6 +1,5 @@
 import type {PrivacyLevel} from "@/types/user.ts";
-
-export enum LibraryStatus {
+import type {NovelResponseDto} from "@/types/novel.ts";export enum LibraryStatus {
   READING = 'READING',
   PLANNING = 'PLANNING',
   COMPLETED = 'COMPLETED',
@@ -16,9 +15,7 @@ export interface UserLibraryRequestDto{
 }
 
 export interface UserLibraryResponseDto {
-  novelId: number;
-  title: string;
-  coverUrl: string;
+  novel: NovelResponseDto;
   status: LibraryStatus;
   createdAt: string;
   privacyLevel: PrivacyLevel;

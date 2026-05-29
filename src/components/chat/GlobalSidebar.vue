@@ -6,30 +6,38 @@ import {type ConversationResponseDto, ConversationType} from "@/types/chat.ts";
 import {useAuthStore} from "@/api/auth.ts";
 import ChatCreationModal from './ChatCreationModal.vue';
 import {useToastStore} from "@/components/toast/toastStore.ts";
+import {compressImage} from "@/utils/imageCompressor.ts";
 
 const commentStore = useCommentStore();
 const messengerStore = useMessengerStore();
 const authStore = useAuthStore();
 const toastStore = useToastStore();
 
-const miniTab = ref<'CHATS' | 'COMMENTS'>('CHATS');
+const miniTab = ref<'CHATS' | 'COMMENTS'>((localStorage.getItem('messenger_minitab') as 'CHATS' | 'COMMENTS') || 'CHATS');
+watch(miniTab, (val) => {
+  localStorage.setItem('messenger_minitab', val);
+});
+
 const openUserMenu = inject('openUserMenu') as (event: MouseEvent, userId: number, username: string) => void;
 
 const isSidebarExpanded = ref(false);
 const searchQuery = ref('');
 const showChatInfo = ref(false);
 
-const isMessengerVisible = ref(false);
+const isMessengerVisible = ref(localStorage.getItem('messenger_visible') === 'true');
+watch(isMessengerVisible, (val) => {
+  localStorage.setItem('messenger_visible', val.toString());
+});
+
+const openMessengerHandler = () => {
+  isMessengerVisible.value = true;
+};
 
 onMounted(() => {
-  window.addEventListener('open-messenger', () => {
-    isMessengerVisible.value = true;
-  });
+  window.addEventListener('open-messenger', openMessengerHandler);
 });
 onUnmounted(() => {
-  window.removeEventListener('open-messenger', () => {
-    isMessengerVisible.value = true;
-  });
+  window.removeEventListener('open-messenger', openMessengerHandler);
 });
 
 const filteredConversations = computed(() => {
@@ -181,17 +189,33 @@ const onFileChange = (e: Event) => {
 
 const handleSend = async () => {
   if (!activeContext.value || activeContext.value.isSending) return;
-  await activeContext.value.send({ content: newCommentText.value, file: selectedFile.value });
+  
+  let fileToUpload = selectedFile.value;
+  if (fileToUpload) {
+    // Слабое сжатие для сообщений и комментариев: макс 2048x2048px, качество 0.85
+    fileToUpload = await compressImage(fileToUpload, { maxWidth: 2048, maxHeight: 2048, quality: 0.85 });
+  }
+
+  await activeContext.value.send({ content: newCommentText.value, file: fileToUpload });
   newCommentText.value = '';
   selectedFile.value = null;
 };
 
 const formatTime = (ts: string) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-const handleScroll = () => {
+const handleScroll = (e: Event) => {
   isScrolling.value = true;
   if (scrollTimeout) clearTimeout(scrollTimeout);
   scrollTimeout = window.setTimeout(() => { isScrolling.value = false; }, 1500);
+
+  const container = e.target as HTMLElement;
+  if (container) {
+    if (commentStore.isOpen && commentStore.activeTargetId) {
+      localStorage.setItem(`scroll_comment_${commentStore.activeTargetId}`, container.scrollTop.toString());
+    } else if (messengerStore.activeConversationId) {
+      localStorage.setItem(`scroll_chat_${messengerStore.activeConversationId}`, container.scrollTop.toString());
+    }
+  }
 };
 
 const zoomImage = (url: string) => {

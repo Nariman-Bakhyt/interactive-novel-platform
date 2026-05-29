@@ -93,7 +93,7 @@ export async function unblockUser(dto: UserRelationRequestDto): Promise<void> {
   await apiClient.post('/social/blocks/unblock', dto);
 }
 
-export async function getMyBlackList(page: number = 0,size: number = 20,sort: string = 'updatedAt,desc'): Promise<SliceModel<UserRelationResponseDto>> {
+export async function getMyBlackList(page: number = 0,size: number = 20,sort: string = 'createdAt,desc'): Promise<SliceModel<UserRelationResponseDto>> {
   const response = await apiClient.get('/social/blocks', {
     params: {page, size, sort},
   });

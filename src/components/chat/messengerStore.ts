@@ -15,7 +15,7 @@ import {
   sendTypingStatus,
   toggleChatSettings
 } from "@/api/chatService";
-import {deactivateStomp, subscribeToTopic, unsubscribeFromTopic} from "@/api/stompService";
+import {activateStomp, isConnected, deactivateStomp, subscribeToTopic, unsubscribeFromTopic} from "@/api/stompService";
 import {
   type ConversationResponseDto,
   type CreateGroupRequest,
@@ -76,12 +76,20 @@ export const useMessengerStore = defineStore('messenger', () => {
   const typingUsers = ref<Record<number, string>>({}); 
   let typingTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  
-  
+  const globalSocketTopic = ref<string | null>(null);
+  let connectionCheckInterval: ReturnType<typeof setInterval> | null = null;
   
   const initGlobalSocket = (myUserId: number) => {
     const topic = `/topic/user.${myUserId}`;
-
+    if (globalSocketTopic.value === topic) {
+      console.log(`[WebSocket] Уже подключены к своему каналу: ${topic}`);
+      return;
+    }
+    if (globalSocketTopic.value) {
+      unsubscribeFromTopic(globalSocketTopic.value);
+    }
+    
+    globalSocketTopic.value = topic;
     subscribeToTopic<WsEventDto<any>>(topic, (event) => {
       switch (event.domain) {
         case 'CHAT':
@@ -98,6 +106,16 @@ export const useMessengerStore = defineStore('messenger', () => {
           break;
       }
     });
+
+    // Периодическая проверка раз в 5 секунд: если соединение упало (например, из-за сна устройства), 
+    // принудительно вызываем activateStomp() для возобновления связи.
+    if (connectionCheckInterval) clearInterval(connectionCheckInterval);
+    connectionCheckInterval = setInterval(() => {
+      if (!isConnected.value) {
+        console.warn(`[WebSocket] Обнаружена потеря соединения с ${topic}. Принудительное переподключение...`);
+        activateStomp();
+      }
+    }, 5000);
   };
 
   const handleChatDomainEvent = (event: WsEventDto<any>) => {
@@ -180,6 +198,7 @@ export const useMessengerStore = defineStore('messenger', () => {
     }
 
     activeConversationId.value = conversationId;
+    localStorage.setItem('active_conversation_id', conversationId.toString());
 
     currentPage.value = 0;
     isLastPage.value = false;
@@ -207,7 +226,23 @@ export const useMessengerStore = defineStore('messenger', () => {
       const history = await getChatMessages(conversationId, currentPage.value, pageSize);
       messages.value = history.content ? [...history.content].reverse() : [];
       isLastPage.value = history.last;
-      scrollToBottom(true);
+      
+      await nextTick();
+      if (messagesListRef.value) {
+        const savedScroll = localStorage.getItem(`scroll_chat_${conversationId}`);
+        if (savedScroll) {
+          const scrollTopVal = parseInt(savedScroll, 10);
+          messagesListRef.value.scrollTop = scrollTopVal;
+          setTimeout(() => {
+            if (messagesListRef.value) messagesListRef.value.scrollTop = scrollTopVal;
+          }, 100);
+          setTimeout(() => {
+            if (messagesListRef.value) messagesListRef.value.scrollTop = scrollTopVal;
+          }, 300);
+        } else {
+          messagesListRef.value.scrollTop = messagesListRef.value.scrollHeight;
+        }
+      }
     } catch (e) {
       handleError("openChat", e);
       throw e;
@@ -326,6 +361,7 @@ export const useMessengerStore = defineStore('messenger', () => {
       unsubscribeFromTopic(`/topic/chat.${activeConversationId.value}`);
     }
     activeConversationId.value = null;
+    localStorage.removeItem('active_conversation_id');
     messages.value = [];
   };
 
@@ -395,8 +431,14 @@ export const useMessengerStore = defineStore('messenger', () => {
   };
 
   const clearAndDisconnect = () => {
+    if (connectionCheckInterval) {
+      clearInterval(connectionCheckInterval);
+      connectionCheckInterval = null;
+    }
     deactivateStomp();
     activeConversationId.value = null;
+    globalSocketTopic.value = null;
+    localStorage.removeItem('active_conversation_id');
     conversations.value = [];
     messages.value = [];
     typingUsers.value = {};

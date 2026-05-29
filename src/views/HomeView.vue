@@ -43,9 +43,8 @@ onUnmounted(() => {
 <template>
   <div class="page-wrapper">
     <section class="hero-section">
-      <div class="overlay"></div>
       <div class="content">
-        <h1 class="title">Read<span class="accent">Hub</span></h1>
+        <h1 class="title">Wén<span class="accent">Lib</span></h1>
         <p class="subtitle">Погружайся в миры, созданные сообществом.</p>
         <router-link to="/novels" class="btn primary">Начать читать</router-link>
       </div>
@@ -77,74 +76,126 @@ onUnmounted(() => {
   min-height: 100vh;
   color: var(--text-header);
 }
-.novels-container {
-  max-width: 1200px;
-  margin: -60px auto 0;
-  padding: 0 24px 100px;
-  position: relative;
-  z-index: 20;
-}
-.novels-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 2rem;
-  align-items: stretch;
-}
 
-
+/* ── Hero ── */
 .hero-section {
   position: relative;
-  height: 80vh;
+  height: 65vh;
+  min-height: 420px;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: url('https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2070&auto=format&fit=crop') center/cover;
+  overflow: hidden;
+  /* layered gradient background */
+  background:
+    radial-gradient(ellipse 70% 70% at 50% -10%, rgba(99,102,241,0.2) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 30% at 80% 80%, rgba(129,140,248,0.06) 0%, transparent 60%),
+    var(--bg-main);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
-.overlay {
+[data-theme="light"] .hero-section {
+  background:
+    radial-gradient(ellipse 70% 70% at 50% -10%, rgba(79,70,229,0.12) 0%, transparent 65%),
+    var(--bg-main);
+  border-bottom-color: rgba(0,0,0,0.06);
+}
+
+/* Noise grain overlay */
+.hero-section::before {
+  content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(9, 9, 11, 0.6), var(--bg-main));
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 }
+
 .content {
   position: relative;
   z-index: 10;
   text-align: center;
+  padding: 0 24px;
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
-.accent {
-  color: var(--btn-plus);
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
+
+/* Title with gradient */
 .title {
-  font-size: 4.5rem;
+  font-size: 5rem;
   margin-bottom: 1rem;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  /* gradient text */
+  background: linear-gradient(135deg, var(--text-header) 40%, #818cf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
+
+/* Accent word — indigo glow + shimmer */
+.accent {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 20px rgba(99,102,241,0.55));
+  animation: accentPulse 3s ease-in-out infinite;
+}
+@keyframes accentPulse {
+  0%, 100% { filter: drop-shadow(0 0 16px rgba(99,102,241,0.5)); }
+  50%       { filter: drop-shadow(0 0 28px rgba(129,140,248,0.75)); }
+}
+
 .subtitle {
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   margin-bottom: 2.5rem;
   color: var(--text-muted);
   font-weight: 400;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
 }
+
+/* CTA Button */
 .btn.primary {
-  padding: 1rem 2.5rem;
-  background: var(--btn-plus);
+  padding: 1rem 2.75rem;
+  background: var(--gradient-primary);
   border: none;
   color: white;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 1.1rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1.05rem;
   cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
-  
   text-decoration: none;
   display: inline-block;
+  box-shadow: 0 8px 28px var(--primary-glow), 0 2px 8px rgba(0,0,0,0.3);
+  transition: box-shadow var(--transition-slow), transform var(--transition-base);
+  letter-spacing: 0.01em;
 }
 .btn.primary:hover {
-  background: var(--btn-plus-hover);
-  transform: translateY(-2px);
+  box-shadow: 0 16px 48px var(--primary-glow-lg), 0 4px 12px rgba(0,0,0,0.4);
+  transform: translateY(-3px);
+}
+.btn.primary:active {
+  transform: translateY(-1px);
 }
 
+/* ── Novels section ── */
+.novels-container {
+  max-width: 1200px;
+  margin: -28px auto 0;
+  padding: 0 24px 100px;
+  position: relative;
+  z-index: 20;
+}
 
+/* Section header with gradient underline */
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -155,19 +206,63 @@ onUnmounted(() => {
   font-size: 1.75rem;
   font-weight: 700;
   margin: 0;
+  position: relative;
+  display: inline-block;
 }
+.section-header h2::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  width: 40px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--gradient-primary);
+}
+
 .view-all {
   color: var(--text-muted);
   text-decoration: none;
   font-weight: 500;
-  transition: color 0.2s;
+  font-size: 0.9rem;
+  transition: color var(--transition-base);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 .view-all:hover {
-  color: var(--text-header);
+  color: var(--btn-plus);
 }
+
+/* ── Grid with staggered animation ── */
+.novels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.75rem;
+  align-items: stretch;
+}
+.novels-grid > * {
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.novels-grid > *:nth-child(1)  { animation-delay: 0.05s; }
+.novels-grid > *:nth-child(2)  { animation-delay: 0.1s;  }
+.novels-grid > *:nth-child(3)  { animation-delay: 0.15s; }
+.novels-grid > *:nth-child(4)  { animation-delay: 0.2s;  }
+.novels-grid > *:nth-child(5)  { animation-delay: 0.25s; }
+.novels-grid > *:nth-child(6)  { animation-delay: 0.3s;  }
+.novels-grid > *:nth-child(n+7){ animation-delay: 0.35s; }
+
 .loader {
   text-align: center;
-  padding: 50px;
+  padding: 60px;
   color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+@media (max-width: 640px) {
+  .title { font-size: 3.2rem; }
+  .subtitle { font-size: 1.05rem; }
+  .novels-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.25rem; }
 }
 </style>
+

@@ -14,7 +14,7 @@ import ChapterComments from '@/components/chat/ChapterComments.vue';
 
 const props = defineProps<{ novelId: string | number; chapterId?: string | number; }>();
 const router = useRouter();
-const chatStore = useCommentStore(); 
+const chatStore = useCommentStore();
 
 
 const form = ref<ChapterRequestDto>({ title: '', blocks: [] });
@@ -24,7 +24,7 @@ const showMenuIndex = ref<number | null>(null);
 
 const toggleComments = (blockId: number | null) => {
   if (!blockId) return;
-  
+
   chatStore.openChat(blockId, 'BLOCK');
   window.dispatchEvent(new CustomEvent('open-messenger'));
 };
@@ -57,14 +57,14 @@ onMounted(async () => {
       form.value.title = data.title;
       currentStatus.value = data.status || 'DRAFT';
       if (data.publishedAt) {
-        selectedPublishDate.value = data.publishedAt.slice(0, 16); 
+        selectedPublishDate.value = data.publishedAt.slice(0, 16);
       }
       form.value.blocks = (data.blocks || []).sort((a, b) => a.sequenceOrder - b.sequenceOrder);
-      
-      const novelTitle = "Новелла"; // For editor, we might not have the full novel fetched here, but we set the context.
-      await chatStore.setContext(nId.value, novelTitle, cId.value, data.title);
 
-      
+      const novelTitle = "Новелла"; // For editor, we might not have the full novel fetched here, but we set the context.
+      await chatStore.setContext(nId.value, novelTitle, cId.value!, data.title);
+
+
       // Vue обновляет DOM асинхронно. Используем nextTick, чтобы дождаться перерисовки элементов textarea и корректно рассчитать их высоту на основе scrollHeight.
       await nextTick();
       document.querySelectorAll('textarea.block-textarea').forEach(el => {
@@ -76,7 +76,7 @@ onMounted(async () => {
       isLoading.value = false;
     }
   } else {
-    
+
     form.value.blocks.push({ id: null, type: 'TEXT', content: '', sequenceOrder: 1 });
   }
 });
@@ -116,7 +116,7 @@ const reorderBlocks = () => {
 };
 
 const handleEnter = (index: number, event: KeyboardEvent) => {
-  if (event.shiftKey) return; 
+  if (event.shiftKey) return;
 
   event.preventDefault();
   const newBlock = {
@@ -149,7 +149,7 @@ const handleBackspace = (index: number, event: KeyboardEvent) => {
       const prevEl = allTextareas[index - 1] as HTMLElement;
       if (prevEl) {
         prevEl.focus();
-        
+
         if (prevEl instanceof HTMLTextAreaElement) {
           prevEl.setSelectionRange(prevEl.value.length, prevEl.value.length);
         }
@@ -245,40 +245,40 @@ const handlePublishAction = async (action: 'NOW' | 'DRAFT' | 'SCHEDULE') => {
 
 const isToolbarVisible = ref(true);
 let lastScrollTop = 0;
-const scrollThreshold = 8; 
+const scrollThreshold = 8;
 
 // Алгоритм скрытия/отображения плавающего тулбара при скролле.
 // scrollThreshold защищает от дребезга (jitter) при микроколебаниях тачпада или мыши.
 // Проверка на TEXTAREA предотвращает скрытие тулбара при вертикальном скролле длинного текста внутри текстового блока.
 const handleScroll = (event: Event) => {
-  
+
   const target = event.target as HTMLElement;
 
-  
+
   if (target && target.tagName === 'TEXTAREA') return;
 
-  
+
   const currentScroll = window.pageYOffset
     || document.documentElement.scrollTop
     || document.body.scrollTop
     || (target ? target.scrollTop : 0);
 
-  
+
   if (currentScroll <= 30) {
     isToolbarVisible.value = true;
     return;
   }
 
-  
+
   if (Math.abs(currentScroll - lastScrollTop) <= scrollThreshold) {
     return;
   }
 
   if (currentScroll > lastScrollTop) {
-    
+
     isToolbarVisible.value = false;
   } else {
-    
+
     isToolbarVisible.value = true;
   }
 
@@ -286,7 +286,7 @@ const handleScroll = (event: Event) => {
 };
 
 onMounted(() => {
-  
+
   window.addEventListener('scroll', handleScroll, true);
 });
 
@@ -397,7 +397,7 @@ onUnmounted(() => {
           <div class="side-control right">
             <div class="block-controls-right" v-if="activeBlockIndex === index || chatStore.activeTargetId === block.id">
 
-              
+
               <button
                 v-if="block.id"
                 class="comment-trigger-small"
@@ -420,7 +420,7 @@ onUnmounted(() => {
           </div>
         </div>
       </div>
-      
+
       <ChapterComments v-if="isEditMode" />
     </div>
   </div>
@@ -429,7 +429,7 @@ onUnmounted(() => {
 <style scoped>
 .editor-page-wrapper {
   min-height: 100vh;
-  background-color: var(--bg-editor-page); 
+  background-color: var(--bg-editor-page);
   padding: 80px 24px 100px;
   display: flex;
   flex-direction: column;
@@ -441,7 +441,7 @@ onUnmounted(() => {
   width: 100%;
   max-width: 860px;
   background-color: var(--bg-editor-sheet);
-  
+
   padding: 48px 64px 64px;
   border-radius: 24px;
   box-shadow: 0 4px 12px var(--shadow-color);
@@ -453,7 +453,7 @@ onUnmounted(() => {
 .editor-toolbar {
   position: sticky;
   top: 0;
-  
+
   background: var(--bg-editor-sheet);
   z-index: 100;
 
@@ -462,13 +462,13 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
 
-  
+
   height: 56px;
   padding: 16px 0;
   margin-bottom: 32px;
   border-bottom: 1px solid var(--border-color);
 
-  
+
   transition:
     height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
     padding 0.25s cubic-bezier(0.4, 0, 0.2, 1),
@@ -476,20 +476,20 @@ onUnmounted(() => {
     opacity 0.2s ease,
     border-color 0.2s ease;
 
-  overflow: hidden; 
+  overflow: hidden;
   opacity: 1;
 }
 
 
 .editor-toolbar.toolbar-hidden {
-  height: 0;                 
-  padding-top: 0;            
+  height: 0;
+  padding-top: 0;
   padding-bottom: 0;
-  margin-bottom: 0;          
-  opacity: 0;                
-  border-color: transparent; 
-  pointer-events: none;      
-  transform: none;           
+  margin-bottom: 0;
+  opacity: 0;
+  border-color: transparent;
+  pointer-events: none;
+  transform: none;
 }
 
 .toolbar-left, .toolbar-right {
@@ -500,7 +500,7 @@ onUnmounted(() => {
 
 .publish-controls {
   display: flex;
-  flex-direction: row; 
+  flex-direction: row;
   align-items: center;
   gap: 16px;
   background: var(--bg-main);
@@ -585,7 +585,7 @@ onUnmounted(() => {
   color: var(--text-header);
   outline: none;
   margin-bottom: 32px;
-  text-align: left; 
+  text-align: left;
   letter-spacing: -0.02em;
 }
 .main-title-input::placeholder {
@@ -607,7 +607,7 @@ onUnmounted(() => {
 }
 
 .block-row:hover {
-  background-color: rgba(161, 161, 170, 0.05); 
+  background-color: rgba(161, 161, 170, 0.05);
 }
 
 .block-row.is-dragging {
@@ -672,8 +672,8 @@ onUnmounted(() => {
   background: none;
   border: none;
   color: var(--text-header);
-  font-size: 1.25rem; 
-  line-height: 1.8;   
+  font-size: 1.25rem;
+  line-height: 1.8;
   resize: none;
   outline: none;
   padding: 8px 0;
@@ -787,7 +787,7 @@ onUnmounted(() => {
 
 
 .side-control.right {
-  width: 80px; 
+  width: 80px;
   display: flex;
   justify-content: flex-end;
   align-items: center;

@@ -3,7 +3,7 @@ import {useAuthStore} from "@/api/auth.ts";
 import {getCachedVisitorId} from "@/api/fingerprint.ts";
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.PROD ? '/api' : `http://${import.meta.env.VITE_API_IP}:8080/api`,
+  baseURL: "/api",
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
@@ -47,6 +47,7 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -59,6 +60,7 @@ apiClient.interceptors.response.use(
       authStore.logout(true);
       return Promise.reject(error);
     }
+
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;

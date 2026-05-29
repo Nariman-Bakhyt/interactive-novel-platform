@@ -303,4 +303,48 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
   opacity: 0;
   transform: translateY(-5px);
 }
+
+@media (max-width: 768px) {
+  .dropdown {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.6);
+    z-index: 9999;
+    padding: 16px 0 24px;
+    animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .fade-slide-enter-from,
+  .fade-slide-leave-to {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .dropdown-item {
+    padding: 14px 24px;
+    font-size: 1.05rem;
+  }
+  .section-title {
+    padding: 8px 24px;
+    font-size: 0.85rem;
+  }
+  .privacy-select {
+    margin: 8px 24px 12px;
+    padding: 12px 14px;
+    font-size: 1rem;
+  }
+  .remove-btn {
+    padding: 16px 24px;
+  }
+}
 </style>
+

@@ -24,13 +24,13 @@ const handleSend = async () => {
     if (chapterId) {
       const activeIdBackup = commentStore.activeTargetId;
       const targetTypeBackup = commentStore.targetType;
-      
+
       commentStore.activeTargetId = chapterId;
       commentStore.targetType = 'CHAPTER';
-      
+
       await commentStore.send({ content: newComment.value });
       newComment.value = '';
-      
+
       commentStore.activeTargetId = activeIdBackup;
       commentStore.targetType = targetTypeBackup;
     }
@@ -60,13 +60,13 @@ const openInSidebar = () => {
       <div v-if="commentStore.chapterComments.length === 0" class="no-comments">
         Пока нет комментариев. Будьте первым!
       </div>
-      
+
       <div v-for="item in commentStore.chapterComments" :key="item.id"
            class="comment-item-wrapper"
            :class="{ 'is-mine': isMyMessage(item), 'is-others': !isMyMessage(item) }">
         <div class="comment-bubble"
              :class="{ 'bubble-mine': isMyMessage(item), 'bubble-others': !isMyMessage(item) }">
-          <span v-if="!isMyMessage(item)" class="user-badge">{{ ('username' in item) ? item.username : item.senderUsername }}</span>
+          <span v-if="!isMyMessage(item)" class="user-badge">{item.username}</span>
           <div v-if="item.metadata?.images?.length" class="comment-images">
             <img v-for="url in item.metadata.images" :key="url" :src="url" class="comment-img">
           </div>
@@ -77,8 +77,8 @@ const openInSidebar = () => {
     </div>
 
     <div class="comment-input-area">
-      <textarea 
-        v-model="newComment" 
+      <textarea
+        v-model="newComment"
         @keydown.enter.prevent="handleSend"
         placeholder="Написать комментарий..."
         rows="2"

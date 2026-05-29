@@ -63,9 +63,9 @@ const fetchAuthors = async (page: number, append = false) => {
       authorSearchResults.value = data.content;
     }
 
-    
+
     const totalPages = data.page?.totalPages || 1;
-    authorSearchIsLastPage.value = page >= totalPages - 1; 
+    authorSearchIsLastPage.value = page >= totalPages - 1;
 
     authorSearchPage.value = page;
   } catch (e) {
@@ -268,7 +268,9 @@ onUnmounted(() => {
             <div class="filter-body">
               <div class="filter-item">
                 <label>Поиск по названию</label>
-                <input v-model="filters.title" type="text" placeholder="Название..." class="input-field" @keyup.enter="applyFilters"/>
+                <div class="relative-wrapper">
+                  <input v-model="filters.title" type="text" placeholder="Название..." class="input-field" @keyup.enter="applyFilters"/>
+                </div>
               </div>
 
               <div class="filter-item relative-wrapper" ref="relativeWrapperRef">
@@ -296,46 +298,60 @@ onUnmounted(() => {
 
               <div class="filter-item">
                 <label>Статус</label>
-                <select v-model="filters.status" class="input-field custom-select">
-                  <option :value="null">Любой</option>
-                  <option value="IN_PROGRESS">📖 В процессе</option>
-                  <option value="COMPLETED">✅ Завершено</option>
-                  <option value="HIATUS">☕ Перерыв</option>
-                </select>
+                <div class="relative-wrapper">
+                  <select v-model="filters.status" class="input-field custom-select">
+                    <option :value="null">Любой</option>
+                    <option value="IN_PROGRESS">В процессе</option>
+                    <option value="COMPLETED">Завершено</option>
+                    <option value="HIATUS">Перерыв</option>
+                  </select>
+                </div>
               </div>
 
               <div class="filter-item">
                 <label>Рейтинг</label>
                 <div class="rating-range">
-                  <input v-model.number="filters.minRating" type="number" min="0" max="5" step="0.1" placeholder="От" class="input-field small-input"/>
-                  <span>-</span>
-                  <input v-model.number="filters.maxRating" type="number" min="0" max="5" step="0.1" placeholder="До" class="input-field small-input"/>
+                  <div class="relative-wrapper flex-1">
+                    <input v-model.number="filters.minRating" type="number" min="0" max="5" step="0.1" placeholder="От" class="input-field small-input"/>
+                  </div>
+                  <span class="rating-separator">-</span>
+                  <div class="relative-wrapper flex-1">
+                    <input v-model.number="filters.maxRating" type="number" min="0" max="5" step="0.1" placeholder="До" class="input-field small-input"/>
+                  </div>
                 </div>
               </div>
 
               <div class="filter-item">
                 <label>Сортировка</label>
-                <select v-model="sort" class="input-field custom-select" @change="applyFilters">
-                  <option value="lastChapterAddedAt,desc">По дате обновления (сначала новые)</option>
-                  <option value="averageRating,desc">По рейтингу (сначала высокие)</option>
-                  <option value="viewCount,desc">По просмотрам (сначала популярные)</option>
-                  <option value="chapterCount,desc">По количеству глав (сначала больше)</option>
-                  <option value="publicationDate,desc">По дате публикации (сначала новые)</option>
-                </select>
+                <div class="relative-wrapper">
+                  <select v-model="sort" class="input-field custom-select sort-select" @change="applyFilters">
+                    <option value="lastChapterAddedAt,desc">По дате обновления</option>
+                    <option value="averageRating,desc">По рейтингу</option>
+                    <option value="viewCount,desc">По просмотрам</option>
+                    <option value="chapterCount,desc">По количеству глав</option>
+                    <option value="publicationDate,desc">По дате публикации</option>
+                  </select>
+                </div>
               </div>
 
               <div class="filter-item">
                 <label>Категории</label>
-                <button class="modal-trigger-btn" @click="isGenreModalOpen = true">
-                  🎭 Жанры ({{ filters.includedGenreIds.length + filters.excludedGenreIds.length }})
-                </button>
+                <div class="categories-stack">
+                  <button class="modal-trigger-btn" @click="isGenreModalOpen = true">
+                    <span class="emoji-icon">🎭</span>
+                    <span class="font-body-md">Жанры ({{ filters.includedGenreIds.length + filters.excludedGenreIds.length }})</span>
+                  </button>
 
-                <button class="modal-trigger-btn" @click="isTagModalOpen = true">
-                  # Теги ({{ filters.includedTagIds.length + filters.excludedTagIds.length }})
-                </button>
+                  <button class="modal-trigger-btn" @click="isTagModalOpen = true">
+                    <span class="emoji-icon">#</span>
+                    <span class="font-body-md">Теги ({{ filters.includedTagIds.length + filters.excludedTagIds.length }})</span>
+                  </button>
+                </div>
               </div>
 
-              <button class="btn-apply" @click="applyFilters">Показать результаты</button>
+              <div class="apply-btn-wrapper">
+                <button class="btn-apply" @click="applyFilters">Показать результаты</button>
+              </div>
             </div>
           </div>
         </aside>
@@ -448,7 +464,7 @@ onUnmounted(() => {
 .catalog-page {
   min-height: 100vh;
   background: var(--bg-main);
-  padding: 100px 0 60px;
+  padding: 0px 0 60px;
   color: var(--text-header);
 }
 
@@ -474,14 +490,12 @@ onUnmounted(() => {
 .catalog-layout {
   display: flex;
   gap: 40px;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .sidebar {
-  width: 320px;
+  width: 260px;
   flex-shrink: 0;
-  position: sticky;
-  top: 90px;
 }
 
 .content {
@@ -492,59 +506,96 @@ onUnmounted(() => {
 .filter-card {
   background: var(--bg-dropdown);
   border-radius: 16px;
-  padding: 24px;
+  padding: 16px;
   border: 1px solid var(--border-color);
   box-shadow: 0 4px 12px var(--shadow-color);
+
+  position: sticky;
+  top: 24px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.filter-card::-webkit-scrollbar {
+  width: 6px;
+}
+
+.filter-card::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 10px;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   align-items: center;
 }
 .card-header h3 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 0.9rem;
   font-weight: 700;
 }
 
-.filter-item { margin-bottom: 24px; }
+.filter-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
 
 .filter-item label {
   display: block;
-  font-size: 0.85rem;
+  font-size: x-small;
   color: var(--text-muted);
   font-weight: 600;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  margin: 0;
+  letter-spacing: 0.01em;
 }
 
 .input-field {
-  width: 90%;
-  padding: 12px 16px;
-  border-radius: 8px;
+  width: 100%;
+  padding: 4px 0px;
+  border-radius: 12px;
   border: 1px solid var(--border-color);
   background: var(--bg-main);
   color: var(--text-header);
-  font-size: 0.95rem;
-  transition: border-color 0.2s;
+  font-size: 0.8rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
 .input-field:focus {
   outline: none;
   border-color: var(--btn-plus);
+  box-shadow: 0 0 0 3px var(--primary-glow); /* Твой фирменный глоу при фокусе */
 }
 .input-field::placeholder {
   color: var(--input-placeholder);
 }
+.input-field.small-input::-webkit-outer-spin-button,
+.input-field.small-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 
+.input-field.small-input {
+  -moz-appearance: textfield;
+  text-align: center;
+}
 .rating-range {
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: 90%;
+  gap: 6px;
+  width: 100%;
 }
+
+.flex-1 { flex: 1; }
+.rating-separator { color: var(--text-muted); font-size: 0.8rem; }
 
 .small-input {
   width: 100%;
@@ -554,14 +605,44 @@ onUnmounted(() => {
   appearance: none;
   background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23a1a1aa%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
   background-repeat: no-repeat;
-  background-position: right 16px top 50%;
+  background-position: right 12px top 50%;
   background-size: 10px auto;
   cursor: pointer;
+  padding-right: 28px;
+  text-overflow: ellipsis;
 }
 
+.sort-select {
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23a1a1aa%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cline%20x1%3D%224%22%20y1%3D%226%22%20x2%3D%2220%22%20y2%3D%226%22%3E%3C%2Fline%3E%3Cline%20x1%3D%224%22%20y1%3D%2212%22%20x2%3D%2214%22%20y2%3D%2212%22%3E%3C%2Fline%3E%3Cline%20x1%3D%224%22%20y1%3D%2218%22%20x2%3D%228%22%20y2%3D%2218%22%3E%3C%2Fline%3E%3Cpolyline%20points%3D%2214%2015%2017%2018%2020%2015%22%3E%3C%2Fpolyline%3E%3Cline%20x1%3D%2217%22%20y1%3D%2218%22%20x2%3D%2217%22%20y2%3D%2212%22%3E%3C%2Fline%3E%3C%2Fsvg%3E");
+  background-size: 16px auto;
+}
 
 .relative-wrapper {
   position: relative;
+  width: 100%;
+}
+
+.small-input {
+  width: 100%;
+}
+
+.appearance-none {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.relative-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.select-icon {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
 }
 
 .autocomplete-dropdown {
@@ -607,23 +688,37 @@ onUnmounted(() => {
 
 
 
+.categories-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .modal-trigger-btn {
   width: 100%;
-  padding: 12px 16px;
-  margin-bottom: 12px;
-  background: var(--bg-main);
+  padding: 8px 12px;
+  background: var(--bg-header);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 12px;
   color: var(--text-header);
-  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   cursor: pointer;
-  transition: all 0.2s;
   font-weight: 500;
+  font-size: 0.8rem;
+}
+
+.emoji-icon {
+  font-size: 1.1rem;
 }
 
 .modal-trigger-btn:hover {
-  border-color: var(--btn-plus);
   background: var(--hover-dropdowb);
+  border-color: var(--btn-plus);
+}
+.modal-trigger-btn:active {
+  transform: scale(0.98);
 }
 
 
@@ -672,10 +767,10 @@ onUnmounted(() => {
 
 .modal-search {
   width: 100%;
-  padding: 12px 16px;
+  padding: 12px 1px;
   background: var(--bg-main);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 12px;
   color: var(--text-header);
   margin-bottom: 24px;
   font-size: 0.95rem;
@@ -709,33 +804,39 @@ onUnmounted(() => {
 }
 
 .triple-chip.included {
-  background: rgba(16, 185, 129, 0.15); 
+  background: rgba(16, 185, 129, 0.15);
   border-color: #10b981;
   color: #10b981;
 }
 
 .triple-chip.excluded {
-  background: rgba(239, 68, 68, 0.15); 
+  background: rgba(239, 68, 68, 0.15);
   border-color: #ef4444;
   color: #ef4444;
 }
 
 
+.apply-btn-wrapper {
+  margin-top: 4px;
+}
+
 .btn-apply {
   width: 100%;
-  padding: 14px;
+  padding: 10px;
   background: var(--btn-plus);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.85rem;
   cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+  transition: opacity 0.2s, transform 0.2s;
 }
 .btn-apply:hover {
-  background: var(--btn-plus-hover);
-  transform: translateY(-1px);
+  opacity: 0.9;
+}
+.btn-apply:active {
+  transform: scale(0.95);
 }
 
 .btn-apply-modal {
@@ -756,7 +857,7 @@ onUnmounted(() => {
 
 .btn-text {
   background: none; border: none; color: var(--btn-plus);
-  cursor: pointer; font-weight: 500; font-size: 0.95rem;
+  cursor: pointer; font-weight: 500; font-size: 0.85rem;
   padding: 4px 8px; border-radius: 4px; transition: background 0.2s;
 }
 .btn-text:hover { background: var(--hover-dropdowb); }
@@ -813,7 +914,7 @@ onUnmounted(() => {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 
-@media (max-width: 900px) {
+@media (max-width: 600px) {
   .catalog-layout { flex-direction: column; }
   .sidebar { width: 100%; position: static; }
 }

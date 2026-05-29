@@ -134,6 +134,7 @@ export const useAuthStore = defineStore("auth", ()=> {
     if (!currentToken || currentToken === 'null') {
       console.log('Запрос профиля отменен: пользователь не авторизован');
       userDetails.value = null;
+      isInitialized.value = true;
       return null;
     }
     try {
@@ -150,13 +151,8 @@ export const useAuthStore = defineStore("auth", ()=> {
   }
 
   async function fetchUserDetailsById(id:number) {
-    const currentToken = localStorage.getItem('jwt_token');
-    if (!currentToken || currentToken === 'null') {
-      console.log('Запрос профиля отменен: пользователь не авторизован');
-      return null;
-    }
     try {
-      const response = await apiClient.get<ProfileResponseDto>(`/users/profile/${id}`);
+      const response = await apiClient.get<ProfileResponseDto>(`/users/public/profile/${id}`);
       return response.data;
     } catch (e) {
       console.error('Не удалось загрузить профиль:', e);
