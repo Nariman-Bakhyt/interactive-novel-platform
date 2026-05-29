@@ -31,3 +31,15 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Local/Docker Database and Storage Volumes ###
+docker/postgres_data/
+docker/minio_data/
+docker/valkey_data/
+docker/*_data/
+
+### Environment and Secrets ###
+.env
+.env.local
+.env.*.local
+*.env
