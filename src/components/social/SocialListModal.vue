@@ -5,7 +5,7 @@ import {DEFAULT_AVATAR} from "@/utils/media.ts";
 
 const props = defineProps<{
   title: string;
-  
+
   fetchFn: (page: number, size: number) => Promise<any>;
 }>();
 
@@ -24,7 +24,7 @@ const loadMore = async () => {
   isLoading.value = true;
   try {
     const data = await props.fetchFn(page.value, size);
-    users.value.push(...data.content); 
+    users.value.push(...data.content);
     isLast.value = data.last;
     page.value++;
   } finally {
@@ -36,7 +36,7 @@ const loadMore = async () => {
 let observer: IntersectionObserver;
 
 onMounted(() => {
-  loadMore(); 
+  loadMore();
 
   observer = new IntersectionObserver(([entry]) => {
     if (entry && entry.isIntersecting) {
@@ -105,7 +105,7 @@ onUnmounted(() => observer.disconnect());
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-  overflow: hidden; 
+  overflow: hidden;
 }
 
 
@@ -151,7 +151,7 @@ header h3 {
 
 .user-item {
   display: flex;
-  align-items: center; 
+  align-items: center;
   gap: 16px;
   padding: 16px;
   border-radius: 12px;
@@ -166,14 +166,14 @@ header h3 {
 
 .user-content {
   display: flex;
-  flex-direction: row; 
+  flex-direction: row;
   align-items: center;
-  justify-content: space-between; 
+  justify-content: space-between;
   flex: 1;
 }
 
 .username {
-  flex: 1; 
+  flex: 1;
   font-size: 1.05rem;
   font-weight: 600;
   min-width: 0;
@@ -198,14 +198,14 @@ header h3 {
 }
 :deep(.relationship-actions) {
   display: flex !important;
-  flex-direction: column !important; 
+  flex-direction: column !important;
   gap: 8px !important;
   width: 100% !important;
 }
 
 :deep(.relationship-actions button) {
-  width: 100% !important;
-  height: 32px !important;    
+  width: 95% !important;
+  height: 32px !important;
   font-size: 0.85rem !important;
   padding: 0 12px !important;
   justify-content: center !important;

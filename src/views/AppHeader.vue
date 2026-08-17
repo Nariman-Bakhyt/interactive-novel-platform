@@ -8,6 +8,7 @@ import {searchNovels} from "@/api/novelService.ts";
 import {searchUsers} from "@/api/profileService.ts";
 import {DEFAULT_AVATAR, DEFAULT_COVER} from "@/utils/media.ts";
 import AuthModal from "@/views/auth/AuthModal.vue";
+import NotificationBell from "@/components/notifications/NotificationBell.vue";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -256,6 +257,7 @@ const menu = (event: MouseEvent,res:any) => {
               {{ themeStore.isDark ? '🌙' : '☀️' }}
             </button>
           </nav>
+          <NotificationBell />
           <div class="menu-wrapper" >
             <div
               class="dropdown-trigger"

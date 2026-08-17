@@ -16,7 +16,7 @@ const observerTarget = ref<HTMLElement | null>(null);
 const openUserMenu = inject('openUserMenu') as (event: MouseEvent, userId: number, username: string) => void;
 const openUserProfile = inject('openUserProfile') as (userId: number) => void;
 const loadMore = async () => {
-  
+
   if (isLoading.value || isLast.value) return;
 
   isLoading.value = true;
@@ -31,9 +31,9 @@ const loadMore = async () => {
     }
   } catch (error) {
     console.error("Ошибка загрузки списка:", error);
-    isLast.value = true; 
+    isLast.value = true;
   } finally {
-    
+
     isLoading.value = false;
   }
 
@@ -101,7 +101,7 @@ onUnmounted(() => observer?.disconnect());
 }
 
 .user-item:hover {
-  background: var(--hover-dropdowb); 
+  background: var(--hover-dropdowb);
   border-color: var(--border-color);
 }
 
@@ -167,7 +167,7 @@ onUnmounted(() => observer?.disconnect());
 }
 
 :deep(.relationship-actions button) {
-  width: 100% !important;
+  width: 95% !important;
   height: 32px !important;
   font-size: 0.85rem !important;
   padding: 0 12px !important;

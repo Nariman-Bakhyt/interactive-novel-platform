@@ -5,8 +5,11 @@ import {
   createChapter,
   getChapter,
   updateChapter,
-  updateChapterPublishTime
+  updateChapterPublishTime,
+  uploadChapterImage,
+  deleteChapterImage
 } from '@/api/novelService';
+import { compressImage } from '@/utils/imageCompressor';
 import type {ChapterRequestDto} from '@/types/novel';
 import {useCommentStore} from "@/components/chat/commentStore.ts";
 import ChapterComments from '@/components/chat/ChapterComments.vue';
@@ -20,6 +23,7 @@ const chatStore = useCommentStore();
 const form = ref<ChapterRequestDto>({ title: '', blocks: [] });
 const activeBlockIndex = ref<number | null>(null);
 const showMenuIndex = ref<number | null>(null);
+const uploadedImageUrls = ref<Set<string>>(new Set());
 
 
 const toggleComments = (blockId: number | null) => {
@@ -60,6 +64,12 @@ onMounted(async () => {
         selectedPublishDate.value = data.publishedAt.slice(0, 16);
       }
       form.value.blocks = (data.blocks || []).sort((a, b) => a.sequenceOrder - b.sequenceOrder);
+      
+      form.value.blocks.forEach(block => {
+        if (block.type === 'IMAGE' && block.content) {
+          uploadedImageUrls.value.add(block.content);
+        }
+      });
 
       const novelTitle = "Новелла"; // For editor, we might not have the full novel fetched here, but we set the context.
       await chatStore.setContext(nId.value, novelTitle, cId.value!, data.title);
@@ -158,12 +168,47 @@ const handleBackspace = (index: number, event: KeyboardEvent) => {
   }
 };
 
+const deleteBlock = (index: number) => {
+  if (form.value.blocks.length > 1) {
+    form.value.blocks.splice(index, 1);
+    reorderBlocks();
+  } else {
+    form.value.blocks[0] = { id: null, type: 'TEXT', content: '', sequenceOrder: 1 };
+  }
+};
+
 const changeBlockType = (index: number, type: 'TEXT' | 'IMAGE') => {
   const block = form.value.blocks[index];
   if (block) {
     block.type = type;
   }
   showMenuIndex.value = null;
+};
+
+const handleImageUpload = async (event: Event, index: number) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  const block = form.value.blocks[index];
+  if (!block) return;
+
+  if (!isEditMode.value) {
+    alert("Сначала сохраните главу, чтобы загружать картинки!");
+    return;
+  }
+
+  try {
+    const compressedFile = await compressImage(file);
+    const result = await uploadChapterImage(nId.value, compressedFile);
+    block.content = result.url;
+    uploadedImageUrls.value.add(result.url);
+  } catch (e) {
+    console.error("Ошибка загрузки картинки:", e);
+    alert("Ошибка загрузки картинки");
+  } finally {
+    target.value = '';
+  }
 };
 
 
@@ -185,7 +230,38 @@ const onDrop = (toIndex: number) => {
 
 const handleSave = async () => {
   isSaving.value = true;
+
+  // Очищаем пустые блоки перед отправкой на бэкенд, чтобы избежать ошибок валидации @NotBlank
+  form.value.blocks = form.value.blocks.filter(b => b.content && b.content.trim() !== '');
+
+  // Если все блоки пустые, оставляем один пустой текстовый плейсхолдер
+  if (form.value.blocks.length === 0) {
+    form.value.blocks.push({ id: null, type: 'TEXT', content: '...', sequenceOrder: 1 });
+  }
+
   reorderBlocks();
+
+  const currentImageUrls = new Set(
+    form.value.blocks
+      .filter(b => b.type === 'IMAGE' && b.content)
+      .map(b => b.content)
+  );
+
+  const urlsToDelete = Array.from(uploadedImageUrls.value).filter(
+    url => !currentImageUrls.has(url)
+  );
+
+  if (urlsToDelete.length > 0) {
+    try {
+      await Promise.all(
+        urlsToDelete.map(url => deleteChapterImage(nId.value, url))
+      );
+      urlsToDelete.forEach(url => uploadedImageUrls.value.delete(url));
+    } catch (e) {
+      console.error("Ошибка при удалении неиспользуемых картинок:", e);
+    }
+  }
+
   try {
     if (isEditMode.value) {
       await updateChapter(nId.value, cId.value!, form.value);
@@ -386,8 +462,24 @@ onUnmounted(() => {
               @keydown.backspace="handleBackspace(index, $event)"
             ></textarea>
 
-            <div v-else-if="block.type === 'IMAGE'" class="image-block-wrapper">
-              <input v-model="block.content" class="image-url-input" placeholder="Вставьте прямую ссылку на фото..." />
+            <div
+              v-else-if="block.type === 'IMAGE'"
+              class="image-block-wrapper"
+              tabindex="0"
+              @keydown.enter="handleEnter(index, $event)"
+            >
+              <div class="image-upload-controls">
+                <input
+                  v-model="block.content"
+                  class="image-url-input"
+                  placeholder="Вставьте ссылку или загрузите файл..."
+                  @keydown.enter="handleEnter(index, $event)"
+                />
+                <label class="btn-minimal btn-upload">
+                  <input type="file" accept="image/*" @change="handleImageUpload($event, index)" hidden />
+                  📁 Загрузить
+                </label>
+              </div>
               <div v-if="block.content" class="image-preview">
                 <img :src="block.content" alt="Preview" />
               </div>
@@ -406,6 +498,14 @@ onUnmounted(() => {
                 title="Обсудить блок"
               >
                 💬
+              </button>
+
+              <button
+                class="delete-block-btn"
+                @click="deleteBlock(index)"
+                title="Удалить блок"
+              >
+                🗑️
               </button>
 
               <div
@@ -688,12 +788,12 @@ onUnmounted(() => {
 
 .image-block-wrapper {
   padding: 12px 0;
+  outline: none;
 }
 
 .image-url-input {
   padding: 12px 16px;
   font-size: 0.95rem;
-  margin-bottom: 16px;
   width: 100%;
   background: var(--bg-main);
   border: 1px solid var(--border-color);
@@ -703,6 +803,26 @@ onUnmounted(() => {
 }
 .image-url-input:focus {
   outline: none;
+  border-color: var(--btn-plus);
+}
+
+.image-upload-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.btn-upload {
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-upload:hover {
+  background: var(--hover-dropdowb);
   border-color: var(--btn-plus);
 }
 
@@ -822,6 +942,22 @@ onUnmounted(() => {
 .comment-trigger-small.is-active {
   opacity: 1;
   color: var(--btn-plus);
+}
+
+.delete-block-btn {
+  background: none;
+  border: none;
+  font-size: 1.15rem;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: all 0.2s ease;
+  padding: 4px;
+  border-radius: 4px;
+}
+.delete-block-btn:hover {
+  opacity: 1;
+  background: var(--hover-dropdowb);
+  color: #ef4444;
 }
 
 </style>

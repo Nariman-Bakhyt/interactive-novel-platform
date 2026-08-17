@@ -7,7 +7,7 @@ import type {AllRatingResponseDto} from "@/types/rating.ts";
 import {DEFAULT_COVER} from "@/utils/media.ts";
 import {deleteRating, getRatings, setRating} from "@/api/ratingService.ts";
 import type {CommentResponseDto} from "@/types/comment.ts";
-import {deleteComment, getComments} from "@/api/commentService.ts";
+import {deleteComment, getComments, formatPreciseTime, sentCommentsTimestamps} from "@/api/commentService.ts";
 import {
   activeSubscriptions,
   sendMessage,
@@ -82,7 +82,7 @@ const fetchComments = async () => {
 };
 
 const setupBottomObserver = (targetRef: HTMLElement | null, loadMoreFn: () => void, isLoadingRef: any, isLastRef: any) => {
-  
+
   if (bottomObserver) bottomObserver.disconnect();
   if (!targetRef) return;
 
@@ -113,23 +113,23 @@ const commentsMap = ref<Record<string, CommentResponseDto[]>>({});
 const ratingsPage = ref(0);
 const isRatingsLastPage = ref(false);
 const isRatingsLoading = ref(false);
-const ratingsTrigger = ref<HTMLElement | null>(null); 
+const ratingsTrigger = ref<HTMLElement | null>(null);
 
 
 const commentsPage = ref(0);
 const isCommentsLastPage = ref(false);
 const isCommentsLoading = ref(false);
-const commentsTrigger = ref<HTMLElement | null>(null); 
+const commentsTrigger = ref<HTMLElement | null>(null);
 
 
 let bottomObserver: IntersectionObserver | null = null;
-const PAGE_SIZE = 20; 
+const PAGE_SIZE = 20;
 
 
 
 
 const fetchRatings = async () => {
-  
+
   if (isRatingsLoading.value || isRatingsLastPage.value || !novel.value) return;
 
   isRatingsLoading.value = true;
@@ -140,23 +140,23 @@ const fetchRatings = async () => {
 
     if (newItems.length > 0) {
       ratingsList.value.push(...newItems);
-      
-      
+
+
       isRatingsLastPage.value = (response.allRatings.number + 1) >= response.allRatings.totalPages;
 
       if (!isRatingsLastPage.value) {
         ratingsPage.value++;
       }
     } else {
-      
+
       isRatingsLastPage.value = true;
     }
 
   } catch (error) {
     console.error("Ошибка:", error);
-    isRatingsLastPage.value = true; 
+    isRatingsLastPage.value = true;
   } finally {
-    
+
     setTimeout(() => {
       isRatingsLoading.value = false;
     }, 200);
@@ -188,6 +188,19 @@ const handleTabChange = async (tab: Tab) => {
             const exists = commentsMap.value[topicId].some(c => c.id === payload.id);
             if (!exists) {
               commentsMap.value[topicId].unshift(payload);
+              const receiveTime = Date.now();
+              const receiveTimeStr = formatPreciseTime(receiveTime);
+              const sendTime = sentCommentsTimestamps.get(payload.content || '');
+              if (sendTime !== undefined) {
+                const totalLatency = receiveTime - sendTime;
+                const sendTimeStr = formatPreciseTime(sendTime);
+                console.log(`%c[WebSocket Latency] Мой комментарий: "${payload.content}" отправлен в ${sendTimeStr}, получен в ${receiveTimeStr}. Полная задержка (Отправка -> Получение): ${totalLatency}мс`, "color: #10b981; font-weight: bold;");
+                sentCommentsTimestamps.delete(payload.content || '');
+              } else {
+                const serverTime = new Date(payload.timestamp).getTime();
+                const latency = receiveTime - serverTime;
+                console.log(`%c[WebSocket Latency] Комментарий от @${payload.username}: "${payload.content}" получен в ${receiveTimeStr} за ${latency}мс (Бэкенд -> Клиент)`, "color: #10b981; font-weight: bold;");
+              }
             }
           }
         });
@@ -240,7 +253,7 @@ const handleTabChange = async (tab: Tab) => {
     if (ratingsList.value.length === 0) {
       await fetchRatings();
     }
-    
+
     setupBottomObserver(ratingsTrigger.value, fetchRatings, isRatingsLoading, isRatingsLastPage);
   }
 
@@ -263,17 +276,17 @@ const submitRating = async () => {
       commentText: newRating.value.commentText
     });
 
-    
+
     novel.value.totalScore = stats.totalScore;
     novel.value.ratingCount = stats.ratingCount;
 
-    
+
     newRating.value = { score: 5, commentText: '' };
     isRatingModalOpen.value = false;
 
     ratingsList.value = [];
-    ratingsPage.value = 0; 
-    isRatingsLastPage.value = false; 
+    ratingsPage.value = 0;
+    isRatingsLastPage.value = false;
     await fetchRatings();
 
   } catch (error) {
@@ -293,13 +306,13 @@ const currentComments = computed(() => {
 });
 const submitComment = () => {
   if (!novel.value || !newCommentText.value.trim()) return;
-  
+
   sendMessage('/app/comment.send', {
     novelId: novel.value.id,
     content: newCommentText.value
   });
 
-  
+
   newCommentText.value = '';
 };
 
@@ -338,7 +351,7 @@ const averageRating = computed(() => {
   return (novel.value.totalScore / novel.value.ratingCount).toFixed(1);
 });
 const startReading = () => {
-  const currentNovel = novel.value; 
+  const currentNovel = novel.value;
   const firstChapter = chaptersList.value[0];
 
   if (currentNovel && firstChapter) {
@@ -361,14 +374,14 @@ const handlePaste = (e: ClipboardEvent, target: 'rating' | 'comment') => {
 };
 
 const handleKeydown = (e: KeyboardEvent, type: 'comment' | 'rating') => {
-  
+
   if (e.shiftKey) return;
 
-  
+
   if (e.key === 'Enter') {
-    
+
     if (window.innerWidth > 400) {
-      e.preventDefault(); 
+      e.preventDefault();
 
       if (type === 'comment') {
         submitComment();
@@ -389,7 +402,7 @@ const contextMenu = ref({
 
 const openContextMenu = (e: MouseEvent, id: number, type: 'comment' | 'rating') => {
   e.preventDefault();
-  e.stopPropagation(); 
+  e.stopPropagation();
 
   contextMenu.value = {
     show: true,
@@ -404,7 +417,7 @@ const openContextMenu = (e: MouseEvent, id: number, type: 'comment' | 'rating') 
     document.removeEventListener('click', close);
   };
 
-  
+
   setTimeout(() => {
     document.addEventListener('click', close);
   }, 50);
@@ -707,7 +720,7 @@ const handleDelete = async () => {
 
 .notion-style-container {
   width: 100%;
-  max-width: 1000px;
+  max-width: 760px;
   background-color: var(--bg-dropdown);
   padding: 48px 64px;
   border-radius: 16px;
@@ -753,7 +766,7 @@ const handleDelete = async () => {
 }
 
 .stat-item { display: flex; align-items: center; gap: 6px; }
-.rating .icon { color: #f59e0b; } 
+.rating .icon { color: #f59e0b; }
 
 .pop-metadata {
   margin-bottom: 24px;
@@ -1009,7 +1022,7 @@ const handleDelete = async () => {
 .average-big {
   font-size: 4rem;
   font-weight: 800;
-  color: #f59e0b; 
+  color: #f59e0b;
   line-height: 1;
   letter-spacing: -0.05em;
 }
@@ -1262,7 +1275,7 @@ const handleDelete = async () => {
 }
 
 .menu-item.delete {
-  color: #ef4444; 
+  color: #ef4444;
 }
 
 .menu-item:hover {
@@ -1271,7 +1284,7 @@ const handleDelete = async () => {
 
 
 .mobile-action-btn {
-  display: none; 
+  display: none;
   background: none;
   border: none;
   color: var(--text-muted);
@@ -1294,7 +1307,7 @@ const handleDelete = async () => {
 
 @media (max-width: 768px) {
   .mobile-action-btn {
-    display: block; 
+    display: block;
   }
 }
 .empty-state {

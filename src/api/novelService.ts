@@ -142,3 +142,20 @@ export async function updateChapterPublishTime(novelId: number, chapterId: numbe
   const response = await apiClient.put(`/novels/${novelId}/chapter/${chapterId}/publish`, null, { params });
   return response.data;
 }
+
+export async function uploadChapterImage(novelId: number, file: File): Promise<{ url: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await apiClient.post(`/novels/${novelId}/chapter-images`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    }
+  });
+  return response.data;
+}
+
+export async function deleteChapterImage(novelId: number, url: string): Promise<void> {
+  await apiClient.delete(`/novels/${novelId}/chapter-images`, {
+    params: { url }
+  });
+}

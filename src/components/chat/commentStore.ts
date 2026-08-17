@@ -1,6 +1,6 @@
 import {defineStore} from 'pinia';
 import {computed, nextTick, ref} from 'vue';
-import {createComment, deleteComment, getComments} from "@/api/commentService.ts";
+import {createComment, deleteComment, getComments, formatPreciseTime, sentCommentsTimestamps} from "@/api/commentService.ts";
 import {activeSubscriptions, subscribeToTopic, unsubscribeFromTopic} from "@/api/stompService.ts";
 import type {CommentResponseDto} from "@/types/comment.ts";
 
@@ -88,6 +88,19 @@ export const useCommentStore = defineStore('chat', () => {
         } else if (type === 'COMMENT_CREATED') {
           const comment = payload as CommentResponseDto;
           if (!comments.value.some(c => c.id === comment.id)) {
+            const receiveTime = Date.now();
+            const receiveTimeStr = formatPreciseTime(receiveTime);
+            const sendTime = sentCommentsTimestamps.get(comment.content || '');
+            if (sendTime !== undefined) {
+              const totalLatency = receiveTime - sendTime;
+              const sendTimeStr = formatPreciseTime(sendTime);
+              console.log(`%c[WebSocket Latency] Мой комментарий: "${comment.content}" отправлен в ${sendTimeStr}, получен в ${receiveTimeStr}. Полная задержка (Отправка -> Получение): ${totalLatency}мс`, "color: #10b981; font-weight: bold;");
+              sentCommentsTimestamps.delete(comment.content || '');
+            } else {
+              const serverTime = new Date(comment.timestamp).getTime();
+              const latency = receiveTime - serverTime;
+              console.log(`%c[WebSocket Latency] Комментарий от @${comment.username}: "${comment.content}" получен в ${receiveTimeStr} за ${latency}мс (Бэкенд -> Клиент)`, "color: #10b981; font-weight: bold;");
+            }
             comments.value.push(comment);
             scrollToBottom();
           }

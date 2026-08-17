@@ -28,12 +28,23 @@ import {useToastStore} from "@/components/toast/toastStore.ts";
 import type {SocialEventType} from "@/types/social.ts";
 import {useSocialStore} from "@/components/social/socialStore.ts";
 import {useAuthStore} from "@/api/auth.ts";
+import {useNotificationStore} from "@/components/notifications/notificationStore.ts";
+
+function formatPreciseTime(time: number | Date = new Date()) {
+  const d = typeof time === 'number' ? new Date(time) : time;
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  const milliseconds = String(d.getMilliseconds()).padStart(3, '0');
+  return `${hours}:${minutes}:${seconds}.${milliseconds}`;
+}
 
 export const useMessengerStore = defineStore('messenger', () => {
 
   const toastStore = useToastStore();
   const socialStore = useSocialStore();
   const authStore = useAuthStore();
+  const notificationStore = useNotificationStore();
   
   
   
@@ -78,6 +89,7 @@ export const useMessengerStore = defineStore('messenger', () => {
 
   const globalSocketTopic = ref<string | null>(null);
   let connectionCheckInterval: ReturnType<typeof setInterval> | null = null;
+  const sentMessagesTimestamps = new Map<string, number>();
   
   const initGlobalSocket = (myUserId: number) => {
     const topic = `/topic/user.${myUserId}`;
@@ -100,6 +112,9 @@ export const useMessengerStore = defineStore('messenger', () => {
             type: event.type as SocialEventType,
             payload: event.payload
           });
+          break;
+        case 'NOTIFICATION':
+          notificationStore.handleNotificationEvent(event);
           break;
         case 'SYSTEM':
           toastStore.info(event.payload.message || 'Системное уведомление');
@@ -210,6 +225,19 @@ export const useMessengerStore = defineStore('messenger', () => {
       if (event.type === 'NEW_MESSAGE') {
         const msg = event.payload as MessageResponseDto;
         if (!messages.value.some(m => m.id === msg.id)) {
+          const receiveTime = Date.now();
+          const receiveTimeStr = formatPreciseTime(receiveTime);
+          const sendTime = sentMessagesTimestamps.get(msg.content);
+          if (sendTime !== undefined) {
+            const totalLatency = receiveTime - sendTime;
+            const sendTimeStr = formatPreciseTime(sendTime);
+            console.log(`%c[WebSocket Latency] Мое сообщение от @${msg.senderUsername}: "${msg.content}" отправлено в ${sendTimeStr}, получено в ${receiveTimeStr}. Полная задержка (Отправка -> Получение): ${totalLatency}мс`, "color: #10b981; font-weight: bold;");
+            sentMessagesTimestamps.delete(msg.content);
+          } else {
+            const serverTime = new Date(msg.timestamp).getTime();
+            const latency = receiveTime - serverTime;
+            console.log(`%c[WebSocket Latency] Сообщение от @${msg.senderUsername}: "${msg.content}" получено в ${receiveTimeStr} за ${latency}мс (Бэкенд -> Клиент)`, "color: #10b981; font-weight: bold;");
+          }
           messages.value.push(msg);
           scrollToBottom();
         }
@@ -316,8 +344,14 @@ export const useMessengerStore = defineStore('messenger', () => {
       type: files.length > 0 ? 'IMAGE' : 'PLAIN'
     };
 
+    const startTime = Date.now();
+    sentMessagesTimestamps.set(content, startTime);
+    const sendTimeStr = formatPreciseTime(startTime);
+    console.log(`%c[HTTP Send] Отправка сообщения начата в: ${sendTimeStr}`, "color: #a855f7; font-weight: bold;");
     try {
       await sendMessage(targetIdAtStart, dto, files);
+      const httpLatency = Date.now() - startTime;
+      console.log(`%c[HTTP Latency] Сообщение отправлено. Время HTTP-запроса (Отправка -> Ответ): ${httpLatency}мс`, "color: #3b82f6; font-weight: bold;");
     } catch (err: any) {
       handleError("send", err);
       

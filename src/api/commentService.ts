@@ -18,6 +18,21 @@ export async function deleteComment(commentId: number): Promise<void> {
   await apiClient.delete(`/comments/${commentId}`)
 
 }
+
+
+export function formatPreciseTime(time: number | Date = new Date()) {
+  const d = typeof time === 'number' ? new Date(time) : time;
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  const milliseconds = String(d.getMilliseconds()).padStart(3, '0');
+
+  return `${hours}:${minutes}:${seconds}.${milliseconds}`;
+}
+
+export const sentCommentsTimestamps = new Map<string, number>();
+
+
 export async function createComment(file:File|null , commentRequestDto:CommentRequestDto):Promise<CommentResponseDto>{
   const formData = new FormData();
 
@@ -28,28 +43,39 @@ export async function createComment(file:File|null , commentRequestDto:CommentRe
     type: 'application/json'
   });
   formData.append("comment", jsonBlob);
-  const response = await apiClient.post<CommentResponseDto>(
-    `/comments/send`,
-    formData,
-    {
-      headers: {
-        
-        'Content-Type': 'multipart/form-data',
+  
+  const startTime = Date.now();
+  sentCommentsTimestamps.set(commentRequestDto.content || '', startTime);
+  const sendTimeStr = formatPreciseTime(startTime);
+  console.log(`%c[HTTP Send] Отправка комментария начата в: ${sendTimeStr}`, "color: #a855f7; font-weight: bold;");
+  
+  try {
+    const response = await apiClient.post<CommentResponseDto>(
+      `/comments/send`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
       }
-    }
-  );
-  return response.data;
+    );
+    const httpLatency = Date.now() - startTime;
+    console.log(`%c[HTTP Latency] Комментарий отправлен. Время HTTP-запроса (Отправка -> Ответ): ${httpLatency}мс`, "color: #3b82f6; font-weight: bold;");
+    return response.data;
+  } catch (err) {
+    throw err;
+  }
 }
 
 export function useSmartScroll() {
   const route = useRoute();
 
-  
+
   const findTextInRange = (container: HTMLElement, textToFind: string): Range[] => {
     const ranges: Range[] = [];
     const searchLower = textToFind.toLowerCase();
 
-    
+
     const treeWalker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
       acceptNode: (node) => {
         const parent = node.parentElement;
@@ -88,11 +114,11 @@ export function useSmartScroll() {
   const scrollToTarget = async () => {
     await nextTick();
 
-    
-    const textToFind = route.query.q as string; 
-    const selfClass = route.query.c as string;  
-    const prevClass = route.query.p as string;  
-    const index = Number(route.query.i || 0);   
+
+    const textToFind = route.query.q as string;
+    const selfClass = route.query.c as string;
+    const prevClass = route.query.p as string;
+    const index = Number(route.query.i || 0);
 
     if (!textToFind) {
       if (typeof CSS !== 'undefined' && CSS.highlights) {
@@ -105,11 +131,11 @@ export function useSmartScroll() {
     const interval = setInterval(() => {
       let ranges: Range[] = [];
 
-      
+
       if (selfClass && prevClass) {
         const allPotential = Array.from(document.querySelectorAll(`.${selfClass}`));
 
-        
+
         const contextMatches = allPotential.filter(el => {
           const prevEl = el.previousElementSibling;
           return prevEl
@@ -123,7 +149,7 @@ export function useSmartScroll() {
         }
       }
 
-      
+
       if (ranges.length === 0 && selfClass) {
         const elements = document.querySelectorAll(`.${selfClass}`);
         for (const el of elements) {
@@ -135,12 +161,12 @@ export function useSmartScroll() {
         }
       }
 
-      
+
       if (ranges.length === 0) {
         ranges = findTextInRange(document.body, textToFind);
       }
 
-      
+
       if (ranges.length > 0) {
         clearInterval(interval);
 
@@ -158,18 +184,18 @@ export function useSmartScroll() {
           }
         }
 
-        
+
         if (typeof CSS !== 'undefined' && CSS.highlights) {
           const highlight = new Highlight(...ranges);
           CSS.highlights.set("search-results", highlight);
 
-          
+
           setTimeout(() => {
             CSS.highlights.delete("search-results");
           }, 5000);
         }
       } else if (attempts >= 15) {
-        
+
         clearInterval(interval);
       }
       attempts++;

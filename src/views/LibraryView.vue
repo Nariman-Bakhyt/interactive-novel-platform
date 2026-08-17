@@ -5,6 +5,7 @@ import { useAuthStore } from '@/api/auth';
 import { getUserLibrary } from '@/api/libraryService';
 import { LibraryStatus, type UserLibraryResponseDto } from '@/types/library';
 import NovelCard from '@/components/NovelCard.vue';
+import {DEFAULT_AVATAR} from "@/utils/media.ts";
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -91,7 +92,7 @@ const goToNovel = (novelId: number) => {
     <nav class="sidebar hidden-mobile">
       <div class="sidebar-header">
         <div class="avatar-box">
-          <img :src="authStore.userDetails?.avatarUrl || '/default-avatar.png'" alt="User avatar">
+          <img :src="authStore.userDetails?.avatarUrl || DEFAULT_AVATAR " alt="User avatar">
         </div>
         <div class="header-text">
           <h2>Личная Библиотека</h2>
@@ -171,15 +172,15 @@ const goToNovel = (novelId: number) => {
   --lb-surface-variant: var(--hover-dropdowb);
   --lb-outline-variant: var(--surface-glass-border);
   --lb-outline: var(--text-muted);
-  
+
   --lb-primary: #818cf8;
   --lb-primary-dim: rgba(129, 140, 248, 0.15);
   --lb-secondary-container: var(--hover-dropdowb);
   --lb-on-secondary-container: var(--text-header);
-  
+
   --lb-text-main: var(--text-header);
   --lb-text-muted: var(--text-muted);
-  
+
   --lb-badge-bg: rgba(217, 119, 33, 0.15);
   --lb-badge-text: #d97721;
   --lb-badge-border: rgba(217, 119, 33, 0.3);
@@ -365,7 +366,7 @@ const goToNovel = (novelId: number) => {
     font-weight: 700;
     color: var(--lb-primary, #c0c1ff);
   }
-  
+
   .mobile-avatar {
     width: 32px;
     height: 32px;

@@ -86,15 +86,34 @@ const removeStatus = async () => {
 };
 
 
+const dropdownRef = ref<HTMLElement | null>(null);
+const isMobile = ref(false);
+
+const updateMobile = () => {
+  isMobile.value = window.innerWidth <= 768;
+};
+
 const handleClickOutside = (event: MouseEvent) => {
-  
-  if (widgetRef.value && !widgetRef.value.contains(event.target as Node)) {
+  const target = event.target as Node;
+  if (
+    widgetRef.value &&
+    !widgetRef.value.contains(target) &&
+    (!dropdownRef.value || !dropdownRef.value.contains(target))
+  ) {
     isDropdownOpen.value = false;
   }
 };
 
-onMounted(() => document.addEventListener('click', handleClickOutside));
-onUnmounted(() => document.removeEventListener('click', handleClickOutside));
+onMounted(() => {
+  updateMobile();
+  window.addEventListener('resize', updateMobile);
+  document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateMobile);
+  document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <template>
@@ -109,50 +128,52 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
       {{ buttonText }}
     </button>
 
-    <Transition name="fade-slide">
-      <div v-if="isDropdownOpen" class="dropdown">
+    <Teleport to="body" :disabled="!isMobile">
+      <Transition name="fade-slide">
+        <div v-if="isDropdownOpen" class="dropdown" ref="dropdownRef">
 
-        <div class="dropdown-section">
-          <span class="section-title">Статус</span>
-          <button
-            v-for="(label, statusKey) in statusLabels"
-            :key="statusKey"
-            class="dropdown-item"
-            :class="{ 'selected': currentStatus === statusKey }"
-            @click="changeStatus(statusKey as LibraryStatus)"
-          >
-            {{ label }}
-          </button>
-        </div>
-
-        <div class="divider"></div>
-
-        <div class="dropdown-section">
-          <span class="section-title">Кто это увидит?</span>
-          <select
-            class="privacy-select"
-            v-model="selectedPrivacy"
-            @change="handlePrivacyChange"
-          >
-            <option
-              v-for="(label, privacyKey) in privacyLabels"
-              :key="privacyKey"
-              :value="privacyKey"
+          <div class="dropdown-section">
+            <span class="section-title">Статус</span>
+            <button
+              v-for="(label, statusKey) in statusLabels"
+              :key="statusKey"
+              class="dropdown-item"
+              :class="{ 'selected': currentStatus === statusKey }"
+              @click="changeStatus(statusKey as LibraryStatus)"
             >
               {{ label }}
-            </option>
-          </select>
-        </div>
+            </button>
+          </div>
 
-        <template v-if="currentStatus">
           <div class="divider"></div>
-          <button class="dropdown-item remove-btn" @click="removeStatus">
-            <span class="icon">🗑️</span> Удалить из списка
-          </button>
-        </template>
 
-      </div>
-    </Transition>
+          <div class="dropdown-section">
+            <span class="section-title">Кто это увидит?</span>
+            <select
+              class="privacy-select"
+              v-model="selectedPrivacy"
+              @change="handlePrivacyChange"
+            >
+              <option
+                v-for="(label, privacyKey) in privacyLabels"
+                :key="privacyKey"
+                :value="privacyKey"
+              >
+                {{ label }}
+              </option>
+            </select>
+          </div>
+
+          <template v-if="currentStatus">
+            <div class="divider"></div>
+            <button class="dropdown-item remove-btn" @click="removeStatus">
+              <span class="icon">🗑️</span> Удалить из списка
+            </button>
+          </template>
+
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 

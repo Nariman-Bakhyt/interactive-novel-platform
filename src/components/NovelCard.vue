@@ -43,6 +43,7 @@ const handleMouseEnter = () => {
 };
 
 const handleMouseLeave = () => {
+  if (props.isMobile) return;
   if (hoverTimeout) clearTimeout(hoverTimeout);
   closeTimeout = window.setTimeout(() => {
     isHovered.value = false;

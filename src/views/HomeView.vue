@@ -137,18 +137,13 @@ onUnmounted(() => {
   background-clip: text;
 }
 
-/* Accent word — indigo glow + shimmer */
+/* Accent word — indigo static glow */
 .accent {
   background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   filter: drop-shadow(0 0 20px rgba(99,102,241,0.55));
-  animation: accentPulse 3s ease-in-out infinite;
-}
-@keyframes accentPulse {
-  0%, 100% { filter: drop-shadow(0 0 16px rgba(99,102,241,0.5)); }
-  50%       { filter: drop-shadow(0 0 28px rgba(129,140,248,0.75)); }
 }
 
 .subtitle {

@@ -61,13 +61,16 @@ const handleScroll = () => {
   }, 200);
 };
 
+const currentNovelId = ref<number | null>(null);
+
 const fetchData = async () => {
   try {
     isLoading.value = true;
     chapter.value = await getChapter(nId.value, cId.value);
-    if (chaptersList.value.length === 0) {
+    if (chaptersList.value.length === 0 || currentNovelId.value !== nId.value) {
       const novelData = await getNovelById(nId.value);
       chaptersList.value = (novelData.chapters || []).sort((a, b) => a.chapterNumber - b.chapterNumber);
+      currentNovelId.value = nId.value;
       await chatStore.setContext(nId.value, novelData.novel.title, cId.value, chapter.value.title);
     } else {
       const novelTitle = chaptersList.value.length > 0 ? "Новелла" : "Новелла";
@@ -142,7 +145,14 @@ const toggleComments = (blockId: number | null) => {
   window.dispatchEvent(new CustomEvent('open-messenger'));
 };
 
-watch(() => route.params.chapterId, (newId) => { if (newId) fetchData(); });
+watch(
+  () => [route.params.novelId, route.params.chapterId],
+  ([newNovelId, newChapterId]) => {
+    if (newNovelId && newChapterId) {
+      fetchData();
+    }
+  }
+);
 
 
 const chapterNumber = computed(() => {

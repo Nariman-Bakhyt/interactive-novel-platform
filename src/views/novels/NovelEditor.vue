@@ -135,7 +135,7 @@ const handleDeleteNovel = async () => {
   try {
     await deleteNovel(Number(novelId.value));
     toastStore.success('Новелла успешно удалена');
-    router.push('/novels/my');
+    router.push('/my-novels');
   } catch (e) {
     console.error(e);
     toastStore.error('Ошибка при удалении новеллы');

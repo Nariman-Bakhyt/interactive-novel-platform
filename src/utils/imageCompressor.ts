@@ -19,7 +19,7 @@ export function compressImage(file: File, options: CompressOptions = {}): Promis
     maxWidth = 1200,
     maxHeight = 1200,
     quality = 0.8,
-    mimeType = 'image/jpeg'
+    mimeType = 'image/webp'
   } = options;
 
   return new Promise((resolve) => {
