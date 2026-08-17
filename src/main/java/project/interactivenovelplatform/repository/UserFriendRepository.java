@@ -26,9 +26,13 @@ public interface UserFriendRepository extends JpaRepository<UserFriendEntity, Lo
     SELECT (COUNT(f) > 0) FROM UserFriendEntity f
     WHERE ((f.sender.id = :userA AND f.receiver.id = :userB)
        OR (f.sender.id = :userB AND f.receiver.id = :userA))
-    AND f.status = project.interactivenovelplatform.entity.RelationStatus.FRIEND
+    AND f.status = :status
     """)
-    boolean existsIsFriend(@Param("userA") Long userA, @Param("userB") Long userB);
+    boolean existsIsFriendWithStatus(@Param("userA") Long userA, @Param("userB") Long userB, @Param("status") RelationStatus status);
+
+    default boolean existsIsFriend(Long userA, Long userB) {
+        return existsIsFriendWithStatus(userA, userB, RelationStatus.FRIEND);
+    }
 
     @Query("""
         SELECT f FROM UserFriendEntity f
@@ -56,20 +60,32 @@ public interface UserFriendRepository extends JpaRepository<UserFriendEntity, Lo
         SELECT CASE WHEN f.sender.id = :userId THEN f.receiver.id ELSE f.sender.id  END , f.id
         FROM UserFriendEntity f
         WHERE (f.sender.id = :userId OR f.receiver.id = :userId)
-        AND f.status =  project.interactivenovelplatform.entity.RelationStatus.FRIEND
+        AND f.status = :status
 """)
-    List<Object[]> findAllFriendIdsByUserId(@Param("userId") Long userId);
+    List<Object[]> findAllFriendIdsByUserIdAndStatus(@Param("userId") Long userId, @Param("status") RelationStatus status);
+
+    default List<Object[]> findAllFriendIdsByUserId(Long userId) {
+        return findAllFriendIdsByUserIdAndStatus(userId, RelationStatus.FRIEND);
+    }
 
 
     @Query("""
         SELECT f.sender.id , f.id FROM UserFriendEntity f WHERE f.receiver.id = :userId
-        AND f.status = project.interactivenovelplatform.entity.RelationStatus.PENDING
+        AND f.status = :status
 """)
-    List<Object[]> findAllIncomingRequests(@Param("userId") Long userId);
+    List<Object[]> findAllIncomingRequestsByStatus(@Param("userId") Long userId, @Param("status") RelationStatus status);
+
+    default List<Object[]> findAllIncomingRequests(Long userId) {
+        return findAllIncomingRequestsByStatus(userId, RelationStatus.PENDING);
+    }
 
     @Query("""
         SELECT f.receiver.id , f.id FROM UserFriendEntity f WHERE f.sender.id = :userId
-        AND f.status = project.interactivenovelplatform.entity.RelationStatus.PENDING
+        AND f.status = :status
 """)
-    List<Object[]> findAllOutgoingRequests(@Param("userId") Long userId);
+    List<Object[]> findAllOutgoingRequestsByStatus(@Param("userId") Long userId, @Param("status") RelationStatus status);
+
+    default List<Object[]> findAllOutgoingRequests(Long userId) {
+        return findAllOutgoingRequestsByStatus(userId, RelationStatus.PENDING);
+    }
 }

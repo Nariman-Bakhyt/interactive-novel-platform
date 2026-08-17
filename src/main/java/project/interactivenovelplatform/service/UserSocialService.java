@@ -42,4 +42,6 @@ public interface UserSocialService {
     List<UserBlockRepository.BlockInfo> getAllBlockInfoBetween(Long myId, Set<Long> opponentIds);
 
     SocialGraphResponseDto getSocialGraph(Long userId);
+
+    List<Long> getFollowerIds(Long userId);
 }

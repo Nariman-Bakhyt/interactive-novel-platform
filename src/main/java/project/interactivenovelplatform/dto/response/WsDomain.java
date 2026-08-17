@@ -1,5 +1,5 @@
 package project.interactivenovelplatform.dto.response;
 
 public enum WsDomain {
-    CHAT, SOCIAL, SYSTEM, NOVEL
+    CHAT, SOCIAL, SYSTEM, NOVEL, NOTIFICATION
 }

@@ -18,6 +18,7 @@ import project.interactivenovelplatform.repository.UserCloseFriendsRepository;
 import project.interactivenovelplatform.repository.UserFollowerRepository;
 import project.interactivenovelplatform.repository.UserFriendRepository;
 import project.interactivenovelplatform.service.StorageHelper;
+import project.interactivenovelplatform.service.StorageService;
 import project.interactivenovelplatform.service.UserService;
 import project.interactivenovelplatform.service.UserSocialService;
 
@@ -37,26 +38,29 @@ public class UserSocialServiceImpl implements UserSocialService {
     private final UserCloseFriendsRepository  closeFriendsRepository;
     private final UserService userService;
     private final StorageHelper storageHelper;
+    private final StorageService storageService;
 
     private final ApplicationEventPublisher applicationEventPublisher;
 
     private UserRelationResponseDto convertFollowerToDto(UserFollowerEntity relationEntity , AppUserEntity appUserEntity ) {
+        String publicUrl = appUserEntity.getAvatarUrl() != null ? storageService.getPublicUrl(appUserEntity.getAvatarUrl()) : null;
         return new UserRelationResponseDto(
                 relationEntity.getId(),
                 appUserEntity.getId(),
                 appUserEntity.getUsername(),
-                storageHelper.getAvatarOrDefault(appUserEntity.getAvatarUrl()),
+                storageHelper.getAvatarOrDefault(publicUrl),
                 null,
                 relationEntity.getUpdatedAt()
         );
     }
 
     private UserRelationResponseDto convertFriendToDto(UserFriendEntity friendEntity, AppUserEntity appUserEntity) {
+        String publicUrl = appUserEntity.getAvatarUrl() != null ? storageService.getPublicUrl(appUserEntity.getAvatarUrl()) : null;
         return new UserRelationResponseDto(
                 friendEntity.getId(),
                 appUserEntity.getId(),
                 appUserEntity.getUsername(),
-                storageHelper.getAvatarOrDefault(appUserEntity.getAvatarUrl()),
+                storageHelper.getAvatarOrDefault(publicUrl),
                 friendEntity.getStatus(),
                 friendEntity.getUpdatedAt()
         );
@@ -64,22 +68,24 @@ public class UserSocialServiceImpl implements UserSocialService {
 
 
     private UserRelationResponseDto convertCloseFriendToDto(UserCloseFriendsEntity closeFriendsEntity, AppUserEntity appUserEntity) {
+        String publicUrl = appUserEntity.getAvatarUrl() != null ? storageService.getPublicUrl(appUserEntity.getAvatarUrl()) : null;
         return new UserRelationResponseDto(
                 closeFriendsEntity.getId(),
                 appUserEntity.getId(),
                 appUserEntity.getUsername(),
-                storageHelper.getAvatarOrDefault(appUserEntity.getAvatarUrl()),
+                storageHelper.getAvatarOrDefault(publicUrl),
                 null,
                 closeFriendsEntity.getAddedAt()
         );
     }
 
     private UserRelationResponseDto convertBlockToDto(UserBlockEntity blockEntity , AppUserEntity appUserEntity) {
+        String publicUrl = appUserEntity.getAvatarUrl() != null ? storageService.getPublicUrl(appUserEntity.getAvatarUrl()) : null;
         return new UserRelationResponseDto(
                 blockEntity.getId(),
                 appUserEntity.getId(),
                 appUserEntity.getUsername(),
-                storageHelper.getAvatarOrDefault(appUserEntity.getAvatarUrl()),
+                storageHelper.getAvatarOrDefault(publicUrl),
                 null,
                 blockEntity.getCreatedAt()
         );
@@ -441,5 +447,13 @@ public class UserSocialServiceImpl implements UserSocialService {
                 getMap(friendRepository.findAllIncomingRequests(userId)),
                 getMap(friendRepository.findAllOutgoingRequests(userId))
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> getFollowerIds(Long userId) {
+        return followerRepository.findAllFollowerIds(userId).stream()
+                .map(obj -> (Long) obj[0])
+                .collect(Collectors.toList());
     }
 }

@@ -20,6 +20,7 @@ import project.interactivenovelplatform.error.GlobalExceptionHandler;
 import project.interactivenovelplatform.repository.*;
 import project.interactivenovelplatform.security.UserPrincipal;
 import project.interactivenovelplatform.service.*;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
@@ -40,6 +41,7 @@ public class NovelServiceImpl implements NovelService {
     private final ChapterBlockRepository chapterBlockRepository;
     private final ReadingHistoryRepository readingHistoryRepository;
     private final EntityManager entityManager;
+    private final NotificationService notificationService;
 
     private final static Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private final TransactionTemplate transactionTemplate;
@@ -261,6 +263,8 @@ public class NovelServiceImpl implements NovelService {
             throw new IllegalStateException("Нельзя редактировать роман, отозванный автором.");
         }
         
+        Novel oldStatus = novel.getStatus();
+        
         if (dto.getTitle() != null && !dto.getTitle().isBlank()) {
             novel.setTitle(dto.getTitle());
         }
@@ -287,7 +291,29 @@ public class NovelServiceImpl implements NovelService {
             tagAndGenreService.UpdateTagOrGenreToNovel(dto.getGenres(),false,novel);
         }
 
-        return convertToDto(novelRepository.save(novel));
+        NovelEntity saved = novelRepository.save(novel);
+
+        if (oldStatus == Novel.DRAFT && (saved.getStatus() == Novel.IN_PROGRESS || saved.getStatus() == Novel.COMPLETED)) {
+            String publicCoverUrl = saved.getCoverUrl() != null ? storageService.getPublicUrl(saved.getCoverUrl()) : null;
+            notificationService.createNotificationForFollowers(
+                saved.getAuthor(),
+                NotificationType.NEW_NOVEL,
+                Map.of(
+                    "novelId", saved.getId(),
+                    "novelTitle", saved.getTitle(),
+                    "coverUrl", publicCoverUrl != null ? publicCoverUrl : ""
+                ),
+                saved.getId()
+            );
+        } else {
+            boolean wasPublished = oldStatus == Novel.IN_PROGRESS || oldStatus == Novel.COMPLETED;
+            boolean isPublishedNow = saved.getStatus() == Novel.IN_PROGRESS || saved.getStatus() == Novel.COMPLETED;
+            if (wasPublished && !isPublishedNow) {
+                notificationService.revokeNovelNotifications(saved.getId());
+            }
+        }
+
+        return convertToDto(saved);
     }
 
     @Override
@@ -296,7 +322,6 @@ public class NovelServiceImpl implements NovelService {
                 .filter(n -> !n.getIsDeleted())
                 .orElseThrow(() -> new EntityNotFoundException("новелла не найдена"));
         String oldUrl = novel.getCoverUrl();
-
         
         String datePath = novel.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
         String folderPath = String.format("covers/users/%d/%s", novel.getAuthor().getId(), datePath);
@@ -311,15 +336,23 @@ public class NovelServiceImpl implements NovelService {
                 newUrl = storageService.uploadFile(file, folderPath, filename);
                 final String finalUrl = newUrl;
                 
-                var savedNovel = transactionTemplate.execute(_ ->saveNewCoverUrl(id,finalUrl));
-
+                var savedNovel = transactionTemplate.execute(status -> {
+                    var novelEntity = saveNewCoverUrl(id, finalUrl);
+                    return convertToDto(novelEntity);
+                });
                 if (oldUrl != null && newUrl != null) {
                     storageService.deleteFile(oldUrl);
                 }
-                return convertToDto(savedNovel);
+                return savedNovel;
             }
             else {
-                throw new EntityNotFoundException("нету файла");
+                var savedNovel = transactionTemplate.execute(status -> {
+                    var novelEntity = saveNewCoverUrl(id, null);
+                    return convertToDto(novelEntity);
+                });
+
+                return savedNovel;
+
             }
         } catch (Exception e) {
             if (newUrl != null) {
@@ -341,6 +374,49 @@ public class NovelServiceImpl implements NovelService {
             throw new RuntimeException("Ошибка при обновлении обложки: " + e.getMessage(), e);
         }
 
+    }
+
+    @Override
+    public String uploadChapterImage(Long novelId, MultipartFile file) {
+        var novel = novelRepository.findById(novelId)
+                .filter(n -> !n.getIsDeleted())
+                .orElseThrow(() -> new EntityNotFoundException("новелла не найдена"));
+
+        String datePath = novel.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+        String folderPath = String.format("chapters/images/%d/%s", novel.getAuthor().getId(), datePath);
+        
+        try {
+            if (file != null && !file.isEmpty()) {
+                String actualMimeType = storageService.verifyRealImageType(file);
+                String extension = org.apache.tika.mime.MimeTypes.getDefaultMimeTypes().forName(actualMimeType).getExtension();
+                String filename = "chapter_" + novel.getId() + "_img" + System.currentTimeMillis() + extension;
+                String newUrl = storageService.uploadFile(file, folderPath, filename);
+                return storageService.getPublicUrl(newUrl);
+            } else {
+                throw new IllegalArgumentException("Файл не передан");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при загрузке изображения: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void deleteChapterImage(Long novelId, String url) {
+        var novel = novelRepository.findById(novelId)
+                .filter(n -> !n.getIsDeleted())
+                .orElseThrow(() -> new EntityNotFoundException("новелла не найдена"));
+
+        String blobName = storageService.getBlobNameFromUrl(url);
+        if (blobName == null) {
+            throw new IllegalArgumentException("Некорректный URL изображения");
+        }
+
+        String expectedPrefix = String.format("chapters/images/%d/", novel.getAuthor().getId());
+        if (!blobName.startsWith(expectedPrefix)) {
+            throw new AccessDeniedException("Нет прав на удаление данного файла или файл не принадлежит этой новелле");
+        }
+
+        storageService.deleteFile(blobName);
     }
 
     @Override
@@ -406,6 +482,19 @@ public class NovelServiceImpl implements NovelService {
                 novel.setLastChapterAddedAt(chapter.getPublishedAt());
             }
             novelRepository.save(novel);
+            
+            notificationService.createNotificationForFollowers(
+                novel.getAuthor(),
+                NotificationType.NEW_CHAPTER,
+                Map.of(
+                    "novelId", novel.getId(),
+                    "novelTitle", novel.getTitle(),
+                    "chapterId", chapter.getId(),
+                    "chapterTitle", chapter.getTitle(),
+                    "chapterNumber", chapter.getChapterNumber()
+                ),
+                novel.getId()
+            );
         }
 
         return ChapterConvertToDto(chapter);
@@ -451,6 +540,7 @@ public class NovelServiceImpl implements NovelService {
         chapter.getBlocks().clear();
         chapter.getBlocks().addAll(finalBlocks);
 
+        ChapterStatus oldStatus = chapter.getStatus();
         boolean publishTimeChanged = false;
         if (dto.getPublishedAt() != null) {
             OffsetDateTime oldPublishTime = chapter.getPublishedAt();
@@ -472,6 +562,23 @@ public class NovelServiceImpl implements NovelService {
             recalculateNovelStats(novelId);
         }
 
+        if (oldStatus != ChapterStatus.PUBLISHED && chapter.getStatus() == ChapterStatus.PUBLISHED) {
+            notificationService.createNotificationForFollowers(
+                novelRepository.findById(novelId).orElseThrow().getAuthor(),
+                NotificationType.NEW_CHAPTER,
+                Map.of(
+                    "novelId", novelId,
+                    "novelTitle", novelRepository.findById(novelId).orElseThrow().getTitle(),
+                    "chapterId", chapter.getId(),
+                    "chapterTitle", chapter.getTitle(),
+                    "chapterNumber", chapter.getChapterNumber()
+                ),
+                novelId
+            );
+        } else if (oldStatus == ChapterStatus.PUBLISHED && chapter.getStatus() != ChapterStatus.PUBLISHED) {
+            notificationService.revokeChapterNotifications(chapter.getId());
+        }
+
         return ChapterConvertToDto(chapter);
     }
 
@@ -486,6 +593,9 @@ public class NovelServiceImpl implements NovelService {
                 .orElseThrow(() -> new EntityNotFoundException("Глава с id: " + chapterId + " не найден в романе id: " + novelId));
         if(!chapter.getNovel().getId().equals(novelId)) {
             throw new IllegalArgumentException("Глава с id: " + chapterId + "не связана с новеллой с id: " + novelId);
+        }
+        if (chapter.getStatus() == ChapterStatus.PUBLISHED) {
+            notificationService.revokeChapterNotifications(chapterId);
         }
         chapter.setIsDeleted(true);
         chapterRepository.save(chapter);
@@ -622,7 +732,7 @@ public class NovelServiceImpl implements NovelService {
     @Transactional
     @Override
     public ChapterResponseDto updateChapterPublishTime(Long novelId, Long chapterId, OffsetDateTime publishTime) {
-        novelRepository.findById(novelId)
+        NovelEntity novel = novelRepository.findById(novelId)
                 .filter(n -> !n.getIsDeleted())
                 .orElseThrow(()->new EntityNotFoundException("Роман с id: " + novelId + " не найден"));
 
@@ -634,6 +744,7 @@ public class NovelServiceImpl implements NovelService {
             throw new IllegalArgumentException("Глава с id: " + chapterId + " не связана с новеллой с id: " + novelId);
         }
 
+        ChapterStatus oldStatus = chapter.getStatus();
         chapter.setPublishedAt(publishTime);
         if (publishTime == null) {
             chapter.setStatus(ChapterStatus.DRAFT);
@@ -645,6 +756,23 @@ public class NovelServiceImpl implements NovelService {
         chapterRepository.save(chapter);
 
         recalculateNovelStats(novelId);
+
+        if (oldStatus != ChapterStatus.PUBLISHED && chapter.getStatus() == ChapterStatus.PUBLISHED) {
+            notificationService.createNotificationForFollowers(
+                novel.getAuthor(),
+                NotificationType.NEW_CHAPTER,
+                Map.of(
+                    "novelId", novelId,
+                    "novelTitle", novel.getTitle(),
+                    "chapterId", chapter.getId(),
+                    "chapterTitle", chapter.getTitle(),
+                    "chapterNumber", chapter.getChapterNumber()
+                ),
+                novelId
+            );
+        } else if (oldStatus == ChapterStatus.PUBLISHED && chapter.getStatus() != ChapterStatus.PUBLISHED) {
+            notificationService.revokeChapterNotifications(chapterId);
+        }
 
         return ChapterConvertToDto(chapter);
     }
@@ -667,5 +795,6 @@ public class NovelServiceImpl implements NovelService {
                 .filter(n -> !n.getIsDeleted())
                 .orElseThrow(() -> new EntityNotFoundException("Роман с Id:" + id + " не найден."));
         novelRepository.delete(novel);
+        notificationService.revokeAllNotificationsByNovelId(id);
     }
 }

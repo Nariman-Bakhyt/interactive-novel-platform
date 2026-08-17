@@ -34,6 +34,15 @@ public class GuestIdFilter extends OncePerRequestFilter {
     private String hashSecret;
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/swagger-ui") ||
+                path.startsWith("/v3/api-docs") ||
+                path.startsWith("/swagger-resources") ||
+                path.startsWith("/webjars");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
@@ -70,13 +79,15 @@ public class GuestIdFilter extends OncePerRequestFilter {
         }
 
         if (guestToken == null || !validateToken(guestToken)) {
-            // Если паспорта нет — просто отправляем на фронтенд маркер 401. Лимиты тут не трогаем!
+            // Если паспорта нет — просто отправляем на фронтенд маркер 401. Лимиты тут не
+            // трогаем!
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json; charset=UTF-8");
             response.getWriter().write("{\"requires_challenge\": true}");
             return;
         } else {
-            // Контур 2: Защита от обнаглевших ботов, решивших PoW (Оставляем как было, это гениально)
+            // Контур 2: Защита от обнаглевших ботов, решивших PoW (Оставляем как было, это
+            // гениально)
             if (visitorId2 != null && !visitorId2.isBlank()) {
                 if (!tryConsumeApiLimit(visitorId2)) {
                     handleApiLimitExceeded(response);
@@ -104,18 +115,20 @@ public class GuestIdFilter extends OncePerRequestFilter {
         response.setStatus(429);
         response.setContentType("application/json; charset=UTF-8");
         response.getWriter().write("""
-            {
-                "status": 429,
-                "error": "Too Many Requests",
-                "message": "Превышен лимит запросов к API. Подождите немного."
-            }
-            """);
+                {
+                    "status": 429,
+                    "error": "Too Many Requests",
+                    "message": "Превышен лимит запросов к API. Подождите немного."
+                }
+                """);
     }
 
     private boolean validateToken(String token) {
-        if (token == null || !token.contains(".")) return false;
+        if (token == null || !token.contains("."))
+            return false;
         String[] parts = token.split("\\.");
-        if (parts.length != 2) return false;
+        if (parts.length != 2)
+            return false;
         return parts[1].equals(generateSignature(parts[0]));
     }
 

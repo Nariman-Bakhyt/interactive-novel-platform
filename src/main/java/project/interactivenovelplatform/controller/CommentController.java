@@ -1,6 +1,7 @@
 package project.interactivenovelplatform.controller;
 
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -40,11 +41,11 @@ public class CommentController {
         return ResponseEntity.ok(page);
     }
 
-    @RateLimited(capacity = 10, minutes = 1)
+    @RateLimited(capacity = 1000, minutes = 1)
     @PostMapping(value = "/send", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CommentResponseDto> createComment(@RequestPart(value = "files", required = false) List<MultipartFile> files
-            ,@RequestPart("comment") CommentRequestDto commentRequestDto, @AuthenticationPrincipal UserPrincipal principal){
+            ,@RequestPart("comment") @Valid CommentRequestDto commentRequestDto, @AuthenticationPrincipal UserPrincipal principal){
         CommentResponseDto response = commentService.createComment(files,commentRequestDto, principal.getId());
         return ResponseEntity.ok(response);
     }

@@ -13,4 +13,6 @@ public interface StorageService {
     String getPublicUrl(String blobName);
 
     String getPresignedUrl(String objectPath);
+
+    String getBlobNameFromUrl(String url);
 }

@@ -1,5 +1,6 @@
 package project.interactivenovelplatform.service.impl;
 
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -35,6 +36,25 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final VerificationService verificationService;
 
+    private String getGuestId(HttpServletRequest request) {
+        if (request == null) return null;
+        String guestIdAttr = (String) request.getAttribute("VALID_GUEST_ID");
+        if (guestIdAttr != null) {
+            return guestIdAttr;
+        }
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("guest_id".equals(cookie.getName())) {
+                    String val = cookie.getValue();
+                    if (val != null && val.contains(".")) {
+                        return val.split("\\.")[0];
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     @Transactional
     @Override
     public AuthResponseDto createSession(UserPrincipal user, HttpServletRequest request) {
@@ -43,9 +63,17 @@ public class AuthServiceImpl implements AuthService {
 
         String userAgent = request.getHeader("User-Agent");
         String ipAddress = request.getRemoteAddr();
+        String guestId = getGuestId(request);
 
-        UserSessionEntity session = userSessionRepository.findByUserIdAndUserAgent(user.getId(), userAgent)
-                .orElseGet(UserSessionEntity::new);
+        UserSessionEntity session = null;
+        if (guestId != null) {
+            session = userSessionRepository.findByUserIdAndGuestId(user.getId(), guestId)
+                    .orElseGet(() -> userSessionRepository.findByUserIdAndUserAgent(user.getId(), userAgent)
+                            .orElseGet(UserSessionEntity::new));
+        } else {
+            session = userSessionRepository.findByUserIdAndUserAgent(user.getId(), userAgent)
+                    .orElseGet(UserSessionEntity::new);
+        }
 
         if (session.getRefreshToken() != null) {
             redisTemplate.delete("refresh:" + session.getRefreshToken());
@@ -53,6 +81,7 @@ public class AuthServiceImpl implements AuthService {
 
         session.setUserId(user.getId());
         session.setUserAgent(userAgent);
+        session.setGuestId(guestId);
         session.setRefreshToken(signedRefreshToken);
         session.setIpAddress(ipAddress);
         session.setLoginTime(OffsetDateTime.now());

@@ -31,6 +31,8 @@ import project.interactivenovelplatform.entity.Metadata;
 import project.interactivenovelplatform.entity.RatingEntity;
 import project.interactivenovelplatform.repository.CommentRepository;
 import project.interactivenovelplatform.repository.RatingRepository;
+import project.interactivenovelplatform.repository.ForumTopicRepository;
+import project.interactivenovelplatform.repository.ChannelPostRepository;
 import project.interactivenovelplatform.security.UrlValidator;
 import project.interactivenovelplatform.service.*;
 
@@ -49,6 +51,8 @@ public class CommentServiceImpl implements CommentService {
         if (response.getBlockId() != null) return "/topic/block." + response.getBlockId();
         if (response.getChapterId() != null) return "/topic/chapter." + response.getChapterId();
         if (response.getNovelId() != null) return "/topic/novel." + response.getNovelId();
+        if (response.getForumTopicId() != null) return "/topic/forumTopic." + response.getForumTopicId();
+        if (response.getChannelId() != null) return "/topic/channelPost." + response.getChannelId();
         return "/topic/global";
     }
 
@@ -58,6 +62,8 @@ public class CommentServiceImpl implements CommentService {
     private final CommentRepository commentRepository;
     private final StorageService storageService;
     private final StorageHelper storageHelper;
+    private final ForumTopicRepository forumTopicRepository;
+    private final ChannelPostRepository channelPostRepository;
 
     private final TransactionTemplate transactionTemplate;
     private final ApplicationEventPublisher applicationEventPublisher;
@@ -194,7 +200,7 @@ public class CommentServiceImpl implements CommentService {
         Metadata metadata = createMetadata(files, datePath, dto, currentId);
 
         try {
-            CommentEntity finalCommentEntity = transactionTemplate.execute(_ ->{
+            CommentResponseDto response = transactionTemplate.execute(_ ->{
                         AppUserEntity user = userService.getEntityIsActiveAndIsLockedFalse(currentId);
                         CommentEntity commentEntity = new CommentEntity();
                         commentEntity.setContent(dto.getContent());
@@ -202,12 +208,14 @@ public class CommentServiceImpl implements CommentService {
                         commentEntity.setUser(user);
                         commentEntity.setMetadata(metadata);
                         setCommentTarget(commentEntity, dto);
-                        return commentRepository.save(commentEntity);
+                        CommentEntity saved = commentRepository.save(commentEntity);
+
+                        CommentResponseDto resp = convertToResponse(saved);
+                        String topic = determineTopic(resp);
+                        applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, topic, new WsEventDto<>(WsDomain.NOVEL, NovelEventType.COMMENT_CREATED.name(), resp)));
+                        return resp;
                     }
             );
-            CommentResponseDto response = convertToResponse(finalCommentEntity);
-            String topic = determineTopic(response);
-            applicationEventPublisher.publishEvent(new SocialWebsocketEvent(this, topic, new WsEventDto<>(WsDomain.NOVEL, NovelEventType.COMMENT_CREATED.name(), response)));
             return response;
         }
         catch (Exception e) {
@@ -296,10 +304,13 @@ public class CommentServiceImpl implements CommentService {
             commentEntity.setChapter(novelService.getChapterReference(dto.getChapterId()));
         } else if (dto.getNovelId() != null) {
             commentEntity.setNovel(novelService.getNovelReference(dto.getNovelId()));
+        } else if (dto.getForumTopicId() != null) {
+            commentEntity.setForumTopic(forumTopicRepository.getReferenceById(dto.getForumTopicId()));
+        } else if (dto.getChannelId() != null) {
+            commentEntity.setChannelPost(channelPostRepository.getReferenceById(dto.getChannelId()));
         } else {
-            throw new IllegalArgumentException("Comment must have a target (block, chapter, or novel)");
+            throw new IllegalArgumentException("Comment must have a target (block, chapter, novel, forumTopic, or channel)");
         }
-        
     }
 
     @Override
@@ -311,6 +322,10 @@ public class CommentServiceImpl implements CommentService {
             return commentRepository.findByChapter_Id(dto.getChapterId(), pageable).map(this::convertToResponse);
         } else if (dto.getNovelId() != null) {
             return commentRepository.findByNovel_Id(dto.getNovelId(), pageable).map(this::convertToResponse);
+        } else if (dto.getForumTopicId() != null) {
+            return commentRepository.findByForumTopic_Id(dto.getForumTopicId(), pageable).map(this::convertToResponse);
+        } else if (dto.getChannelId() != null) {
+            return commentRepository.findByChannelPost_Id(dto.getChannelId(), pageable).map(this::convertToResponse);
         }
 
         return new org.springframework.data.domain.SliceImpl<>(java.util.Collections.emptyList());

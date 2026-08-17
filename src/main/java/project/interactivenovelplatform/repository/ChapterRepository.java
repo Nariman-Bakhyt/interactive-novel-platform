@@ -21,18 +21,27 @@ public interface ChapterRepository extends JpaRepository<ChapterEntity, Long> {
             "FROM ChapterEntity c WHERE c.novel.id = :novelId AND c.isDeleted = false ORDER BY c.chapterNumber ASC")
     List<ChapterShortResponseDto> findAllByNovelIdShort(@Param("novelId") Long novelId);
 
-    
     @Query("SELECT new project.interactivenovelplatform.dto.response.ChapterShortResponseDto(c.id, c.chapterNumber, c.title, c.status, c.publishedAt) " +
-            "FROM ChapterEntity c WHERE c.novel.id = :novelId AND c.status = project.interactivenovelplatform.entity.ChapterStatus.PUBLISHED AND c.isDeleted = false ORDER BY c.chapterNumber ASC")
-    List<ChapterShortResponseDto> findAllPublishedByNovelIdShort(@Param("novelId") Long novelId);
+            "FROM ChapterEntity c WHERE c.novel.id = :novelId AND c.status = :status AND c.isDeleted = false ORDER BY c.chapterNumber ASC")
+    List<ChapterShortResponseDto> findAllByNovelIdAndStatusAndIsDeletedFalseShort(@Param("novelId") Long novelId, @Param("status") ChapterStatus status);
 
-    
-    @Query("SELECT COUNT(c) FROM ChapterEntity c WHERE c.novel.id = :novelId AND c.status = project.interactivenovelplatform.entity.ChapterStatus.PUBLISHED AND c.isDeleted = false")
-    long countPublishedChapters(@Param("novelId") Long novelId);
+    default List<ChapterShortResponseDto> findAllPublishedByNovelIdShort(Long novelId) {
+        return findAllByNovelIdAndStatusAndIsDeletedFalseShort(novelId, ChapterStatus.PUBLISHED);
+    }
 
-    
-    @Query("SELECT MAX(c.publishedAt) FROM ChapterEntity c WHERE c.novel.id = :novelId AND c.status = project.interactivenovelplatform.entity.ChapterStatus.PUBLISHED AND c.isDeleted = false")
-    Optional<OffsetDateTime> findLatestPublishedDate(@Param("novelId") Long novelId);
+    @Query("SELECT COUNT(c) FROM ChapterEntity c WHERE c.novel.id = :novelId AND c.status = :status AND c.isDeleted = false")
+    long countByNovelIdAndStatusAndIsDeletedFalse(@Param("novelId") Long novelId, @Param("status") ChapterStatus status);
+
+    default long countPublishedChapters(Long novelId) {
+        return countByNovelIdAndStatusAndIsDeletedFalse(novelId, ChapterStatus.PUBLISHED);
+    }
+
+    @Query("SELECT MAX(c.publishedAt) FROM ChapterEntity c WHERE c.novel.id = :novelId AND c.status = :status AND c.isDeleted = false")
+    Optional<OffsetDateTime> findLatestPublishedDateByNovelIdAndStatusAndIsDeletedFalse(@Param("novelId") Long novelId, @Param("status") ChapterStatus status);
+
+    default Optional<OffsetDateTime> findLatestPublishedDate(Long novelId) {
+        return findLatestPublishedDateByNovelIdAndStatusAndIsDeletedFalse(novelId, ChapterStatus.PUBLISHED);
+    }
 
     
     List<ChapterEntity> findAllByStatusAndPublishedAtBeforeAndIsDeletedFalse(ChapterStatus status, OffsetDateTime now);

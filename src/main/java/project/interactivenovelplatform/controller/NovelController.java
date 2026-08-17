@@ -49,13 +49,13 @@ public class NovelController {
     @RateLimited(capacity = 15, minutes = 1)
     @GetMapping("/public/{novelId}")
     public ResponseEntity<NovelAndChapterShortResponseDto> findNovelById(@PathVariable Long novelId,
-                                                                         @AuthenticationPrincipal AppUserEntity user) {
+                                                                         @AuthenticationPrincipal UserPrincipal userPrincipal) {
         NovelAndChapterShortResponseDto novel;
-        if(user != null) {
-            novel = novelService.findById(novelId,user.getId());
+        if(userPrincipal != null) {
+            novel = novelService.findById(novelId, userPrincipal.getId());
         }
         else {
-            novel = novelService.findById(novelId,null);
+            novel = novelService.findById(novelId, null);
         }
 
         return ResponseEntity.ok(novel);
@@ -103,6 +103,28 @@ public class NovelController {
     public ResponseEntity<NovelResponseDto> updateCover(@RequestParam(value = "file", required = false) MultipartFile file,@PathVariable Long novelId ){
         var novel = novelService.updateCoverUrl(novelId,file);
         return ResponseEntity.ok().body(novel);
+    }
+
+    @RateLimited(capacity = 10, minutes = 1)
+    @PostMapping("/{novelId}/chapter-images")
+    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId, authentication.principal) or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN)")
+    public ResponseEntity<java.util.Map<String, String>> uploadChapterImage(
+            @PathVariable Long novelId,
+            @RequestParam("file") MultipartFile file
+    ) {
+        String url = novelService.uploadChapterImage(novelId, file);
+        return ResponseEntity.ok(java.util.Map.of("url", url));
+    }
+
+    @RateLimited(capacity = 10, minutes = 1)
+    @DeleteMapping("/{novelId}/chapter-images")
+    @PreAuthorize("@novelServiceImpl.isAuthor(#novelId, authentication.principal) or @rsec.hasRank(T(project.interactivenovelplatform.entity.Role).ADMIN)")
+    public ResponseEntity<Void> deleteChapterImage(
+            @PathVariable Long novelId,
+            @RequestParam("url") String url
+    ) {
+        novelService.deleteChapterImage(novelId, url);
+        return ResponseEntity.ok().build();
     }
 
     @RateLimited(capacity = 10, minutes = 1)

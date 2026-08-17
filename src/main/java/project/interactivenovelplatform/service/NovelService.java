@@ -22,6 +22,8 @@ public interface NovelService {
     void delete(Long id);
 
     NovelResponseDto updateCoverUrl(Long id, MultipartFile file);
+    String uploadChapterImage(Long novelId, MultipartFile file);
+    void deleteChapterImage(Long novelId, String url);
 
     Page<NovelResponseDto> findNewNovels(int page , int size);
     Page<NovelResponseDto> findMyNovels(int page , int size,Long authorId);

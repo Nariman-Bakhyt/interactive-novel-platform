@@ -10,6 +10,8 @@ import org.springframework.stereotype.Repository;
 import project.interactivenovelplatform.dto.response.RelationshipStateDto;
 import project.interactivenovelplatform.dto.response.ProfileResponseDto;
 import project.interactivenovelplatform.entity.AppUserEntity;
+import project.interactivenovelplatform.entity.RelationStatus;
+import project.interactivenovelplatform.entity.Novel;
 
 import java.util.List;
 import java.util.Optional;
@@ -43,8 +45,7 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
 
 
     // Использование проекционного конструктора DTO в JPQL с агрегатными подзапросами вычисляет счетчики и состояния связей в один roundtrip к БД.
-    // Это исключает N+1 query problem и экономит 8-10 отдельных обращений к СУБД за смежными сущностями.
-    @Query("""
+      @Query("""
     SELECT new project.interactivenovelplatform.dto.response.ProfileResponseDto(
         u.id,
         u.username,
@@ -55,18 +56,14 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
         
         (SELECT COUNT(n) FROM NovelEntity n
          WHERE n.author = u
-         AND n.status IN (
-            project.interactivenovelplatform.entity.Novel.COMPLETED,
-            project.interactivenovelplatform.entity.Novel.IN_PROGRESS,
-            project.interactivenovelplatform.entity.Novel.HIATUS
-         )),
+         AND n.status IN :activeStatuses),
         
         (SELECT COUNT(f1) FROM UserFollowerEntity f1 WHERE f1.receiver = u),
         
         (SELECT COUNT(f2) FROM UserFollowerEntity f2 WHERE f2.sender = u),
         
         (SELECT COUNT(fr) FROM UserFriendEntity fr
-         WHERE fr.status = project.interactivenovelplatform.entity.RelationStatus.FRIEND
+         WHERE fr.status = :friendStatus
          AND (fr.sender = u OR fr.receiver = u)),
          
         (SELECT COUNT(cf) FROM UserCloseFriendsEntity cf WHERE cf.owner = u),
@@ -79,7 +76,7 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
         
         CASE WHEN :currentUserId IS NULL THEN false
              ELSE ((SELECT COUNT(fr2) FROM UserFriendEntity fr2
-                    WHERE fr2.status = project.interactivenovelplatform.entity.RelationStatus.FRIEND
+                    WHERE fr2.status = :friendStatus
                     AND ((fr2.sender.id = :currentUserId AND fr2.receiver = u)
                       OR (fr2.sender = u AND fr2.receiver.id = :currentUserId))) > 0)
         END,
@@ -99,10 +96,21 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
     FROM AppUserEntity u
     WHERE u.id = :targetUserId
 """)
-    Optional<ProfileResponseDto> getFullProfile(
+    Optional<ProfileResponseDto> getFullProfileWithEnums(
             @Param("targetUserId") Long targetUserId,
-            @Param("currentUserId") Long currentUserId
+            @Param("currentUserId") Long currentUserId,
+            @Param("friendStatus") RelationStatus friendStatus,
+            @Param("activeStatuses") List<Novel> activeStatuses
     );
+
+    default Optional<ProfileResponseDto> getFullProfile(Long targetUserId, Long currentUserId) {
+        return getFullProfileWithEnums(
+                targetUserId,
+                currentUserId,
+                RelationStatus.FRIEND,
+                List.of(Novel.COMPLETED, Novel.IN_PROGRESS, Novel.HIATUS)
+        );
+    }
 
     @Query("""
     SELECT new project.interactivenovelplatform.dto.response.RelationshipStateDto(
@@ -114,7 +122,7 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
           WHERE f2.sender.id = :targetUserId AND f2.receiver.id = :currentUserId) > 0),
           
         ((SELECT COUNT(fr) FROM UserFriendEntity fr
-          WHERE fr.status = project.interactivenovelplatform.entity.RelationStatus.FRIEND
+          WHERE fr.status = :friendStatus
           AND ((fr.sender.id = :currentUserId AND fr.receiver.id = :targetUserId)
             OR (fr.sender.id = :targetUserId AND fr.receiver.id = :currentUserId))) > 0),
             
@@ -126,10 +134,15 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
     )
     FROM AppUserEntity u WHERE u.id = :targetUserId
 """)
-    Optional<RelationshipStateDto> getRelationshipState(
+    Optional<RelationshipStateDto> getRelationshipStateWithEnums(
             @Param("currentUserId") Long currentUserId,
-            @Param("targetUserId") Long targetUserId
+            @Param("targetUserId") Long targetUserId,
+            @Param("friendStatus") RelationStatus friendStatus
     );
+
+    default Optional<RelationshipStateDto> getRelationshipState(Long currentUserId, Long targetUserId) {
+        return getRelationshipStateWithEnums(currentUserId, targetUserId, RelationStatus.FRIEND);
+    }
 
     @Query("""
     SELECT new project.interactivenovelplatform.dto.response.RelationshipStateDto(
@@ -141,7 +154,7 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
           WHERE f2.sender.id = u.id AND f2.receiver.id = :currentUserId) > 0),
 
         ((SELECT COUNT(fr) FROM UserFriendEntity fr
-          WHERE fr.status = project.interactivenovelplatform.entity.RelationStatus.FRIEND
+          WHERE fr.status = :friendStatus
           AND ((fr.sender.id = :currentUserId AND fr.receiver.id = u.id)
             OR (fr.sender.id = u.id AND fr.receiver.id = :currentUserId))) > 0),
 
@@ -153,7 +166,15 @@ public interface UserRepository extends JpaRepository<AppUserEntity, Long>, JpaS
     )
     FROM AppUserEntity u WHERE u.id IN :targetIds
 """)
-    List<RelationshipStateDto> findAllRelationshipStates(@Param("currentUserId") Long currentUserId, @Param("targetIds") List<Long> targetIds);
+    List<RelationshipStateDto> findAllRelationshipStatesWithEnums(
+            @Param("currentUserId") Long currentUserId, 
+            @Param("targetIds") List<Long> targetIds,
+            @Param("friendStatus") RelationStatus friendStatus
+    );
+
+    default List<RelationshipStateDto> findAllRelationshipStates(Long currentUserId, List<Long> targetIds) {
+        return findAllRelationshipStatesWithEnums(currentUserId, targetIds, RelationStatus.FRIEND);
+    }
 
 
     @Modifying(clearAutomatically = true)

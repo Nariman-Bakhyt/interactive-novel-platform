@@ -18,6 +18,7 @@ public class MinioConfig {
     private String secretKey;
     @Value("${minio.bucketName}")
     private String bucketName;
+
     @Bean
     public MinioClient minioClient() {
         MinioClient client = MinioClient.builder()
@@ -32,7 +33,7 @@ public class MinioConfig {
                 System.out.println("Корзина " + bucketName + " не найдена. Создаю...");
                 client.makeBucket(io.minio.MakeBucketArgs.builder().bucket(bucketName).build());
             }
-        } catch (Exception e) { 
+        } catch (Exception e) {
             log.error("Ошибка подключения или инициализации MinIO: {}", e.getMessage(), e);
         }
 

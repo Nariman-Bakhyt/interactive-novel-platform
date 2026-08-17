@@ -21,4 +21,6 @@ public interface UserSessionRepository extends JpaRepository<UserSessionEntity,L
     void deleteAllExpired(OffsetDateTime now);
 
     Optional<UserSessionEntity> findByUserIdAndUserAgent(Long userId, String userAgent);
+
+    Optional<UserSessionEntity> findByUserIdAndGuestId(Long userId, String guestId);
 }

@@ -18,5 +18,9 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
     @EntityGraph(attributePaths = {"user"})
     Slice<CommentEntity> findByNovel_Id(Long novelId, Pageable pageable);
     @EntityGraph(attributePaths = {"user"})
+    Slice<CommentEntity> findByForumTopic_Id(Long forumTopicId, Pageable pageable);
+    @EntityGraph(attributePaths = {"user"})
+    Slice<CommentEntity> findByChannelPost_Id(Long channelPostId, Pageable pageable);
+    @EntityGraph(attributePaths = {"user"})
     Optional<CommentEntity> findById(Long commentId);
 }

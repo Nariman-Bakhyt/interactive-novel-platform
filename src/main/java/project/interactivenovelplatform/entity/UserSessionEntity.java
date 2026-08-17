@@ -23,6 +23,9 @@ public class UserSessionEntity {
     @Column(name = "user_agent")
     private String userAgent;
 
+    @Column(name = "guest_id", length = 255)
+    private String guestId;
+
     @Column(name = "ip_address",length = 45)
     private String ipAddress;
 

@@ -48,17 +48,77 @@ public class StorageServiceImpl implements StorageService {
     public String uploadFile(MultipartFile file, String folder, String uniqueFileName) throws Exception {
 
         String blobName = folder + "/" + uniqueFileName;
+        java.io.InputStream inputStream;
+        long size;
+        String contentType = file.getContentType();
 
-        minioClient.putObject(
-                PutObjectArgs.builder()
-                        .bucket(bucketName)
-                        .object(blobName)
-                        .stream(file.getInputStream(), file.getSize(), -1)
-                        .contentType(file.getContentType())
-                        .build()
-        );
+        if (uniqueFileName.toLowerCase().endsWith(".gif") || "image/gif".equals(file.getContentType())) {
+            long[] outSize = new long[1];
+            inputStream = processGifToWebp(file, outSize);
+            size = outSize[0];
+            contentType = "image/webp";
+            
+            // Меняем расширение файла на .webp
+            if (uniqueFileName.toLowerCase().endsWith(".gif")) {
+                String nameWithoutExt = uniqueFileName.substring(0, uniqueFileName.length() - 4);
+                blobName = folder + "/" + nameWithoutExt + ".webp";
+            } else {
+                blobName = folder + "/" + uniqueFileName + ".webp";
+            }
+        } else {
+            inputStream = file.getInputStream();
+            size = file.getSize();
+        }
+
+        try (inputStream) {
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(blobName)
+                            .stream(inputStream, size, -1)
+                            .contentType(contentType)
+                            .build()
+            );
+        }
         
         return blobName;
+    }
+
+    private java.io.InputStream processGifToWebp(MultipartFile file, long[] outSize) throws Exception {
+        if (file.getSize() > 15 * 1024 * 1024) {
+            throw new IllegalArgumentException("Размер GIF-файла не должен превышать 15 МБ");
+        }
+        java.io.File tempIn = java.io.File.createTempFile("in_", ".gif");
+        java.io.File tempOut = java.io.File.createTempFile("out_", ".webp");
+        try {
+            file.transferTo(tempIn);
+            ProcessBuilder pb = new ProcessBuilder(
+                    "gif2webp", "-lossy", "-q", "80", tempIn.getAbsolutePath(), "-o", tempOut.getAbsolutePath()
+            );
+            Process process = pb.start();
+            boolean finished = process.waitFor(30, TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroy();
+                throw new RuntimeException("Превышено время ожидания сжатия GIF");
+            }
+            if (process.exitValue() != 0) {
+                throw new RuntimeException("Конвертация gif2webp завершилась с кодом ошибки: " + process.exitValue() 
+                        + ". Убедитесь, что установлен пакет libwebp-tools.");
+            }
+            outSize[0] = tempOut.length();
+            return new java.io.FileInputStream(tempOut) {
+                @Override
+                public void close() throws IOException {
+                    super.close();
+                    tempIn.delete();
+                    tempOut.delete();
+                }
+            };
+        } catch (Exception e) {
+            tempIn.delete();
+            tempOut.delete();
+            throw e;
+        }
     }
     @Override
     public void deleteFile(String blobName) {
@@ -84,6 +144,19 @@ public class StorageServiceImpl implements StorageService {
     public String getPublicUrl(String blobName) {
         
         return String.format("%s/%s", storageBaseUrl, blobName);
+    }
+
+    @Override
+    public String getBlobNameFromUrl(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            return null;
+        }
+        String prefix = storageBaseUrl + "/";
+        int index = url.indexOf(prefix);
+        if (index != -1) {
+            return url.substring(index + prefix.length());
+        }
+        return null;
     }
 
     public String getFileExtension(String fileName) {
