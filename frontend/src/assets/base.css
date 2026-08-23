@@ -1,0 +1,26 @@
+/* base.css — essential resets only.
+   Color tokens are defined in main.css */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  font-weight: normal;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--text-header);
+  background: var(--bg-main);
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease;
+  line-height: 1.6;
+  font-family: var(--main-font);
+  font-size: 15px;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
