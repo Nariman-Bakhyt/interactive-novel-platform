@@ -1,0 +1,211 @@
+package project.interactivenovelplatform.service.impl;
+
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.ResponseCookie;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import project.interactivenovelplatform.dto.response.AuthResponseDto;
+import project.interactivenovelplatform.dto.response.JwtAuthenticationResponseDto;
+import project.interactivenovelplatform.entity.AppUserEntity;
+import project.interactivenovelplatform.entity.UserSessionEntity;
+import project.interactivenovelplatform.entity.VerificationTokenType;
+import project.interactivenovelplatform.repository.UserRepository;
+import project.interactivenovelplatform.repository.UserSessionRepository;
+import project.interactivenovelplatform.security.JwtTokenProvider;
+import project.interactivenovelplatform.security.UserPrincipal;
+import project.interactivenovelplatform.service.AuthService;
+import project.interactivenovelplatform.service.VerificationService;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+@Service
+@RequiredArgsConstructor
+public class AuthServiceImpl implements AuthService {
+    private final UserSessionRepository userSessionRepository;
+    private final JwtTokenProvider tokenProvider;
+    private final StringRedisTemplate redisTemplate;
+
+    private final UserRepository userRepository;
+    private final VerificationService verificationService;
+
+    private String getGuestId(HttpServletRequest request) {
+        if (request == null) return null;
+        String guestIdAttr = (String) request.getAttribute("VALID_GUEST_ID");
+        if (guestIdAttr != null) {
+            return guestIdAttr;
+        }
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("guest_id".equals(cookie.getName())) {
+                    String val = cookie.getValue();
+                    if (val != null && val.contains(".")) {
+                        return val.split("\\.")[0];
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    @Transactional
+    @Override
+    public AuthResponseDto createSession(UserPrincipal user, HttpServletRequest request) {
+        String accessToken = tokenProvider.generateAccessToken(user);
+        String signedRefreshToken = tokenProvider.generateSignedRefreshToken();
+
+        String userAgent = request.getHeader("User-Agent");
+        String ipAddress = request.getRemoteAddr();
+        String guestId = getGuestId(request);
+
+        UserSessionEntity session = null;
+        if (guestId != null) {
+            session = userSessionRepository.findByUserIdAndGuestId(user.getId(), guestId)
+                    .orElseGet(() -> userSessionRepository.findByUserIdAndUserAgent(user.getId(), userAgent)
+                            .orElseGet(UserSessionEntity::new));
+        } else {
+            session = userSessionRepository.findByUserIdAndUserAgent(user.getId(), userAgent)
+                    .orElseGet(UserSessionEntity::new);
+        }
+
+        if (session.getRefreshToken() != null) {
+            redisTemplate.delete("refresh:" + session.getRefreshToken());
+        }
+
+        session.setUserId(user.getId());
+        session.setUserAgent(userAgent);
+        session.setGuestId(guestId);
+        session.setRefreshToken(signedRefreshToken);
+        session.setIpAddress(ipAddress);
+        session.setLoginTime(OffsetDateTime.now());
+        session.setExpiresAt(OffsetDateTime.now().plusDays(30)); 
+        session.setActive(true);
+        userSessionRepository.save(session);
+
+        String redisKey = "refresh:" + signedRefreshToken;
+        Map<String, String> sessionData = Map.of(
+                "userId", user.getId().toString(),
+                "userAgent", userAgent
+        );
+        redisTemplate.opsForHash().putAll(redisKey, sessionData);
+        redisTemplate.expire(redisKey, 30, TimeUnit.DAYS);
+
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", signedRefreshToken)
+                .httpOnly(true)
+                .secure(false)
+                .path("/api/auth")
+                .maxAge(30 * 24 * 60 * 60)
+                .sameSite("Lax")
+                .build();
+
+        return new AuthResponseDto(accessToken, user.getUsername(), cookie ,null, user.getUsername());
+    }
+
+    @Transactional
+    @Override
+    public AuthResponseDto refreshAccessToken(String refreshToken, String userAgent) {
+        if (refreshToken == null || !tokenProvider.verifyRefreshTokenSignature(refreshToken)) {
+            throw new BadCredentialsException("Невалидный токен обновления");
+        }
+
+        String reusedUserId = redisTemplate.opsForValue().get("rotated:" + refreshToken);
+        if (reusedUserId != null) {
+            Long userId = Long.parseLong(reusedUserId);
+            invalidateAllSessions(userId);
+            throw new BadCredentialsException("Подозрение на повторное использование токена. Все сессии аннулированы.");
+        }
+
+        String redisKey = "refresh:" + refreshToken;
+        String userIdStr = (String) redisTemplate.opsForHash().get(redisKey, "userId");
+        UserSessionEntity session;
+
+        if (userIdStr == null) {
+            session = userSessionRepository.findByRefreshToken(refreshToken)
+                    .filter(UserSessionEntity::isActive)
+                    .filter(s -> s.getExpiresAt().isAfter(OffsetDateTime.now()))
+                    .orElseThrow(() -> new BadCredentialsException("Сессия истекла или не существует"));
+            userIdStr = session.getUserId().toString();
+        } else {
+            session = userSessionRepository.findByRefreshToken(refreshToken)
+                    .orElseThrow(() -> new BadCredentialsException("Сессия истекла или не существует"));
+        }
+
+        Long userId = Long.parseLong(userIdStr);
+        AppUserEntity userEntity = userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("Пользователь не найден"));
+
+        UserPrincipal userPrincipal = UserPrincipal.create(userEntity);
+
+        String newAccessToken = tokenProvider.generateAccessToken(userPrincipal);
+        String newRefreshToken = tokenProvider.generateSignedRefreshToken();
+
+        session.setRefreshToken(newRefreshToken);
+        session.setLoginTime(OffsetDateTime.now());
+        session.setExpiresAt(OffsetDateTime.now().plusDays(30));
+        userSessionRepository.save(session);
+
+        redisTemplate.delete(redisKey);
+
+        String newRedisKey = "refresh:" + newRefreshToken;
+        Map<String, String> sessionData = Map.of(
+                "userId", userId.toString(),
+                "userAgent", userAgent != null ? userAgent : ""
+        );
+        redisTemplate.opsForHash().putAll(newRedisKey, sessionData);
+        redisTemplate.expire(newRedisKey, 30, TimeUnit.DAYS);
+
+        redisTemplate.opsForValue().set("rotated:" + refreshToken, userId.toString(), 30, TimeUnit.DAYS);
+
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", newRefreshToken)
+                .httpOnly(true)
+                .secure(false)
+                .path("/api/auth")
+                .maxAge(30 * 24 * 60 * 60)
+                .sameSite("Lax")
+                .build();
+
+        return new AuthResponseDto(newAccessToken, newRefreshToken, cookie, null, userPrincipal.getUsername());
+    }
+
+    private void invalidateAllSessions(Long userId) {
+        List<UserSessionEntity> sessions = userSessionRepository.findAllByUserIdAndIsActiveTrue(userId);
+        for (UserSessionEntity session : sessions) {
+            session.setActive(false);
+            redisTemplate.delete("refresh:" + session.getRefreshToken());
+        }
+        userSessionRepository.saveAll(sessions);
+    }
+
+    @Transactional
+    @Override
+    public void logout(String refreshToken) {
+        if (refreshToken == null) return;
+
+        redisTemplate.delete("refresh:" + refreshToken);
+
+        userSessionRepository.findByRefreshToken(refreshToken).ifPresent(session -> {
+            session.setActive(false);
+            userSessionRepository.save(session);
+        });
+    }
+
+    @Transactional
+    @Override
+    public AuthResponseDto loginByVerificationCode(String email, String code, HttpServletRequest request) {
+        AppUserEntity user = userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Пользователь с такой почтой не найден"));
+
+        verificationService.verifyCode(user.getId(), code, VerificationTokenType.LOGIN_BY_CODE);
+
+        UserPrincipal principal = UserPrincipal.create(user);
+        return createSession(principal, request);
+    }
+
+}
