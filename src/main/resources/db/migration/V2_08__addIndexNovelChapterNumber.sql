@@ -1,1 +1,0 @@
-ALTER TABLE chapter ADD CONSTRAINT uk_novel_chapter_number UNIQUE (novel_id, chapter_number);

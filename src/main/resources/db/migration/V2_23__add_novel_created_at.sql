@@ -1,7 +1,0 @@
-ALTER TABLE novel
-    ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
-
-UPDATE novel SET created_at = publication_date;
-
-ALTER TABLE conversation_members
-    ADD COLUMN IF NOT EXISTS cleared_at TIMESTAMP WITH TIME ZONE;
