@@ -1,1 +1,0 @@
-ALTER TABLE IF EXISTS verification_tokens ADD COLUMN pending_value VARCHAR(555);
