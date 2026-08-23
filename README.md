@@ -1,73 +1,83 @@
-# interactive-novel-frontend
+# 📖 WénLib — Interactive Novel Platform (Frontend)
 
-This template should help get you started developing with Vue 3 in Vite.
+[![Vue.js](https://img.shields.io/badge/Vue.js-3.5+-4FC08D.svg?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6.0+-646CFF.svg?logo=vite&logoColor=white)](https://vite.dev/)
+[![Pinia](https://img.shields.io/badge/Pinia-2.3+-FFE873.svg?logo=pinia&logoColor=black)](https://pinia.vuejs.org/)
+[![Axios](https://img.shields.io/badge/Axios-1.7+-5A29E4.svg?logo=axios&logoColor=white)](https://axios-http.com/)
 
-## Recommended IDE Setup
+Клиентская часть веб-платформы **WénLib** для чтения, создания интерактивных новелл, комментирования и общения в реальном времени.
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+---
 
-## Recommended Browser Setup
+## ✨ Основные модули и функционал
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd) 
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+- **Интерактивный ридер новелл:**
+  - Настраиваемый режим чтения (темы, шрифты, размеры текста, ночной режим).
+  - Поблочный рендеринг контента и навигация по главам.
+  - Сохранение прогресса и истории чтения (`reading_history`).
+- **Редактор глав и панель автора:**
+  - Создание и редактирование новелл, загрузка обложек.
+  - Управление статусами публикации (черновик, опубликовано, отложенная публикация).
+- **Социальный граф и интерактив:**
+  - Система дружбы, подписчиков, заблокированных пользователей и списков «Близкие друзья».
+  - Древовидные комментарии к главам с реакциями и цитированием.
+  - Закладки и статусы прочтения в библиотеке (*Читаю, В планах, Брошено, Прочитано*).
+- **Real-time мессенджер:**
+  - Личные диалоги и групповые чаты через WebSockets (STOMP).
+  - Живые уведомления о новых сообщениях и системных событиях.
+- **Клиент защиты от ботов (Proof-of-Work):**
+  - Асинхронное вычисление SHA-256 челленджа чанками без блокировки UI-потока браузера.
+  - Автоматическая повторная верификация и обработка гостевых сессий.
+- **Glassmorphic UI / Design System:**
+  - Современный адаптивный интерфейс с полупрозрачными панелями, анимациями переходов и темной темой.
 
-## Type Support for `.vue` Imports in TS
+---
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+## 🛠️ Стек технологий
 
-## Customize configuration
+- **Фреймворк:** Vue 3 (Composition API, `<script setup>`)
+- **Язык:** TypeScript
+- **Сборщик:** Vite
+- **Стейт-менеджмент:** Pinia
+- **Маршрутизация:** Vue Router
+- **Сетевой уровень:** Axios (интерцепторы авторизации, авто-рефреш JWT токенов, Fingerprinting)
+- **Real-time:** StompJS, SockJS WebSockets
+- **Тестирование и качество:** Playwright (E2E), Vitest, ESLint, Prettier
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+---
 
-## Project Setup
+## 🚀 Быстрый старт
 
-```sh
+### 1. Установка зависимостей
+```bash
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+### 2. Настройка окружения
+```bash
+cp .env.example .env
+```
 
-```sh
+### 3. Запуск в режиме разработки
+```bash
 npm run dev
 ```
+Приложение откроется на `http://localhost:5173`.
 
-### Type-Check, Compile and Minify for Production
-
-```sh
-npm run build
+### 4. Сборка для продакшена
+```bash
+npm run build-only
 ```
 
-### Run Unit Tests with [Vitest](https://vitest.dev/)
+---
 
-```sh
+## 🧪 Тестирование
+
+```bash
+# Запуск Unit тестов (Vitest)
 npm run test:unit
-```
 
-### Run End-to-End Tests with [Playwright](https://playwright.dev)
-
-```sh
-# Install browsers for the first run
-npx playwright install
-
-# When testing on CI, must build the project first
-npm run build
-
-# Runs the end-to-end tests
+# Запуск End-to-End тестов (Playwright)
 npm run test:e2e
-# Runs the tests only on Chromium
-npm run test:e2e -- --project=chromium
-# Runs the tests of a specific file
-npm run test:e2e -- tests/example.spec.ts
-# Runs the tests in debug mode
-npm run test:e2e -- --debug
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
 ```

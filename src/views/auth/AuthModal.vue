@@ -38,15 +38,22 @@ watch(activeTab, () => {
 
 
 
+const getErrorMessage = (err: any, fallback: string): string => {
+  return err.response?.data?.detailedMessage ||
+         err.response?.data?.message ||
+         err.response?.data?.error ||
+         (typeof err.response?.data === 'string' && err.response.data.trim() ? err.response.data : '') ||
+         fallback;
+};
+
 const handleLogin = async () => {
   errorMessage.value = '';
   isLoading.value = true;
   try {
-    
     await authStore.login({ username: username.value, password: password.value });
     emit('close');
   } catch (err: any) {
-    errorMessage.value = err.response?.data?.message || 'Неверный логин или пароль';
+    errorMessage.value = getErrorMessage(err, 'Неверный логин или пароль');
   } finally {
     isLoading.value = false;
   }
@@ -61,7 +68,7 @@ const handleRequestLoginCode = async () => {
     loginStep.value = 'CODE_VERIFY';
     successMessage.value = `Код отправлен на ${email.value}`;
   } catch (err: any) {
-    errorMessage.value = err.response?.data?.message || 'Ошибка отправки кода';
+    errorMessage.value = getErrorMessage(err, 'Ошибка отправки кода');
   } finally {
     isLoading.value = false;
   }
@@ -75,15 +82,11 @@ const handleVerifyLoginCode = async () => {
     await authStore.verifyLoginCode({ email: email.value, code: code.value });
     emit('close');
   } catch (err: any) {
-    errorMessage.value = err.response?.data?.message || 'Неверный или просроченный код';
+    errorMessage.value = getErrorMessage(err, 'Неверный или просроченный код');
   } finally {
     isLoading.value = false;
   }
 };
-
-
-
-
 
 
 const handleRegister = async () => {
@@ -101,7 +104,7 @@ const handleRegister = async () => {
     registerStep.value = 'CODE_VERIFY'; 
     successMessage.value = 'Код подтверждения отправлен на почту!';
   } catch (err: any) {
-    errorMessage.value = err.response?.data?.message || 'Ошибка при регистрации.';
+    errorMessage.value = getErrorMessage(err, 'Ошибка при регистрации.');
   } finally {
     isLoading.value = false;
   }
@@ -118,13 +121,12 @@ const handleVerifyRegister = async () => {
       code: code.value
     });
 
-    
     successMessage.value = 'Регистрация завершена! Теперь войдите в аккаунт.';
     activeTab.value = 'login';
     username.value = email.value; 
     password.value = '';
   } catch (err: any) {
-    errorMessage.value = err.response?.data?.message || 'Неверный код';
+    errorMessage.value = getErrorMessage(err, 'Неверный код');
   } finally {
     isLoading.value = false;
   }
@@ -187,9 +189,9 @@ const handleVerifyRegister = async () => {
       <div v-else class="form-content">
 
         <form v-if="registerStep === 'DEFAULT'" @submit.prevent="handleRegister">
-          <input v-model="username" type="text" placeholder="Придумайте логин" class="btn-width" required />
+          <input v-model="username" type="text" placeholder="Придумайте логин (от 4 символов)" minlength="4" maxlength="50" class="btn-width" required />
           <input v-model="email" type="email" placeholder="Email" class="btn-width" required />
-          <input v-model="password" type="password" placeholder="Придумайте пароль" class="btn-width" required />
+          <input v-model="password" type="password" placeholder="Придумайте пароль (от 8 символов)" minlength="8" class="btn-width" required />
           <button type="submit" class="submit-btn" :disabled="isLoading">Зарегистрироваться</button>
         </form>
 

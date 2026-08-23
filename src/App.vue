@@ -27,8 +27,9 @@ const libraryStore = useLibraryStore();
 const socialStore = useSocialStore();
 const messengerStore = useMessengerStore();
 
-// Флаг готовности приложения (блокирует преждевременные запросы из watch)
+// Флаг готовности приложения (блокирует запросы и watch до прохождения проверки)
 const isAppReady = ref(false);
+let isPoWInProgress = false;
 
 type UserContextMenuInstance = InstanceType<typeof UserContextMenu>;
 
@@ -42,7 +43,7 @@ provide('openUserMenu', (event: MouseEvent, userId: number, username: string) =>
 });
 provide('openUserProfile', openUserProfile);
 
-// Функционал загрузки пользовательских данных вынесен в отдельный метод
+// Загрузка пользовательских данных после готовности приложения
 async function loadUserData() {
   await Promise.all([
     messengerStore.loadMyChats(),
@@ -61,7 +62,7 @@ async function loadUserData() {
 watch(
   () => authStore.isAuthenticated,
   async (isAuth) => {
-    // ЕСЛИ ПРИЛОЖЕНИЕ ЕЩЕ НЕ ПРОШЛО PoW — ИГНОРИРУЕМ ЗАПРОСЫ
+    // Не даем сработать вочу до того как пройдет PoW и приложение загрузится
     if (!isAppReady.value) return;
 
     if (isAuth) {
@@ -77,30 +78,45 @@ watch(
 
 const handleVisibilityChange = () => {
   if (document.visibilityState === 'visible' && authStore.isAuthenticated && isAppReady.value) {
-    console.log('Пользователь вернулся на сайт, обновляем библиотеку в фоне...');
+    console.log('Пользователь вернулся во вкладку, обновляем контекст в фоне...');
     libraryStore.fetchMyStatuses(true);
     socialStore.fetchSocialGraph(true);
   }
 };
 
 async function initializeApplicationData() {
+  if (isAppReady.value) return;
   try {
-    // Грузим общие метаданные для всех (жанры, теги)
+    // Загрузка общих метаданных для всех (жанры, теги)
     await Promise.all([getAllGenres(), getAllTags()]);
 
     // Включаем флаг готовности
     isAppReady.value = true;
 
-    // Если пользователь уже был авторизован, точечно догружаем его личные данные
+    // Если пользователь уже авторизован, загружаем его данные
     if (authStore.isAuthenticated) {
       await loadUserData();
     }
   } catch (e) {
     console.error("Ошибка предзагрузки метаданных:", e);
+    isAppReady.value = true;
   }
 }
 
+const getHeaderFromResponse = (res: any, name: string): string => {
+  let val: any = undefined;
+  if (res.headers && typeof (res.headers as any).get === 'function') {
+    val = (res.headers as any).get(name) || (res.headers as any).get(name.toLowerCase());
+  } else if (res.headers) {
+    val = (res.headers as any)[name] || (res.headers as any)[name.toLowerCase()];
+  }
+  return val != null ? String(val) : "";
+};
+
 onMounted(async () => {
+  if (isPoWInProgress || isAppReady.value) return;
+  isPoWInProgress = true;
+
   document.addEventListener('visibilitychange', handleVisibilityChange);
 
   const challengeData = window.__INITIAL_CHALLENGE__;
@@ -108,24 +124,27 @@ onMounted(async () => {
   let difficulty = 0;
   let skip = false;
 
-  // Если OpenResty по какой-то причине не отдал объект или мы в dev режиме (Vite)
+  // Если OpenResty не передал данные или это локальный запуск в dev режиме (Vite)
   if (!challengeData || !challengeData.skip || challengeData.skip === "WEN_POW_SKIP") {
     console.warn("Данные PoW защиты не найдены или запущен локальный сервер. Запрашиваем челлендж с бэкенда...");
     try {
       const res = await apiClient.get('/auth/public/challenge');
-      const skipHeader = res.headers['x-skip-challenge'];
-      if (skipHeader === 'true') {
-        console.log("[WénLib] Бэкенд разрешил пропуск PoW.");
+
+      const isSkip = res.data?.skip === true || getHeaderFromResponse(res, 'x-skip-challenge') === 'true';
+      if (isSkip) {
+        console.log("[WénLib] Пропуск проверки PoW (валидная сессия/гость).");
         await initializeApplicationData();
+        isPoWInProgress = false;
         return;
       }
-      salt = res.headers['x-challenge-salt'] as string;
-      difficulty = parseInt(res.headers['x-challenge-difficulty'] as string, 10);
+
+      salt = res.data?.salt || getHeaderFromResponse(res, 'x-challenge-salt');
+      difficulty = parseInt(res.data?.difficulty || getHeaderFromResponse(res, 'x-challenge-difficulty') || "2", 10);
       skip = false;
     } catch (err) {
       console.error("Не удалось получить челлендж с бэкенда:", err);
-      // Если бэкенд не отвечает или выдает ошибку, пробуем продолжить
       await initializeApplicationData();
+      isPoWInProgress = false;
       return;
     }
   } else {
@@ -134,14 +153,23 @@ onMounted(async () => {
     skip = challengeData.skip === "true";
   }
 
-  // СЦЕНАРИЙ А: Кука гостя валидна
+  // СЦЕНАРИЙ 1: Кука уже валидна
   if (skip) {
-    console.log("[WénLib] Кука валидна. Доступ разрешен без решения задач.");
+    console.log("[WénLib] Кука валидна. Доступ открыт без решения PoW.");
     await initializeApplicationData();
+    isPoWInProgress = false;
     return;
   }
 
-  // СЦЕНАРИЙ Б: Требуется вычисление PoW
+  // Если соль отсутствует, не пытаемся решать пустой челлендж
+  if (!salt) {
+    console.warn("[WénLib] Соль PoW отсутствует, пропускаем проверку...");
+    await initializeApplicationData();
+    isPoWInProgress = false;
+    return;
+  }
+
+  // СЦЕНАРИЙ 2: Вычисление и отправка PoW
   console.log(`[WénLib] Требуется проверка PoW. Сложность: ${difficulty}`);
 
   try {
@@ -155,11 +183,39 @@ onMounted(async () => {
 
     if (response.status === 200) {
       console.log("[WénLib] Проверка PoW успешно пройдена!");
-      // Только после успешного 200-го статуса разблокируем приложение и стягиваем данные
       await initializeApplicationData();
     }
   } catch (error) {
-    console.error("Ошибка верификации PoW:", error);
+    console.error("Ошибка верификации PoW, пробуем повторный запрос со свежей солью:", error);
+    try {
+      const retryRes = await apiClient.get('/auth/public/challenge');
+      const isRetrySkip = retryRes.data?.skip === true || getHeaderFromResponse(retryRes, 'x-skip-challenge') === 'true';
+      if (isRetrySkip) {
+        await initializeApplicationData();
+        return;
+      }
+
+      const retrySalt = retryRes.data?.salt || getHeaderFromResponse(retryRes, 'x-challenge-salt');
+      const retryDiff = parseInt(retryRes.data?.difficulty || getHeaderFromResponse(retryRes, 'x-challenge-difficulty') || "2", 10);
+
+      if (retrySalt) {
+        const { solveChallenge } = useProofOfWork();
+        const retryNonce = await solveChallenge(retrySalt, retryDiff);
+        const retryVerifyRes = await apiClient.post('/auth/public/verify-challenge', {
+          salt: retrySalt,
+          nonce: retryNonce
+        });
+        if (retryVerifyRes.status === 200) {
+          console.log("[WénLib] Повторная проверка PoW успешно пройдена!");
+        }
+      }
+    } catch (retryErr) {
+      console.error("Повторная попытка верификации PoW не удалась:", retryErr);
+    } finally {
+      await initializeApplicationData();
+    }
+  } finally {
+    isPoWInProgress = false;
   }
 });
 
@@ -177,7 +233,7 @@ onUnmounted(() => {
 
   <div v-else class="app-loading-screen">
     <div class="spinner"></div>
-    <p>Проверка безопасности WénLib...</p>
+    <p>Загрузка системы WénLib...</p>
   </div>
 </template>
 

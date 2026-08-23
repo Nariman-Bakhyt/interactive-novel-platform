@@ -10,11 +10,10 @@ const apiClient = axios.create({
   }
 });
 
-// Инжектируем фингерпринт X-Visitor-Id для неавторизованных (гостевых) пользователей и Bearer JWT для авторизованных.
+// Добавляем X-Visitor-Id и Bearer JWT при наличии
 apiClient.interceptors.request.use(
   (config) => {
     const vId = getCachedVisitorId();
-
 
     if (vId) {
       config.headers['X-Visitor-Id'] = vId;
@@ -30,9 +29,6 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// failedQueue и isRefreshing реализуют слияние (concurrency pooling) параллельных запросов обновления токена.
-// Если одновременно падает несколько параллельных запросов с 401, выполняется ровно один запрос /auth/refresh,
-// а остальные ждут его завершения в очереди. Это защищает бэкенд от спама рефрешами и предотвращает race conditions.
 let isRefreshing = false;
 let failedQueue: any[] = [];
 
@@ -47,24 +43,24 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-
     const authStore = useAuthStore();
     const originalRequest = error.config;
 
-
-    if (error.response?.status === 401 && originalRequest.url === '/auth/public/refresh') {
+    if (error.response?.status === 401 && originalRequest?.url?.includes('/auth/public/refresh')) {
       authStore.logout(true);
       return Promise.reject(error);
     }
 
+    // Если 401 вызван отсутствием guest_id (требуется PoW), либо пользователь не авторизован (нет токена),
+    // НЕ пытаемся обновлять токен, а просто отклоняем промис
+    const isPoWChallengeRequired = error.response?.data?.requires_challenge === true;
+    const hasToken = !!localStorage.getItem('jwt_token');
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest?._retry && !isPoWChallengeRequired && hasToken) {
       originalRequest._retry = true;
-
 
       if (isRefreshing) {
         return new Promise(function(resolve, reject) {
@@ -76,7 +72,6 @@ apiClient.interceptors.response.use(
           return Promise.reject(err);
         });
       }
-
 
       isRefreshing = true;
 
@@ -90,7 +85,6 @@ apiClient.interceptors.response.use(
         processQueue(refreshError, null);
         return Promise.reject(refreshError);
       } finally {
-
         isRefreshing = false;
       }
     }
