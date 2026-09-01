@@ -1,0 +1,41 @@
+name: Split Monorepo
+
+on:
+  push:
+    branches:
+      - main # Скрипт срабатывает при пуше в ветку main
+
+jobs:
+  split-back:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Push Backend Folder to Separate Repo
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        with:
+          source-directory: "backend"
+          destination-github-username: "Nariman-Bakhyt"
+          destination-repository-name: "diplom"
+          user-email: ${{ github.actor }}@users.noreply.github.com
+          target-branch: "main"
+
+  split-front:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Push Frontend Folder to Separate Repo
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        with:
+          source-directory: "frontend"
+          destination-github-username: "Nariman-Bakhyt"
+          destination-repository-name: "diplom-frontend"
+          user-email: ${{ github.actor }}@users.noreply.github.com
+          target-branch: "main"
