@@ -20,12 +20,12 @@ public class TagAndGenreController {
     @RateLimited(capacity = 5, minutes = 60)
     @GetMapping("/genres/public")
     public ResponseEntity<List<TagOrGenreResponseDto>> getAllGenre(){
-        return ResponseEntity.ok().body(tagAndGenreService.GetAllTagOrGenre(false));
+        return ResponseEntity.ok().body(tagAndGenreService.getAllTagOrGenre(false));
     }
     @RateLimited(capacity = 5, minutes = 60)
     @GetMapping("/tags/public")
     public ResponseEntity<List<TagOrGenreResponseDto>> getAllTags() {
-        return ResponseEntity.ok().body(tagAndGenreService.GetAllTagOrGenre(true));
+        return ResponseEntity.ok().body(tagAndGenreService.getAllTagOrGenre(true));
     }
     @RateLimited(capacity = 5, minutes = 1)
     @PutMapping("/genres")

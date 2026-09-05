@@ -140,8 +140,8 @@ public class NovelServiceImpl implements NovelService {
                         novelEntity.setStatus(Novel.DRAFT);
                         novelEntity.setCreatedAt(now);
                         novelRepository.saveAndFlush(novelEntity);
-                        tagAndGenreService.UpdateTagOrGenreToNovel(dto.getTags(),true,novelEntity);
-                        tagAndGenreService.UpdateTagOrGenreToNovel(dto.getGenres(),false,novelEntity);
+                        tagAndGenreService.updateTagOrGenreToNovel(dto.getTags(),true,novelEntity);
+                        tagAndGenreService.updateTagOrGenreToNovel(dto.getGenres(),false,novelEntity);
                         novelEntity.setCoverUrl(finalNewCoverUrl);
                         return novelEntity;
                     }
@@ -284,11 +284,11 @@ public class NovelServiceImpl implements NovelService {
         }
 
         if(dto.getTags() != null ) {
-            tagAndGenreService.UpdateTagOrGenreToNovel(dto.getTags(),true,novel);
+            tagAndGenreService.updateTagOrGenreToNovel(dto.getTags(),true,novel);
         }
 
         if(dto.getGenres() != null ) {
-            tagAndGenreService.UpdateTagOrGenreToNovel(dto.getGenres(),false,novel);
+            tagAndGenreService.updateTagOrGenreToNovel(dto.getGenres(),false,novel);
         }
 
         NovelEntity saved = novelRepository.save(novel);

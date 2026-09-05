@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface TagRepository extends JpaRepository<TagEntity, Long> {
     List<TagEntity> findAllByNameInIgnoreCase(Collection<String> names);
+    void deleteAllById(List<Long> ids);
+
 }

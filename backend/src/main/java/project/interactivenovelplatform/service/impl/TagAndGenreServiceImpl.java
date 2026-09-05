@@ -1,6 +1,5 @@
 package project.interactivenovelplatform.service.impl;
 
-
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,41 +23,52 @@ public class TagAndGenreServiceImpl implements TagAndGenreService {
 
     @Override
     @Transactional
-    public List<TagOrGenreResponseDto> UpdateTagOrGenreToNovel(List<Long> ids, boolean isTag, NovelEntity novelEntity) {
-        if(ids == null || ids.isEmpty()) return List.of();
+    public List<TagOrGenreResponseDto> updateTagOrGenreToNovel(List<Long> ids, boolean isTag, NovelEntity novelEntity) {
+        if (ids == null)
+            return List.of();
 
-        if(isTag){
-            
+        if (ids.isEmpty()) {
+            if (isTag) {
+                novelEntity.getTags().clear();
+                return List.of();
+            } else {
+                novelEntity.getGenres().clear();
+                return List.of();
+            }
+        }
+
+        if (isTag) {
+
             List<TagEntity> tags = tagRepository.findAllById(ids);
             novelEntity.getTags().clear();
             novelEntity.getTags().addAll(tags);
-            return tags.stream().map(tag->new TagOrGenreResponseDto(tag.getId(),tag.getName())).toList();
-        }
-        else {
-            
+            return tags.stream().map(tag -> new TagOrGenreResponseDto(tag.getId(), tag.getName())).toList();
+        } else {
+
             List<GenreEntity> genres = genreRepository.findAllById(ids);
             novelEntity.getGenres().clear();
             novelEntity.getGenres().addAll(genres);
-            return genres.stream().map(g->new TagOrGenreResponseDto(g.getId(),g.getName())).toList();
+            return genres.stream().map(g -> new TagOrGenreResponseDto(g.getId(), g.getName())).toList();
         }
 
     }
 
     @Override
     @Transactional
-    public List<TagOrGenreResponseDto> addTagOrGenre(List<TagOrGenreRequestDto> dto,boolean isTag){
-        if(dto == null || dto.isEmpty())return List.of();
+    public List<TagOrGenreResponseDto> addTagOrGenre(List<TagOrGenreRequestDto> dto, boolean isTag) {
+        if (dto == null || dto.isEmpty())
+            return List.of();
         List<String> uniqueName = dto.stream().map(TagOrGenreRequestDto::getName)
                 .filter(Objects::nonNull)
-                .map(name-> name.trim().replaceAll("\\s+"," "))
+                .map(name -> name.trim().replaceAll("\\s+", " "))
                 .filter(name -> !name.isEmpty())
-                .map(name->name.substring(0,1).toUpperCase()+name.substring(1).toLowerCase())
+                .map(name -> name.substring(0, 1).toUpperCase() + name.substring(1).toLowerCase())
                 .distinct().toList();
         List<String> existingName = isTag
-            ? tagRepository.findAllByNameInIgnoreCase(uniqueName).stream()
-                .map(TagEntity::getName).toList()
-            :genreRepository.findAllByNameInIgnoreCase(uniqueName).stream()
-                .map(GenreEntity::getName).toList();
+                ? tagRepository.findAllByNameInIgnoreCase(uniqueName).stream()
+                        .map(TagEntity::getName).toList()
+                : genreRepository.findAllByNameInIgnoreCase(uniqueName).stream()
+                        .map(GenreEntity::getName).toList();
 
         if (isTag) {
             List<TagEntity> tagsToSave = uniqueName.stream()
@@ -78,51 +88,59 @@ public class TagAndGenreServiceImpl implements TagAndGenreService {
             return tagsToSave.stream()
                     .map(tag -> new TagOrGenreResponseDto(tag.getId(), tag.getName()))
                     .toList();
-        }
-        else {
+        } else {
             List<GenreEntity> genreToSave = uniqueName.stream()
                     .filter(name -> existingName.stream()
                             .noneMatch(existing -> existing.equalsIgnoreCase(name)))
                     .map(
-                    name -> {
-                        GenreEntity newGenre = new GenreEntity();
-                        newGenre.setName(name);
-                        return newGenre;
-                    }
-            ).toList();
-            if(!genreToSave.isEmpty()){
+                            name -> {
+                                GenreEntity newGenre = new GenreEntity();
+                                newGenre.setName(name);
+                                return newGenre;
+                            })
+                    .toList();
+            if (!genreToSave.isEmpty()) {
                 genreRepository.saveAll(genreToSave);
             }
-            return genreToSave.stream().map(genre-> new TagOrGenreResponseDto(genre.getId(), genre.getName())).toList();
+            return genreToSave.stream().map(genre -> new TagOrGenreResponseDto(genre.getId(), genre.getName()))
+                    .toList();
         }
     }
+
     @Override
     @Transactional
-    public List<TagOrGenreResponseDto> DeleteTagOrGenre(List<TagOrGenreRequestDto> dto,boolean isTag){
-        if(dto == null || dto.isEmpty())return List.of();
-        List<Long> uniqueId =dto.stream().map(TagOrGenreRequestDto::getId).filter(Objects::nonNull).distinct().toList();
-        if(isTag){
+    public List<TagOrGenreResponseDto> deleteTagOrGenre(List<TagOrGenreRequestDto> dto, boolean isTag) {
+        if (dto == null || dto.isEmpty())
+            return List.of();
+        List<Long> uniqueId = dto.stream().map(TagOrGenreRequestDto::getId).filter(Objects::nonNull).distinct()
+                .toList();
+        if (isTag) {
             List<TagEntity> tags = tagRepository.findAllById(uniqueId);
-            if(tags.isEmpty())return List.of();
+            if (tags.isEmpty())
+                return List.of();
             tagRepository.deleteAllById(tags.stream().map(TagEntity::getId).toList());
             return tags.stream().map(tag -> new TagOrGenreResponseDto(tag.getId(), tag.getName())).toList();
-        }
-        else{
+        } else {
             List<GenreEntity> genres = genreRepository.findAllById(uniqueId);
-            if(genres.isEmpty())return List.of();
+            if (genres.isEmpty())
+                return List.of();
             genreRepository.deleteAllById(genres.stream().map(GenreEntity::getId).toList());
             return genres.stream().map(genre -> new TagOrGenreResponseDto(genre.getId(), genre.getName())).toList();
         }
 
     }
+
     @Transactional(readOnly = true)
     @Override
-    public List<TagOrGenreResponseDto> GetAllTagOrGenre(boolean isTag){
-        if(isTag){
-            return tagRepository.findAll().stream().map(tag-> new TagOrGenreResponseDto(tag.getId(),tag.getName())).toList();
-        }
-        else{
-            return genreRepository.findAll().stream().map(genre -> new TagOrGenreResponseDto(genre.getId(), genre.getName())).toList();
+    public List<TagOrGenreResponseDto> getAllTagOrGenre(boolean isTag) {
+        if (isTag) {
+            return tagRepository.findAll().stream()
+                    .map(tag -> new TagOrGenreResponseDto(tag.getId(), tag.getName()))
+                    .toList();
+        } else {
+            return genreRepository.findAll().stream()
+                    .map(genre -> new TagOrGenreResponseDto(genre.getId(), genre.getName()))
+                    .toList();
         }
     }
 }

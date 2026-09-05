@@ -7,9 +7,9 @@ import project.interactivenovelplatform.entity.NovelEntity;
 import java.util.List;
 
 public interface TagAndGenreService {
-    List<TagOrGenreResponseDto> UpdateTagOrGenreToNovel(List<Long> ids, boolean isTag, NovelEntity novelEntity);
+    List<TagOrGenreResponseDto> updateTagOrGenreToNovel(List<Long> ids, boolean isTag, NovelEntity novelEntity);
     List<TagOrGenreResponseDto> addTagOrGenre(List<TagOrGenreRequestDto> dto,boolean isTag);
-    List<TagOrGenreResponseDto> DeleteTagOrGenre(List<TagOrGenreRequestDto> dto,boolean isTag);
-    List<TagOrGenreResponseDto> GetAllTagOrGenre(boolean isTag);
+    List<TagOrGenreResponseDto> deleteTagOrGenre(List<TagOrGenreRequestDto> dto,boolean isTag);
+    List<TagOrGenreResponseDto> getAllTagOrGenre(boolean isTag);
 
 }
